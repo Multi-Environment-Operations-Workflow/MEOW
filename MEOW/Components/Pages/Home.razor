@@ -1,5 +1,108 @@
 ﻿@page "/"
+@using System.Collections.ObjectModel
+@inject Services.IBluetoothService Bluetooth
 
-<h1>Hello, world!</h1>
+<h1>Bluetooth Devices</h1>
 
-Welcome to your new app.
+<input @bind="_filter" placeholder="Filter devices..." class="filter-input" />
+
+<div class="button-bar">
+    <button class="action-button" @onclick="ScanAsync">🔍 Scan for Devices</button>
+    <button class="advertise-button" @onclick="StartAdvertisingAsync">📡 Start Advertising</button>
+    <button class="stop-button" @onclick="StopAdvertisingAsync">🛑 Stop Advertising</button>
+</div>
+
+@if (_isScanning)
+{
+    <p>Scanning...</p>
+}
+
+@if (!string.IsNullOrEmpty(_errorMessage))
+{
+    <p class="error-text">@_errorMessage</p>
+}
+@if(!FilteredDevices.Any() && !_isScanning && string.IsNullOrEmpty(_errorMessage))
+{
+    <p>No devices found.</p>
+}
+else
+{
+    <ul class="device-list">
+        @foreach (var d in FilteredDevices)
+        {
+            <li>
+                <button class="device-button" @onclick="() => ConnectAsync(d)">
+                    @GetDeviceDisplay(d)
+                </button>
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    private string _errorMessage = string.Empty;
+    private bool _isScanning = false;
+    private ObservableCollection<object> _devices = new();
+    private string _filter = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        _devices = Bluetooth.Devices;
+    }
+
+    private async Task ScanAsync()
+    {
+        _isScanning = true;
+        _errorMessage = string.Empty;
+        try
+        {
+            await Bluetooth.ScanAsync();
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            _errorMessage = e.Message;
+        }
+        _isScanning = false;
+    }
+
+    private async Task ConnectAsync(object device)
+    {
+        await Bluetooth.ConnectAsync(device);
+    }
+    
+    private async Task StartAdvertisingAsync()
+    {
+        try
+        {
+            await Bluetooth.StartAdvertisingAsync("MEOW Device", Guid.NewGuid());
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+    }
+
+    private async Task StopAdvertisingAsync()
+    {
+        await Bluetooth.StopAdvertisingAsync();
+    }
+
+    private string GetDeviceDisplay(object device)
+    {
+        if (device is Plugin.BLE.Abstractions.Contracts.IDevice ble)
+            return $"{ble.Name} ({ble.Id})";
+#if ANDROID
+        if (device is Android.Bluetooth.BluetoothDevice classic)
+            return $"{classic.Name} ({classic.Address})";
+#endif
+        return device?.ToString() ?? "Unknown Device";
+    }
+
+    private IEnumerable<object> FilteredDevices =>
+        string.IsNullOrWhiteSpace(_filter)
+            ? _devices
+            : _devices.Where(d =>
+                (GetDeviceDisplay(d) ?? string.Empty)
+                    .Contains(_filter, StringComparison.OrdinalIgnoreCase));
+}
