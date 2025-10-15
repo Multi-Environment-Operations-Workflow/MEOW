@@ -14,7 +14,7 @@ public static class MauiProgram
         // Register platform-specific Bluetooth service
 #if ANDROID
         builder.Services.AddSingleton<IBluetoothService, AndroidBluetoothService>();
-#elif IOS || MACCATALYST
+#elif IOS
         builder.Services.AddSingleton<IBluetoothService, IOSBluetoothService>();
 #endif
 

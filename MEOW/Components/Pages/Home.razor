@@ -4,7 +4,13 @@
 
 <h1>Bluetooth Devices</h1>
 
-<button @onclick="ScanAsync">Scan for Devices</button>
+<input @bind="_filter" placeholder="Filter devices..." class="filter-input" />
+
+<div class="button-bar">
+    <button class="action-button" @onclick="ScanAsync">🔍 Scan for Devices</button>
+    <button class="advertise-button" @onclick="StartAdvertisingAsync">📡 Start Advertising</button>
+    <button class="stop-button" @onclick="StopAdvertisingAsync">🛑 Stop Advertising</button>
+</div>
 
 @if (_isScanning)
 {
@@ -13,20 +19,19 @@
 
 @if (!string.IsNullOrEmpty(_errorMessage))
 {
-    <p style="color:red">@_errorMessage</p>
+    <p class="error-text">@_errorMessage</p>
 }
-
-@if (_devices.Count == 0 && !_isScanning && string.IsNullOrEmpty(_errorMessage))
+@if(!FilteredDevices.Any() && !_isScanning && string.IsNullOrEmpty(_errorMessage))
 {
     <p>No devices found.</p>
 }
 else
 {
-    <ul>
-        @foreach (var d in _devices)
+    <ul class="device-list">
+        @foreach (var d in FilteredDevices)
         {
             <li>
-                <button @onclick="() => ConnectAsync(d)">
+                <button class="device-button" @onclick="() => ConnectAsync(d)">
                     @GetDeviceDisplay(d)
                 </button>
             </li>
@@ -38,6 +43,7 @@ else
     private string _errorMessage = string.Empty;
     private bool _isScanning = false;
     private ObservableCollection<object> _devices = new();
+    private string _filter = string.Empty;
 
     protected override void OnInitialized()
     {
@@ -64,18 +70,39 @@ else
     {
         await Bluetooth.ConnectAsync(device);
     }
+    
+    private async Task StartAdvertisingAsync()
+    {
+        try
+        {
+            await Bluetooth.StartAdvertisingAsync("MEOW Device", Guid.NewGuid());
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+    }
+
+    private async Task StopAdvertisingAsync()
+    {
+        await Bluetooth.StopAdvertisingAsync();
+    }
 
     private string GetDeviceDisplay(object device)
     {
-        // BLE device
         if (device is Plugin.BLE.Abstractions.Contracts.IDevice ble)
             return $"{ble.Name} ({ble.Id})";
-        // Android classic Bluetooth device
 #if ANDROID
         if (device is Android.Bluetooth.BluetoothDevice classic)
             return $"{classic.Name} ({classic.Address})";
 #endif
-        // Fallback
         return device?.ToString() ?? "Unknown Device";
     }
+
+    private IEnumerable<object> FilteredDevices =>
+        string.IsNullOrWhiteSpace(_filter)
+            ? _devices
+            : _devices.Where(d =>
+                (GetDeviceDisplay(d) ?? string.Empty)
+                    .Contains(_filter, StringComparison.OrdinalIgnoreCase));
 }

@@ -1,16 +1,21 @@
+#if IOS
 using Plugin.BLE;
 using Plugin.BLE.Abstractions.Contracts;
-using Plugin.BLE.Abstractions.Exceptions;
 using System.Collections.ObjectModel;
+using CoreBluetooth;
+using Foundation;
 
 namespace MEOW.Components.Services;
 
-public class IOSBluetoothService : IBluetoothService
+public class IOSBluetoothService : NSObject, IBluetoothService, ICBPeripheralManagerDelegate
 {
     private readonly IBluetoothLE _bluetooth = CrossBluetoothLE.Current;
     private readonly IAdapter _adapter = CrossBluetoothLE.Current.Adapter;
 
     public ObservableCollection<object> Devices { get; } = new();
+    
+    private CBPeripheralManager? _peripheralManager;
+    private CBUUID? _serviceUuid;
 
     public async Task<bool> ScanAsync()
     {
@@ -36,18 +41,39 @@ public class IOSBluetoothService : IBluetoothService
     {
         if (device is IDevice bleDevice)
         {
-            try
-            {
-                await _adapter.ConnectToDeviceAsync(bleDevice);
-            }
-            catch (DeviceConnectionException)
-            {
-                // Handle connection error
-            }
+            await _adapter.ConnectToDeviceAsync(bleDevice);     
         }
         else
         {
             throw new ArgumentException("Device is not a BLE device");
         }
     }
+    
+    public async Task StartAdvertisingAsync(string name, Guid serviceUuid)
+    {
+        _serviceUuid = CBUUID.FromString(serviceUuid.ToString());
+        _peripheralManager = new CBPeripheralManager(this, null);
+        var advertisementData = new NSMutableDictionary();
+        advertisementData.Add(CBAdvertisement.DataLocalNameKey, new NSString(name));
+        advertisementData.Add(CBAdvertisement.DataServiceUUIDsKey, NSArray.FromObjects(_serviceUuid));
+
+        _peripheralManager.StartAdvertising(advertisementData);
+
+        await Task.CompletedTask;
+    }
+
+    public async Task StopAdvertisingAsync()
+    {
+        _peripheralManager?.StopAdvertising();
+        await Task.CompletedTask;
+    }
+
+    [Export("peripheralManagerDidUpdateState:")]
+    public void UpdatedState(CBPeripheralManager peripheral)
+    {
+        Console.WriteLine($"Peripheral state changed: {peripheral.State}");
+        if (peripheral.State != CBManagerState.PoweredOn)
+            Console.WriteLine("⚠️ Bluetooth not ready for advertising.");
+    }
 }
+#endif
