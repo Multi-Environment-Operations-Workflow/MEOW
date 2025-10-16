@@ -4,6 +4,8 @@ using Plugin.BLE.Abstractions.Contracts;
 using System.Collections.ObjectModel;
 using CoreBluetooth;
 using Foundation;
+using MEOW.Components.Enums;
+using MEOW.Components.Models;
 
 namespace MEOW.Components.Services;
 
@@ -16,6 +18,8 @@ public class IOSBluetoothService : NSObject, IBluetoothService, ICBPeripheralMan
     
     private CBPeripheralManager? _peripheralManager;
     private CBUUID? _serviceUuid;
+
+    public event Action<AdvertisingState, string?>? AdvertisingStateChanged;
 
     public async Task<bool> ScanAsync()
     {
@@ -30,7 +34,12 @@ public class IOSBluetoothService : NSObject, IBluetoothService, ICBPeripheralMan
             if (!foundDevices.Contains(a.Device))
             {
                 foundDevices.Add(a.Device);
-                Devices.Add(a.Device);
+                if (a.Device.Name != null && a.Device.Name.StartsWith("(MEOW) "))
+                {
+                    var device = new MeowDevice(a.Device.Name, a.Device.Id);
+                    device.Name = device.Name.Replace("(MEOW) ", "").Trim();
+                    Devices.Add(a.Device);
+                }
             }
         };
         await _adapter.StartScanningForDevicesAsync();
@@ -48,23 +57,37 @@ public class IOSBluetoothService : NSObject, IBluetoothService, ICBPeripheralMan
             throw new ArgumentException("Device is not a BLE device");
         }
     }
-    
+
     public async Task StartAdvertisingAsync(string name, Guid serviceUuid)
     {
         _serviceUuid = CBUUID.FromString(serviceUuid.ToString());
         _peripheralManager = new CBPeripheralManager(this, null);
+
         var advertisementData = new NSMutableDictionary();
         advertisementData.Add(CBAdvertisement.DataLocalNameKey, new NSString(name));
         advertisementData.Add(CBAdvertisement.DataServiceUUIDsKey, NSArray.FromObjects(_serviceUuid));
 
-        _peripheralManager.StartAdvertising(advertisementData);
+        while (_peripheralManager.State != CBManagerState.PoweredOn)
+        {
+            await Task.Delay(100);
+        }
 
-        await Task.CompletedTask;
+        if (_peripheralManager.State == CBManagerState.PoweredOn)
+        {
+            _peripheralManager.StartAdvertising(advertisementData);
+            AdvertisingStateChanged?.Invoke(AdvertisingState.Started, "Advertising started successfully.");
+        }
+        else
+        {
+            AdvertisingStateChanged?.Invoke(AdvertisingState.NotSupported, "Bluetooth not powered on or not supported.");
+        }
     }
+
 
     public async Task StopAdvertisingAsync()
     {
         _peripheralManager?.StopAdvertising();
+        AdvertisingStateChanged?.Invoke(AdvertisingState.Stopped, "Advertising stopped.");
         await Task.CompletedTask;
     }
 
@@ -73,7 +96,10 @@ public class IOSBluetoothService : NSObject, IBluetoothService, ICBPeripheralMan
     {
         Console.WriteLine($"Peripheral state changed: {peripheral.State}");
         if (peripheral.State != CBManagerState.PoweredOn)
+        {
             Console.WriteLine("⚠️ Bluetooth not ready for advertising.");
+            AdvertisingStateChanged?.Invoke(AdvertisingState.Failed, "Bluetooth not ready for advertising.");
+        }
     }
 }
 #endif
