@@ -52,7 +52,7 @@ else
     private ObservableCollection<MeowDevice> _devices = new();
     private string _filter = string.Empty;
     private string _advertisingMessage = string.Empty;
-    private Action<object, string?>? _advertisingHandler;
+    private Action<MeowDevice, string?>? _advertisingHandler;
 
     protected override void OnInitialized()
     {
@@ -82,7 +82,7 @@ else
         _isScanning = false;
     }
 
-    private async Task ConnectAsync(object device)
+    private async Task ConnectAsync(MeowDevice device)
     {
         await Bluetooth.ConnectAsync(device);
     }
@@ -104,18 +104,18 @@ else
         await Bluetooth.StopAdvertisingAsync();
     }
 
-    private string GetDeviceDisplay(object device)
+    private string GetDeviceDisplay(MeowDevice device)
     {
         if (device is Plugin.BLE.Abstractions.Contracts.IDevice ble)
             return $"{ble.Name} ({ble.Id})";
 #if ANDROID
-        if (device is Android.Bluetooth.BluetoothDevice classic)
-            return $"{classic.Name} ({classic.Address})";
+        if (true)
+            return $"{device.Name} ({device.Id})";
 #endif
         return device?.ToString() ?? "Unknown Device";
     }
 
-    private IEnumerable<object> FilteredDevices =>
+    private IEnumerable<MeowDevice> FilteredDevices =>
         string.IsNullOrWhiteSpace(_filter)
             ? _devices
             : _devices.Where(d =>
