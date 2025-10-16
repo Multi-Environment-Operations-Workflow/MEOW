@@ -1,11 +1,12 @@
 #if ANDROID
 using System.Collections.ObjectModel;
-
+using MEOW.Components.Enums;
 
 namespace MEOW.Components.Services
 {
     public class AndroidBluetoothService : IBluetoothService
     {
+        public event Action<AdvertisingState, string?>? AdvertisingStateChanged;
         public ObservableCollection<object> Devices { get; } = new();
         public Task<bool> ScanAsync()
         {
