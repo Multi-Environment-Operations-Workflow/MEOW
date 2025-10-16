@@ -21,6 +21,13 @@ public class IOSBluetoothService : NSObject, IBluetoothService, ICBPeripheralMan
 
     public event Action<AdvertisingState, string?>? AdvertisingStateChanged;
 
+    /// <summary>
+    /// Scans the surrounding area for Bluetooth devices.
+    /// Only devices with names starting with "(MEOW) " are added to the Devices collection
+    /// </summary>
+    /// <returns>True if the scan was finished successfully.</returns>
+    /// <exception cref="InvalidOperationException">If Bluetooth is not initialized.</exception>
+    /// <exception cref="Exception">If Bluetooth is off.</exception>
     public async Task<bool> ScanAsync()
     {
         Devices.Clear();
