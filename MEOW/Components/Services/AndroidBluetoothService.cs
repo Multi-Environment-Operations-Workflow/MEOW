@@ -14,14 +14,23 @@ namespace MEOW.Components.Services
 
         public event Action<AdvertisingState, string?>? AdvertisingStateChanged;
         public ObservableCollection<MeowDevice> Devices { get; } = new();
+
+        /// <summary>
+        /// Scans the surrounding area for Bluetooth devices.
+        /// Only devices with names starting with "(MEOW) " are added to the Devices collection
+        /// </summary>
+        /// <returns>True if the scan was finished successfully.</returns>
+        /// <exception cref="InvalidOperationException">If Bluetooth is not initialized.</exception>
+        /// <exception cref="Exception">If Bluetooth is off.</exception>
+        /// <exception cref="PermissionException">If Bluetooth permission is denied.</exception>
         public async Task<bool> ScanAsync()
         {
-            if (!await CheckPermissions())
-                return false;
+            await CheckPermissions();
 
             Devices.Clear();
             if (_bluetooth == null || _adapter == null)
                 throw new InvalidOperationException("Bluetooth not initialized");
+            
             if (!_bluetooth.IsOn)
                 throw new Exception("Bluetooth is off");
             var foundDevices = new List<IDevice>();
@@ -40,7 +49,6 @@ namespace MEOW.Components.Services
             };
             await _adapter.StartScanningForDevicesAsync();
             return true;
-            throw new NotImplementedException();
         }
 
         public Task ConnectAsync(object device)
@@ -58,16 +66,20 @@ namespace MEOW.Components.Services
             throw new NotImplementedException();
         }
 
-        public async Task<bool> CheckPermissions() 
+        /// <summary>
+        /// Checks and requests Bluetooth permissions on Android.
+        /// </summary>
+        /// <returns>bool indicating if permission is granted.</returns>
+        /// <exception cref="PermissionException">If permission is denied.</exception>
+        async Task<bool> CheckPermissions() 
         {
-            try
+            PermissionStatus status = await Permissions.CheckStatusAsync<Permissions.Bluetooth>();
+
+            switch (status)
             {
-                PermissionStatus status = await Permissions.CheckStatusAsync<Permissions.Bluetooth>();
-
-                if (status == PermissionStatus.Granted)
+                case PermissionStatus.Granted:
                     return true;
-
-                if (status == PermissionStatus.Denied)
+                case PermissionStatus.Denied:
                 {
                     if (Permissions.ShouldShowRationale<Permissions.Bluetooth>())
                     {
@@ -78,17 +90,12 @@ namespace MEOW.Components.Services
                         );
                     }
 
-                    status = await Permissions.RequestAsync<Permissions.Bluetooth>();
-                    return status == PermissionStatus.Granted;
+                    break;
                 }
-                status = await Permissions.RequestAsync<Permissions.Bluetooth>();
-                return status == PermissionStatus.Granted;
             }
-            catch (System.Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Permission check failed: {ex.Message}");
-                throw;
-            }
+
+            status = await Permissions.RequestAsync<Permissions.Bluetooth>();
+            return status == PermissionStatus.Granted;
         }
     }
 }
