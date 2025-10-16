@@ -106,13 +106,7 @@ else
 
     private string GetDeviceDisplay(MeowDevice device)
     {
-        if (device is Plugin.BLE.Abstractions.Contracts.IDevice ble)
-            return $"{ble.Name} ({ble.Id})";
-#if ANDROID
-        if (true)
-            return $"{device.Name} ({device.Id})";
-#endif
-        return device?.ToString() ?? "Unknown Device";
+        return $"{device.Name} ({device.Id})";
     }
 
     private IEnumerable<MeowDevice> FilteredDevices =>
