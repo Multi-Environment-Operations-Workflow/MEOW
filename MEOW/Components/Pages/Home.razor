@@ -1,6 +1,7 @@
 ﻿@page "/"
 @using System.Collections.ObjectModel
 @using MEOW.Components.Enums
+@using MEOW.Components.Models
 @inject Services.IBluetoothService Bluetooth
 
 <h1>Bluetooth Devices</h1>
@@ -48,10 +49,9 @@ else
 @code {
     private string _errorMessage = string.Empty;
     private bool _isScanning = false;
-    private ObservableCollection<object> _devices = new();
+    private ObservableCollection<MeowDevice> _devices = new();
     private string _filter = string.Empty;
     private string _advertisingMessage = string.Empty;
-    private bool _isAdvertising = false;
     private Action<object, string?>? _advertisingHandler;
 
     protected override void OnInitialized()
@@ -63,7 +63,6 @@ else
     private void OnAdvertisingStateChanged(AdvertisingState state, string? message)
     {
         _advertisingMessage = message ?? string.Empty;
-        _isAdvertising = state == AdvertisingState.Started;
         InvokeAsync(StateHasChanged);
     }
     

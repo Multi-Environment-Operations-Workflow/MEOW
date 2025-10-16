@@ -16,8 +16,6 @@ public static class MauiProgram
         builder.Services.AddSingleton<IBluetoothService, AndroidBluetoothService>();
 #elif IOS
         builder.Services.AddSingleton<IBluetoothService, IOSBluetoothService>();
-#elif MACCATALYST
-        builder.Services.AddSingleton<IBluetoothService, MacBluetoothService>();
 #endif
 
         builder.Services.AddMauiBlazorWebView();

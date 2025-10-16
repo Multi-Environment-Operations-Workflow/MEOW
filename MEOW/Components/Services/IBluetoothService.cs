@@ -1,4 +1,5 @@
 using MEOW.Components.Enums;
+using MEOW.Components.Models;
 
 namespace MEOW.Components.Services;
 
@@ -8,7 +9,7 @@ using System.Threading.Tasks;
 public interface IBluetoothService
 {
     public event Action<AdvertisingState, string?>? AdvertisingStateChanged;
-    ObservableCollection<object> Devices { get; }
+    ObservableCollection<MeowDevice> Devices { get; }
     Task<bool> ScanAsync();
     Task ConnectAsync(object device);
     

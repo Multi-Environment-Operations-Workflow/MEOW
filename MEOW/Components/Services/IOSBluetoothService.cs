@@ -14,7 +14,7 @@ public class IOSBluetoothService : NSObject, IBluetoothService, ICBPeripheralMan
     private readonly IBluetoothLE _bluetooth = CrossBluetoothLE.Current;
     private readonly IAdapter _adapter = CrossBluetoothLE.Current.Adapter;
 
-    public ObservableCollection<object> Devices { get; } = new();
+    public ObservableCollection<MeowDevice> Devices { get; } = new();
     
     private CBPeripheralManager? _peripheralManager;
     private CBUUID? _serviceUuid;
@@ -38,7 +38,7 @@ public class IOSBluetoothService : NSObject, IBluetoothService, ICBPeripheralMan
                 {
                     var device = new MeowDevice(a.Device.Name, a.Device.Id);
                     device.Name = device.Name.Replace("(MEOW) ", "").Trim();
-                    Devices.Add(a.Device);
+                    Devices.Add(device);
                 }
             }
         };
