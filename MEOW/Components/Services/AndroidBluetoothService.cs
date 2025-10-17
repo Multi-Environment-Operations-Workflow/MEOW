@@ -4,6 +4,8 @@ using Plugin.BLE.Abstractions.Contracts;
 using System.Collections.ObjectModel;
 using MEOW.Components.Enums;
 using MEOW.Components.Models;
+using Android.Bluetooth.LE;
+using Android.Bluetooth;
 
 namespace MEOW.Components.Services
 {
@@ -14,6 +16,9 @@ namespace MEOW.Components.Services
 
         public event Action<AdvertisingState, string?>? AdvertisingStateChanged;
         public ObservableCollection<MeowDevice> Devices { get; } = new();
+
+        private BluetoothLeAdvertiser? _bleAdvertiser;
+
         public async Task<bool> ScanAsync()
         {
             if (!await CheckPermissions())
@@ -48,9 +53,36 @@ namespace MEOW.Components.Services
             throw new NotImplementedException();
         }
 
-        public Task StartAdvertisingAsync(string name, Guid serviceUuid)
+        public async Task StartAdvertisingAsync(string name, Guid serviceUuid)
         {
-            throw new NotImplementedException();
+            if (!await CheckPermissions())
+                return;
+
+            var advertiser = BluetoothAdapter.DefaultAdapter?.BluetoothLeAdvertiser;
+
+            if (advertiser == null)
+            {
+                AdvertisingStateChanged?.Invoke(AdvertisingState.Started, "Bluetooth not powered on or not supported.");
+                return;
+            }
+            
+            var settings = new AdvertiseSettings.Builder()
+                .SetAdvertiseMode(AdvertiseMode.Balanced)
+                .SetConnectable(true)
+                .SetTimeout(0) // 0 = no timeout
+                .SetTxPowerLevel(AdvertiseTx.PowerMedium)
+                .Build();
+
+            var data = new AdvertiseData.Builder()
+                .SetIncludeDeviceName(false)
+                .AddServiceUuid(Android.OS.ParcelUuid.FromString(serviceUuid.ToString()))
+                .Build();
+
+            var callback = new AdvertisingCallback(
+                onSuccess: () => AdvertisingStateChanged?.Invoke(AdvertisingState.Started, $"Advertising as {name}"),
+                onFailure: (errorMessage) => AdvertisingStateChanged?.Invoke(AdvertisingState.Failed, errorMessage));
+
+            advertiser.StartAdvertising(settings, data, callback);
         }
 
         public Task StopAdvertisingAsync()
@@ -58,16 +90,15 @@ namespace MEOW.Components.Services
             throw new NotImplementedException();
         }
 
-        public async Task<bool> CheckPermissions() 
+        async Task<bool> CheckPermissions() 
         {
-            try
+            PermissionStatus status = await Permissions.CheckStatusAsync<Permissions.Bluetooth>();
+
+            switch (status)
             {
-                PermissionStatus status = await Permissions.CheckStatusAsync<Permissions.Bluetooth>();
-
-                if (status == PermissionStatus.Granted)
+                case PermissionStatus.Granted:
                     return true;
-
-                if (status == PermissionStatus.Denied)
+                case PermissionStatus.Denied:
                 {
                     if (Permissions.ShouldShowRationale<Permissions.Bluetooth>())
                     {
@@ -78,18 +109,44 @@ namespace MEOW.Components.Services
                         );
                     }
 
-                    status = await Permissions.RequestAsync<Permissions.Bluetooth>();
-                    return status == PermissionStatus.Granted;
+                    break;
                 }
-                status = await Permissions.RequestAsync<Permissions.Bluetooth>();
-                return status == PermissionStatus.Granted;
             }
-            catch (System.Exception ex)
+
+            status = await Permissions.RequestAsync<Permissions.Bluetooth>();
+            return status == PermissionStatus.Granted;
+        }
+    }
+
+    class AdvertisingCallback : AdvertiseCallback
+    {
+        private readonly Action _onSuccess;
+        private readonly Action<string> _onFailure;
+
+        public AdvertisingCallback(Action onSuccess, Action<String> onFailure)
+        {
+            _onSuccess = onSuccess;
+            _onFailure = onFailure;
+        }
+
+        public override void OnStartSuccess(AdvertiseSettings settingsInEffect) => _onSuccess();
+        public override void OnStartFailure(AdvertiseFailure errorCode) 
+        {
+            base.OnStartFailure(errorCode);
+        
+            var errorMessage = errorCode switch
             {
-                System.Diagnostics.Debug.WriteLine($"Permission check failed: {ex.Message}");
-                throw;
-            }
+                AdvertiseFailure.DataTooLarge => "Advertising data too large",
+                AdvertiseFailure.TooManyAdvertisers => "Too many advertisers",
+                AdvertiseFailure.AlreadyStarted => "Advertising already started",
+                AdvertiseFailure.InternalError => "Internal error",
+                AdvertiseFailure.FeatureUnsupported => "Feature unsupported",
+                _ => $"Advertising failed with code: {errorCode}"
+            };
+        
+            _onFailure?.Invoke(errorMessage);
         }
     }
 }
+
 #endif
