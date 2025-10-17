@@ -38,15 +38,12 @@ public class IOSBluetoothService : NSObject, IBluetoothService, ICBPeripheralMan
         var foundDevices = new List<IDevice>();
         _adapter.DeviceDiscovered += (s, a) =>
         {
-            if (!foundDevices.Contains(a.Device))
+            if (foundDevices.Contains(a.Device)) return;
+            foundDevices.Add(a.Device);
+            
+            if (a.Device.Name != null && a.Device.Name.StartsWith("(MEOW) "))
             {
-                foundDevices.Add(a.Device);
-                if (a.Device.Name != null && a.Device.Name.StartsWith("(MEOW) "))
-                {
-                    var device = new MeowDevice(a.Device.Name, a.Device.Id);
-                    device.Name = device.Name.Replace("(MEOW) ", "").Trim();
-                    Devices.Add(device);
-                }
+                Devices.Add(new MeowDevice(a.Device.Name, a.Device.Id));
             }
         };
         await _adapter.StartScanningForDevicesAsync();

@@ -1,0 +1,31 @@
+@page "/login"
+@using MEOW.Components.Services
+@inject NavigationManager Navigation
+@inject IUserStateService UserStateService
+
+<h3>Login</h3>
+
+<input @bind="_name" placeholder="Your name" />
+<button @onclick="Continue">Continue</button>
+
+@code {
+    private string _name = String.Empty;
+    
+    protected override void OnInitialized()
+    {
+        var existingName = UserStateService.GetName();
+        if (!string.IsNullOrWhiteSpace(existingName))
+        {
+            _name = existingName;
+            Navigation.NavigateTo("/");
+        }
+    }
+
+    private void Continue()
+    {
+        if (string.IsNullOrWhiteSpace(_name)) return;
+
+        UserStateService.SetName(_name.Trim());
+        Navigation.NavigateTo("/");
+    }
+}

@@ -2,9 +2,13 @@
 @using System.Collections.ObjectModel
 @using MEOW.Components.Enums
 @using MEOW.Components.Models
-@inject Services.IBluetoothService Bluetooth
+@using MEOW.Components.Services
+@inject IBluetoothService Bluetooth
+@inject IUserStateService UserStateService
+@inject NavigationManager Navigation
 
 <h1>Bluetooth Devices</h1>
+<p>Welcome, @_name!</p>
 
 @if (!string.IsNullOrEmpty(_advertisingMessage))
 {
@@ -47,6 +51,7 @@ else
 }
 
 @code {
+    private string _name = string.Empty;
     private string _errorMessage = string.Empty;
     private bool _isScanning;
     private ObservableCollection<MeowDevice> _devices = new();
@@ -55,6 +60,14 @@ else
 
     protected override void OnInitialized()
     {
+        if (String.IsNullOrEmpty(UserStateService.GetName()))
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+        
+        _name = UserStateService.GetName();
+        
         _devices = Bluetooth.Devices;
         Bluetooth.AdvertisingStateChanged += OnAdvertisingStateChanged;
     }
@@ -90,7 +103,7 @@ else
     {
         try
         {
-            await Bluetooth.StartAdvertisingAsync("(MEOW) " + "Thomas", Guid.NewGuid());
+            await Bluetooth.StartAdvertisingAsync("(MEOW) " + UserStateService.GetName(), Guid.NewGuid());
         }
         catch (Exception ex)
         {
@@ -105,7 +118,7 @@ else
 
     private string GetDeviceDisplay(MeowDevice device)
     {
-        return $"{device.Name} ({device.Id})";
+        return $"{device.Name.Replace("(MEOW) ", "")} ({device.Id})";
     }
 
     private IEnumerable<MeowDevice> FilteredDevices =>
