@@ -118,7 +118,7 @@ else
 
     private string GetDeviceDisplay(MeowDevice device)
     {
-        return $"{device.Name.Replace("(MEOW) ", "")} ({device.Id})";
+        return $"{device.Name} ({device.Id})";
     }
 
     private IEnumerable<MeowDevice> FilteredDevices =>
