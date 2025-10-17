@@ -11,12 +11,13 @@ public static class MauiProgram
         builder
             .UseMauiApp<App>()
             .ConfigureFonts(fonts => { fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular"); });
-        // Register platform-specific Bluetooth service
+
 #if ANDROID
         builder.Services.AddSingleton<IBluetoothService, AndroidBluetoothService>();
 #elif IOS
         builder.Services.AddSingleton<IBluetoothService, IOSBluetoothService>();
 #endif
+        builder.Services.AddSingleton<IUserStateService, UserStateService>();
 
         builder.Services.AddMauiBlazorWebView();
 
