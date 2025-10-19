@@ -18,6 +18,7 @@ namespace MEOW.Components.Services
         public ObservableCollection<MeowDevice> Devices { get; } = new();
 
         private BluetoothLeAdvertiser? _bleAdvertiser;
+        private AdvertisingCallback? _advertisingCallback;
 
         public async Task<bool> ScanAsync()
         {
@@ -58,9 +59,9 @@ namespace MEOW.Components.Services
             if (!await CheckPermissions())
                 return;
 
-            var advertiser = BluetoothAdapter.DefaultAdapter?.BluetoothLeAdvertiser;
+            _bleAdvertiser = BluetoothAdapter.DefaultAdapter?.BluetoothLeAdvertiser;
 
-            if (advertiser == null)
+            if (_bleAdvertiser == null)
             {
                 AdvertisingStateChanged?.Invoke(AdvertisingState.Started, "Bluetooth not powered on or not supported.");
                 return;
@@ -78,16 +79,28 @@ namespace MEOW.Components.Services
                 .AddServiceUuid(Android.OS.ParcelUuid.FromString(serviceUuid.ToString()))
                 .Build();
 
-            var callback = new AdvertisingCallback(
+            _advertisingCallback = new AdvertisingCallback(
                 onSuccess: () => AdvertisingStateChanged?.Invoke(AdvertisingState.Started, $"Advertising as {name}"),
                 onFailure: (errorMessage) => AdvertisingStateChanged?.Invoke(AdvertisingState.Failed, errorMessage));
 
-            advertiser.StartAdvertising(settings, data, callback);
+            _bleAdvertiser.StartAdvertising(settings, data, _advertisingCallback);
         }
 
         public Task StopAdvertisingAsync()
         {
-            throw new NotImplementedException();
+            try
+            {
+                _bleAdvertiser?.StopAdvertising(_advertisingCallback);
+                AdvertisingStateChanged?.Invoke(AdvertisingState.Stopped, "Advertising stopped");
+            }
+            catch (Exception ex)
+            {
+                AdvertisingStateChanged?.Invoke(AdvertisingState.Failed, $"Failed to stop advertising: {ex.Message}");
+            }
+
+            _advertisingCallback = null;
+
+            return Task.CompletedTask;
         }
 
         async Task<bool> CheckPermissions() 
