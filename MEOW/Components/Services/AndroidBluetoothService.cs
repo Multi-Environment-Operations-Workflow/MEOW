@@ -6,6 +6,7 @@ using MEOW.Components.Enums;
 using MEOW.Components.Models;
 using Android.Bluetooth.LE;
 using Android.Bluetooth;
+using Android.Content;
 
 namespace MEOW.Components.Services
 {
@@ -59,14 +60,15 @@ namespace MEOW.Components.Services
             if (!await CheckPermissions())
                 return;
 
-            _bleAdvertiser = BluetoothAdapter.DefaultAdapter?.BluetoothLeAdvertiser;
+            var _bluetoothManager = (BluetoothManager)Android.App.Application.Context.GetSystemService(Context.BluetoothService);
+            _bleAdvertiser = _bluetoothManager.Adapter?.BluetoothLeAdvertiser;
 
             if (_bleAdvertiser == null)
             {
                 AdvertisingStateChanged?.Invoke(AdvertisingState.Started, "Bluetooth not powered on or not supported.");
                 return;
             }
-            
+
             var settings = new AdvertiseSettings.Builder()
                 .SetAdvertiseMode(AdvertiseMode.Balanced)
                 .SetConnectable(true)
@@ -103,7 +105,7 @@ namespace MEOW.Components.Services
             return Task.CompletedTask;
         }
 
-        async Task<bool> CheckPermissions() 
+        async Task<bool> CheckPermissions()
         {
             PermissionStatus status = await Permissions.CheckStatusAsync<Permissions.Bluetooth>();
 
@@ -112,18 +114,18 @@ namespace MEOW.Components.Services
                 case PermissionStatus.Granted:
                     return true;
                 case PermissionStatus.Denied:
-                {
-                    if (Permissions.ShouldShowRationale<Permissions.Bluetooth>())
                     {
-                        await Application.Current.MainPage.DisplayAlert(
-                            "Bluetooth Access Required",
-                            "This app needs access to bluetooth to function",
-                            "OK"
-                        );
-                    }
+                        if (Permissions.ShouldShowRationale<Permissions.Bluetooth>())
+                        {
+                            await Application.Current.MainPage.DisplayAlert(
+                                "Bluetooth Access Required",
+                                "This app needs access to bluetooth to function",
+                                "OK"
+                            );
+                        }
 
-                    break;
-                }
+                        break;
+                    }
             }
 
             status = await Permissions.RequestAsync<Permissions.Bluetooth>();
@@ -136,17 +138,17 @@ namespace MEOW.Components.Services
         private readonly Action _onSuccess;
         private readonly Action<string> _onFailure;
 
-        public AdvertisingCallback(Action onSuccess, Action<String> onFailure)
+        public AdvertisingCallback(Action onSuccess, Action<string> onFailure)
         {
             _onSuccess = onSuccess;
             _onFailure = onFailure;
         }
 
         public override void OnStartSuccess(AdvertiseSettings settingsInEffect) => _onSuccess();
-        public override void OnStartFailure(AdvertiseFailure errorCode) 
+        public override void OnStartFailure(AdvertiseFailure errorCode)
         {
             base.OnStartFailure(errorCode);
-        
+
             var errorMessage = errorCode switch
             {
                 AdvertiseFailure.DataTooLarge => "Advertising data too large",
@@ -156,7 +158,7 @@ namespace MEOW.Components.Services
                 AdvertiseFailure.FeatureUnsupported => "Feature unsupported",
                 _ => $"Advertising failed with code: {errorCode}"
             };
-        
+
             _onFailure?.Invoke(errorMessage);
         }
     }
