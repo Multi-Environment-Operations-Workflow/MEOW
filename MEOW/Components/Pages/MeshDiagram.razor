@@ -1,0 +1,33 @@
+@page "/mesh-diagram" // Sådan man definerer en rute til denne side
+@inject IJSRuntime JS // Sådan vi invoker JavaScript fra Blazor
+@using MEOW.Components.Models
+
+
+<h3>Mesh Network</h3>
+<h4>Her kan du se hvem du er connected til.</h4>
+<svg id="networkSvg" width="800" height="500" style="border:1px solid #ccc"></svg> // her jeg smider mit diagram ind.
+
+@code { // Her starter vores back-end del. 
+    protected override async Task OnAfterRenderAsync(bool firstRender) // Vi ønsker at invoke noget Javascript, men først efter siden er "rendered" Så vi skal bruge dette.
+    {
+        if (!firstRender) return;
+
+        var connections = new List<ConnectionPair>
+        {
+            new() { Name1="Carl", Name2="Shadi", StartConnection="09:00", LastConfirmed=DateTime.Now.AddMinutes(-5)},
+            new() { Name1="Shadi", Name2="Maksim",  StartConnection="09:15", LastConfirmed=DateTime.Now.AddMinutes(-1)},
+            new() { Name1="Maksim",   Name2="Leon",  StartConnection="09:10", LastConfirmed=DateTime.Now.AddMinutes(-3)},
+            new() { Name1="Leon",   Name2="Carl", StartConnection="09:20", LastConfirmed=DateTime.Now.AddMinutes(-2)},
+            new() { Name1="Carl",   Name2="Thomas", StartConnection="09:20", LastConfirmed=DateTime.Now.AddMinutes(-2)},
+            new() { Name1="Carl",   Name2="Theis", StartConnection="09:20", LastConfirmed=DateTime.Now.AddMinutes(-2)},
+            new() { Name1="Leon",   Name2="Shadi", StartConnection="09:20", LastConfirmed=DateTime.Now.AddMinutes(-2)},
+            new() { Name1="Thomas",   Name2="Javascript", StartConnection="09:20", LastConfirmed=DateTime.Now.AddMinutes(-2)},
+
+        };
+
+        await JS.InvokeVoidAsync("renderNetwork", new {// Jeg konvatere det til javascript objekter  og sender det med til min javascript funktion
+            nodes = ConnectionPair.ToNodes(connections),
+            links = ConnectionPair.ToLinks(connections)
+        });
+    }
+}
