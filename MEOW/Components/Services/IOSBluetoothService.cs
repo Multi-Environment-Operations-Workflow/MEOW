@@ -21,6 +21,13 @@ public class IOSBluetoothService : NSObject, IBluetoothService, ICBPeripheralMan
 
     public event Action<AdvertisingState, string?>? AdvertisingStateChanged;
 
+    /// <summary>
+    /// Scans the surrounding area for Bluetooth devices.
+    /// Only devices with names starting with "(MEOW) " are added to the Devices collection
+    /// </summary>
+    /// <returns>True if the scan was finished successfully.</returns>
+    /// <exception cref="InvalidOperationException">If Bluetooth is not initialized.</exception>
+    /// <exception cref="Exception">If Bluetooth is off.</exception>
     public async Task<bool> ScanAsync()
     {
         Devices.Clear();
@@ -31,15 +38,12 @@ public class IOSBluetoothService : NSObject, IBluetoothService, ICBPeripheralMan
         var foundDevices = new List<IDevice>();
         _adapter.DeviceDiscovered += (s, a) =>
         {
-            if (!foundDevices.Contains(a.Device))
+            if (foundDevices.Contains(a.Device)) return;
+            foundDevices.Add(a.Device);
+            
+            if (a.Device.Name != null && a.Device.Name.StartsWith("(MEOW) "))
             {
-                foundDevices.Add(a.Device);
-                if (a.Device.Name != null && a.Device.Name.StartsWith("(MEOW) "))
-                {
-                    var device = new MeowDevice(a.Device.Name, a.Device.Id);
-                    device.Name = device.Name.Replace("(MEOW) ", "").Trim();
-                    Devices.Add(device);
-                }
+                Devices.Add(new MeowDevice(a.Device.Name, a.Device.Id));
             }
         };
         await _adapter.StartScanningForDevicesAsync();

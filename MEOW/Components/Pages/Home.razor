@@ -2,9 +2,13 @@
 @using System.Collections.ObjectModel
 @using MEOW.Components.Enums
 @using MEOW.Components.Models
-@inject Services.IBluetoothService Bluetooth
+@using MEOW.Components.Services
+@inject IBluetoothService Bluetooth
+@inject IUserStateService UserStateService
+@inject NavigationManager Navigation
 
 <h1>Bluetooth Devices</h1>
+<p>Welcome, @_name!</p>
 
 @if (!string.IsNullOrEmpty(_advertisingMessage))
 {
@@ -47,15 +51,23 @@ else
 }
 
 @code {
+    private string _name = string.Empty;
     private string _errorMessage = string.Empty;
-    private bool _isScanning = false;
+    private bool _isScanning;
     private ObservableCollection<MeowDevice> _devices = new();
     private string _filter = string.Empty;
     private string _advertisingMessage = string.Empty;
-    private Action<MeowDevice, string?>? _advertisingHandler;
 
     protected override void OnInitialized()
     {
+        if (String.IsNullOrEmpty(UserStateService.GetName()))
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+        
+        _name = UserStateService.GetName();
+        
         _devices = Bluetooth.Devices;
         Bluetooth.AdvertisingStateChanged += OnAdvertisingStateChanged;
     }
@@ -91,7 +103,7 @@ else
     {
         try
         {
-            await Bluetooth.StartAdvertisingAsync("(MEOW) " + "Thomas", Guid.NewGuid());
+            await Bluetooth.StartAdvertisingAsync("(MEOW) " + UserStateService.GetName(), Guid.NewGuid());
         }
         catch (Exception ex)
         {
@@ -106,19 +118,11 @@ else
 
     private string GetDeviceDisplay(MeowDevice device)
     {
-        if (device is Plugin.BLE.Abstractions.Contracts.IDevice ble)
-            return $"{ble.Name} ({ble.Id})";
-#if ANDROID
-        if (true)
-            return $"{device.Name} ({device.Id})";
-#endif
-        return device?.ToString() ?? "Unknown Device";
+        return $"{device.Name} ({device.Id})";
     }
 
     private IEnumerable<MeowDevice> FilteredDevices =>
         string.IsNullOrWhiteSpace(_filter)
             ? _devices
-            : _devices.Where(d =>
-                (GetDeviceDisplay(d) ?? string.Empty)
-                    .Contains(_filter, StringComparison.OrdinalIgnoreCase));
+            : _devices.Where(d => GetDeviceDisplay(d).Contains(_filter, StringComparison.OrdinalIgnoreCase));
 }

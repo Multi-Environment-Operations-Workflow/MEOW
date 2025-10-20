@@ -18,17 +18,25 @@ namespace MEOW.Components.Services
         public event Action<AdvertisingState, string?>? AdvertisingStateChanged;
         public ObservableCollection<MeowDevice> Devices { get; } = new();
 
+        /// <summary>
+        /// Scans the surrounding area for Bluetooth devices.
+        /// Only devices with names starting with "(MEOW) " are added to the Devices collection
+        /// </summary>
+        /// <returns>True if the scan was finished successfully.</returns>
+        /// <exception cref="InvalidOperationException">If Bluetooth is not initialized.</exception>
+        /// <exception cref="Exception">If Bluetooth is off.</exception>
+        /// <exception cref="PermissionException">If Bluetooth permission is denied.</exception>
         private BluetoothLeAdvertiser? _bleAdvertiser;
         private AdvertisingCallback? _advertisingCallback;
 
         public async Task<bool> ScanAsync()
         {
-            if (!await CheckPermissions())
-                return false;
+            await CheckPermissions();
 
             Devices.Clear();
             if (_bluetooth == null || _adapter == null)
                 throw new InvalidOperationException("Bluetooth not initialized");
+            
             if (!_bluetooth.IsOn)
                 throw new Exception("Bluetooth is off");
             var foundDevices = new List<IDevice>();
@@ -47,7 +55,6 @@ namespace MEOW.Components.Services
             };
             await _adapter.StartScanningForDevicesAsync();
             return true;
-            throw new NotImplementedException();
         }
 
         public Task ConnectAsync(object device)
@@ -105,7 +112,12 @@ namespace MEOW.Components.Services
             return Task.CompletedTask;
         }
 
-        async Task<bool> CheckPermissions()
+        /// <summary>
+        /// Checks and requests Bluetooth permissions on Android.
+        /// </summary>
+        /// <returns>bool indicating if permission is granted.</returns>
+        /// <exception cref="PermissionException">If permission is denied.</exception>
+        async Task<bool> CheckPermissions() 
         {
             PermissionStatus status = await Permissions.CheckStatusAsync<Permissions.Bluetooth>();
 
@@ -114,6 +126,8 @@ namespace MEOW.Components.Services
                 case PermissionStatus.Granted:
                     return true;
                 case PermissionStatus.Denied:
+                {
+                    if (Permissions.ShouldShowRationale<Permissions.Bluetooth>())
                     {
                         if (Permissions.ShouldShowRationale<Permissions.Bluetooth>())
                         {
@@ -124,42 +138,12 @@ namespace MEOW.Components.Services
                             );
                         }
 
-                        break;
-                    }
+                    break;
+                }
             }
 
             status = await Permissions.RequestAsync<Permissions.Bluetooth>();
             return status == PermissionStatus.Granted;
-        }
-    }
-
-    class AdvertisingCallback : AdvertiseCallback
-    {
-        private readonly Action _onSuccess;
-        private readonly Action<string> _onFailure;
-
-        public AdvertisingCallback(Action onSuccess, Action<string> onFailure)
-        {
-            _onSuccess = onSuccess;
-            _onFailure = onFailure;
-        }
-
-        public override void OnStartSuccess(AdvertiseSettings settingsInEffect) => _onSuccess();
-        public override void OnStartFailure(AdvertiseFailure errorCode)
-        {
-            base.OnStartFailure(errorCode);
-
-            var errorMessage = errorCode switch
-            {
-                AdvertiseFailure.DataTooLarge => "Advertising data too large",
-                AdvertiseFailure.TooManyAdvertisers => "Too many advertisers",
-                AdvertiseFailure.AlreadyStarted => "Advertising already started",
-                AdvertiseFailure.InternalError => "Internal error",
-                AdvertiseFailure.FeatureUnsupported => "Feature unsupported",
-                _ => $"Advertising failed with code: {errorCode}"
-            };
-
-            _onFailure?.Invoke(errorMessage);
         }
     }
 }
