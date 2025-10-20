@@ -11,7 +11,7 @@ public interface IBluetoothService
     public event Action<AdvertisingState, string?>? AdvertisingStateChanged;
     ObservableCollection<MeowDevice> Devices { get; }
     Task<bool> ScanAsync();
-    Task ConnectAsync(object device);
+    Task ConnectAsync(MeowDevice device);
     
     Task StartAdvertisingAsync(string name, Guid serviceUuid);
     Task StopAdvertisingAsync();

@@ -7,6 +7,7 @@ using MEOW.Components.Models;
 using Android.Bluetooth.LE;
 using Android.Bluetooth;
 using Android.Content;
+using Plugin.BLE.Abstractions.Exceptions;
 
 namespace MEOW.Components.Services
 {
@@ -17,6 +18,8 @@ namespace MEOW.Components.Services
 
         public event Action<AdvertisingState, string?>? AdvertisingStateChanged;
         public ObservableCollection<MeowDevice> Devices { get; } = new();
+        private BluetoothLeAdvertiser? _bleAdvertiser;
+        private AdvertisingCallback? _advertisingCallback;
 
         /// <summary>
         /// Scans the surrounding area for Bluetooth devices.
@@ -26,9 +29,6 @@ namespace MEOW.Components.Services
         /// <exception cref="InvalidOperationException">If Bluetooth is not initialized.</exception>
         /// <exception cref="Exception">If Bluetooth is off.</exception>
         /// <exception cref="PermissionException">If Bluetooth permission is denied.</exception>
-        private BluetoothLeAdvertiser? _bleAdvertiser;
-        private AdvertisingCallback? _advertisingCallback;
-
         public async Task<bool> ScanAsync()
         {
             await CheckPermissions();
@@ -36,7 +36,7 @@ namespace MEOW.Components.Services
             Devices.Clear();
             if (_bluetooth == null || _adapter == null)
                 throw new InvalidOperationException("Bluetooth not initialized");
-            
+
             if (!_bluetooth.IsOn)
                 throw new Exception("Bluetooth is off");
             var foundDevices = new List<IDevice>();
@@ -57,18 +57,30 @@ namespace MEOW.Components.Services
             return true;
         }
 
-        public Task ConnectAsync(object device)
+        public async Task ConnectAsync(MeowDevice device)
         {
-            throw new NotImplementedException();
+            try
+            {
+                await _adapter.ConnectToKnownDeviceAsync(device.Id);
+            }
+            catch (DeviceConnectionException ex)
+            {
+                throw new Exception($"Failed to connect to device: {ex.Message}");
+            }
         }
 
         public async Task StartAdvertisingAsync(string name, Guid serviceUuid)
         {
             if (!await CheckPermissions())
                 return;
+            
 
-            var _bluetoothManager = (BluetoothManager)Android.App.Application.Context.GetSystemService(Context.BluetoothService);
-            _bleAdvertiser = _bluetoothManager.Adapter?.BluetoothLeAdvertiser;
+            var _bluetoothManager = (BluetoothManager?)Android.App.Application.Context.GetSystemService(Context.BluetoothService);
+            _bleAdvertiser = _bluetoothManager?.Adapter?.BluetoothLeAdvertiser;
+            var adapter = _bluetoothManager?.Adapter;
+
+            adapter?.SetName($"{name}");
+
 
             if (_bleAdvertiser == null)
             {
@@ -77,22 +89,25 @@ namespace MEOW.Components.Services
             }
 
             var settings = new AdvertiseSettings.Builder()
-                .SetAdvertiseMode(AdvertiseMode.Balanced)
-                .SetConnectable(true)
-                .SetTimeout(0) // 0 = no timeout
-                .SetTxPowerLevel(AdvertiseTx.PowerMedium)
-                .Build();
+            ?.SetAdvertiseMode(AdvertiseMode.Balanced)
+            ?.SetConnectable(true)
+            ?.SetTimeout(0)
+            ?.SetTxPowerLevel(AdvertiseTx.PowerMedium)
+            ?.Build();
 
             var data = new AdvertiseData.Builder()
-                .SetIncludeDeviceName(false)
-                .AddServiceUuid(Android.OS.ParcelUuid.FromString(serviceUuid.ToString()))
-                .Build();
+                ?.AddServiceUuid(Android.OS.ParcelUuid.FromString(serviceUuid.ToString()))
+                ?.Build();
+
+            var scanResponse = new AdvertiseData.Builder()
+                ?.SetIncludeDeviceName(true)
+                ?.Build();
 
             _advertisingCallback = new AdvertisingCallback(
                 onSuccess: () => AdvertisingStateChanged?.Invoke(AdvertisingState.Started, $"Advertising as {name}"),
                 onFailure: (errorMessage) => AdvertisingStateChanged?.Invoke(AdvertisingState.Failed, errorMessage));
 
-            _bleAdvertiser.StartAdvertising(settings, data, _advertisingCallback);
+            _bleAdvertiser.StartAdvertising(settings, data, scanResponse, _advertisingCallback);
         }
 
         public Task StopAdvertisingAsync()
@@ -117,7 +132,7 @@ namespace MEOW.Components.Services
         /// </summary>
         /// <returns>bool indicating if permission is granted.</returns>
         /// <exception cref="PermissionException">If permission is denied.</exception>
-        async Task<bool> CheckPermissions() 
+        async Task<bool> CheckPermissions()
         {
             PermissionStatus status = await Permissions.CheckStatusAsync<Permissions.Bluetooth>();
 
@@ -126,24 +141,55 @@ namespace MEOW.Components.Services
                 case PermissionStatus.Granted:
                     return true;
                 case PermissionStatus.Denied:
-                {
-                    if (Permissions.ShouldShowRationale<Permissions.Bluetooth>())
                     {
                         if (Permissions.ShouldShowRationale<Permissions.Bluetooth>())
                         {
-                            await Application.Current.MainPage.DisplayAlert(
-                                "Bluetooth Access Required",
-                                "This app needs access to bluetooth to function",
-                                "OK"
-                            );
+                            var page = Application.Current?.Windows[0]?.Page;
+                            if (page != null)
+                            {
+                                await page.DisplayAlert(
+                                    "Bluetooth Access Required",
+                                    "This app needs access to bluetooth to function",
+                                    "OK"
+                                );
+                            }
                         }
 
-                    break;
-                }
+                        break;
+                    }
             }
 
             status = await Permissions.RequestAsync<Permissions.Bluetooth>();
             return status == PermissionStatus.Granted;
+        }
+    }
+    class AdvertisingCallback : AdvertiseCallback
+    {
+        private readonly Action _onSuccess;
+        private readonly Action<string> _onFailure;
+
+        public AdvertisingCallback(Action onSuccess, Action<string> onFailure)
+        {
+            _onSuccess = onSuccess;
+            _onFailure = onFailure;
+        }
+
+        public override void OnStartSuccess(AdvertiseSettings? settingsInEffect) => _onSuccess();
+        public override void OnStartFailure(AdvertiseFailure errorCode)
+        {
+            base.OnStartFailure(errorCode);
+
+            var errorMessage = errorCode switch
+            {
+                AdvertiseFailure.DataTooLarge => "Advertising data too large",
+                AdvertiseFailure.TooManyAdvertisers => "Too many advertisers",
+                AdvertiseFailure.AlreadyStarted => "Advertising already started",
+                AdvertiseFailure.InternalError => "Internal error",
+                AdvertiseFailure.FeatureUnsupported => "Feature unsupported",
+                _ => $"Advertising failed with code: {errorCode}"
+            };
+
+            _onFailure?.Invoke(errorMessage);
         }
     }
 }
