@@ -41,7 +41,7 @@ namespace MEOW.Components.Services
                     foundDevices.Add(a.Device);
                     if (a.Device.Name != null && a.Device.Name.StartsWith("(MEOW) "))
                     {
-                        var device = new MeowDevice(a.Device.Name, a.Device.Id);
+                        var device = new MeowDevice(a.Device.Name, a.Device.Id, a.Device);
                         device.Name = device.Name.Replace("(MEOW) ", "").Trim();
                         Devices.Add(device);
                     }
@@ -51,7 +51,7 @@ namespace MEOW.Components.Services
             return true;
         }
 
-        public Task ConnectAsync(object device)
+        public Task ConnectAsync(MeowDevice device)
         {
             throw new NotImplementedException();
         }

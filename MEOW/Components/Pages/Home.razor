@@ -2,16 +2,18 @@
 @using System.Collections.ObjectModel
 @using MEOW.Components.Enums
 @using MEOW.Components.Models
-@inject Services.IBluetoothService Bluetooth
+@using MEOW.Components.Services
+@inject IBluetoothService Bluetooth
+@inject IUserStateService UserStateService
+@inject NavigationManager Navigation
 
 <h1>Bluetooth Devices</h1>
+<p>Welcome, @_name!</p>
 
 @if (!string.IsNullOrEmpty(_advertisingMessage))
 {
     <p class="advertising-status">@_advertisingMessage</p>
 }
-
-<input @bind="_filter" placeholder="Filter devices..." class="filter-input" />
 
 <div class="button-bar">
     <button class="action-button" @onclick="ScanAsync">🔍 Scan for Devices</button>
@@ -28,14 +30,14 @@
 {
     <p class="error-text">@_errorMessage</p>
 }
-@if(!FilteredDevices.Any() && !_isScanning && string.IsNullOrEmpty(_errorMessage))
+@if(!_devices.Any() && !_isScanning && string.IsNullOrEmpty(_errorMessage))
 {
     <p>No devices found.</p>
 }
 else
 {
     <ul class="device-list">
-        @foreach (var d in FilteredDevices)
+        @foreach (var d in _devices)
         {
             <li>
                 <button class="device-button" @onclick="() => ConnectAsync(d)">
@@ -47,16 +49,31 @@ else
 }
 
 @code {
+    private string _name = string.Empty;
     private string _errorMessage = string.Empty;
     private bool _isScanning;
     private ObservableCollection<MeowDevice> _devices = new();
-    private string _filter = string.Empty;
     private string _advertisingMessage = string.Empty;
 
     protected override void OnInitialized()
     {
+        if (String.IsNullOrEmpty(UserStateService.GetName()))
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+        
+        _name = UserStateService.GetName();
+        
         _devices = Bluetooth.Devices;
         Bluetooth.AdvertisingStateChanged += OnAdvertisingStateChanged;
+        Bluetooth.PeerConnected += OnPeerConnected;
+    }
+    
+    private void OnPeerConnected()
+    {
+        // both central and peripheral will hit this and navigate to chat
+        Navigation.NavigateTo("/Chat");
     }
 
     private void OnAdvertisingStateChanged(AdvertisingState state, string? message)
@@ -67,6 +84,7 @@ else
     
     private async Task ScanAsync()
     {
+        if (_isScanning) return;
         _isScanning = true;
         _errorMessage = string.Empty;
         try
@@ -90,7 +108,7 @@ else
     {
         try
         {
-            await Bluetooth.StartAdvertisingAsync("(MEOW) " + "Thomas", Guid.NewGuid());
+            await Bluetooth.StartAdvertisingAsync("(MEOW) " + UserStateService.GetName());
         }
         catch (Exception ex)
         {
@@ -107,9 +125,4 @@ else
     {
         return $"{device.Name} ({device.Id})";
     }
-
-    private IEnumerable<MeowDevice> FilteredDevices =>
-        string.IsNullOrWhiteSpace(_filter)
-            ? _devices
-            : _devices.Where(d => GetDeviceDisplay(d).Contains(_filter, StringComparison.OrdinalIgnoreCase));
 }
