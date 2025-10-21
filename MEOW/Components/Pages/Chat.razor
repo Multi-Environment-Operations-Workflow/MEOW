@@ -1,0 +1,66 @@
+@page "/Chat"
+@using System.Text
+@using MEOW.Components.Models
+@inject Services.IMessageService MessageService
+@inject NavigationManager Navigation
+
+<h3>Chat</h3>
+
+<div class="chat-window">
+    <span>Connected devices: @MessageService.GetParticipantsCount()</span>
+    <div class="messages">
+        @foreach (var m in _messages)
+        {
+            <div>@m</div>
+        }
+    </div>
+
+    <input @bind="_outgoing" placeholder="Type a message..."/>
+    <button @onclick="SendAsync">Send</button>
+    <button @onclick="GoBack">Back</button>
+</div>
+
+@code {
+    private string _outgoing = string.Empty;
+    private List<string> _messages = new();
+    private Action<string>? _messageReceived;
+
+    protected override Task OnInitializedAsync()
+    {
+        _messageReceived = message =>
+        {
+            _messages.Add($"{message}");
+            InvokeAsync(StateHasChanged);
+        };
+
+        MessageService.SetupMessageReceivedAction(_messageReceived);
+
+        return Task.CompletedTask;
+    }
+    private async Task SendAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_outgoing))
+            return;
+
+        var result = await MessageService.SendMessage(_outgoing);
+        if(result.Item1) {
+            _messages.Add($"You: {_outgoing}");
+        }
+        else
+        {
+            _messages.Add($"<Failed to send>: {_outgoing}");
+  
+        }
+        foreach (var exception in result.Item2)
+        {
+            _messages.Add($"Error in send: " + exception.Message);
+        }
+        _outgoing = string.Empty;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/");
+    }
+}
