@@ -11,12 +11,19 @@ using Plugin.BLE.Abstractions.Exceptions;
 
 namespace MEOW.Components.Services
 {
-    public class AndroidBluetoothService : IBluetoothService
+    public class AndroidBluetoothService : IBluetoothService // Implementering af IBluetoothService til Android
     {
         private readonly IBluetoothLE _bluetooth = CrossBluetoothLE.Current;
         private readonly IAdapter _adapter = CrossBluetoothLE.Current.Adapter;
 
+
+
+
         public event Action<AdvertisingState, string?>? AdvertisingStateChanged;
+        public event Action? PeerConnected;
+        public event Action<byte[]>? DeviceDataReceived;
+
+
         public ObservableCollection<MeowDevice> Devices { get; } = new();
         private BluetoothLeAdvertiser? _bleAdvertiser;
         private AdvertisingCallback? _advertisingCallback;
@@ -29,6 +36,92 @@ namespace MEOW.Components.Services
         /// <exception cref="InvalidOperationException">If Bluetooth is not initialized.</exception>
         /// <exception cref="Exception">If Bluetooth is off.</exception>
         /// <exception cref="PermissionException">If Bluetooth permission is denied.</exception>
+        /// 
+        /// 
+        /// 
+        
+        // Disse skal matche interfacet
+
+
+        // IBluetoothService.GetConnectedDevicesCount
+        public int GetConnectedDevicesCount()
+        {
+            return _adapter.ConnectedDevices?.Count ?? 0;
+        }
+
+        // IBluetoothService.SendToAllAsync(byte[])
+        public async Task<(bool, List<Exception>)> SendToAllAsync(byte[] data)
+        {
+            var anySuccess = false;
+            var exceptions = new List<Exception>();
+
+            foreach (var device in _adapter.ConnectedDevices)
+            {
+                try
+                {
+                    var services = await device.GetServicesAsync().ConfigureAwait(false);
+                    var chatService = services.FirstOrDefault(s => s.Id == ChatUuids.ChatService);
+
+                    if (chatService == null)
+                        throw new Exception($"Service {ChatUuids.ChatService} not found on {device.Name}");
+
+                    var characteristics = await chatService.GetCharacteristicsAsync().ConfigureAwait(false);
+                    var messageReceiveChar = characteristics.FirstOrDefault(c => c.Id == ChatUuids.MessageReceiveCharacteristic);
+
+                    if (messageReceiveChar == null)
+                        throw new Exception($"Characteristic {ChatUuids.MessageReceiveCharacteristic} not found on {device.Name}");
+
+                    await messageReceiveChar.WriteAsync(data).ConfigureAwait(false);
+                    anySuccess = true;
+                }
+                catch (Exception ex)
+                {
+                    exceptions.Add(ex);
+                }
+            }
+
+            return (anySuccess, exceptions);
+        }
+
+        // IBluetoothService.StartAdvertisingAsync
+        public async Task StartAdvertisingAsync(string name)
+        {
+            var bluetoothManager = (BluetoothManager?)Android.App.Application.Context.GetSystemService(Context.BluetoothService);
+            var adapter = bluetoothManager?.Adapter;
+            var advertiser = adapter?.BluetoothLeAdvertiser;
+
+            if (advertiser == null)
+            {
+                AdvertisingStateChanged?.Invoke(AdvertisingState.Failed, "Bluetooth not powered on or not supported.");
+                return;
+            }
+
+            adapter?.SetName($"(MEOW) {name}");
+
+            var settings = new AdvertiseSettings.Builder()
+                .SetAdvertiseMode(AdvertiseMode.Balanced)
+                .SetConnectable(true)
+                .SetTimeout(0)
+                .SetTxPowerLevel(AdvertiseTx.PowerMedium)
+                .Build();
+
+            var data = new AdvertiseData.Builder()
+                .AddServiceUuid(Android.OS.ParcelUuid.FromString(ChatUuids.ChatService.ToString()))
+                .SetIncludeDeviceName(true)
+                .Build();
+
+            var callback = new AdvertisingCallback(
+                onSuccess: () => AdvertisingStateChanged?.Invoke(AdvertisingState.Started, $"Advertising as {name}"),
+                onFailure: (errorMessage) => AdvertisingStateChanged?.Invoke(AdvertisingState.Failed, errorMessage));
+
+            advertiser.StartAdvertising(settings, data, callback);
+            await Task.CompletedTask;
+        }
+
+
+
+
+
         public async Task<bool> ScanAsync()
         {
             await CheckPermissions();
@@ -57,7 +150,7 @@ namespace MEOW.Components.Services
             return true;
         }
 
-        public Task ConnectAsync(MeowDevice device)
+        async public Task ConnectAsync(MeowDevice device)
         {
             try
             {
