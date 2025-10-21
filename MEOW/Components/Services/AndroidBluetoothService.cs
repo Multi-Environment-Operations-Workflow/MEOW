@@ -4,6 +4,9 @@ using Plugin.BLE.Abstractions.Contracts;
 using System.Collections.ObjectModel;
 using MEOW.Components.Enums;
 using MEOW.Components.Models;
+using Android.Bluetooth.LE;
+using Android.Bluetooth;
+using Android.Content;
 
 namespace MEOW.Components.Services
 {
@@ -23,6 +26,9 @@ namespace MEOW.Components.Services
         /// <exception cref="InvalidOperationException">If Bluetooth is not initialized.</exception>
         /// <exception cref="Exception">If Bluetooth is off.</exception>
         /// <exception cref="PermissionException">If Bluetooth permission is denied.</exception>
+        private BluetoothLeAdvertiser? _bleAdvertiser;
+        private AdvertisingCallback? _advertisingCallback;
+
         public async Task<bool> ScanAsync()
         {
             await CheckPermissions();
@@ -56,14 +62,54 @@ namespace MEOW.Components.Services
             throw new NotImplementedException();
         }
 
-        public Task StartAdvertisingAsync(string name, Guid serviceUuid)
+        public async Task StartAdvertisingAsync(string name, Guid serviceUuid)
         {
-            throw new NotImplementedException();
+            if (!await CheckPermissions())
+                return;
+
+            var _bluetoothManager = (BluetoothManager)Android.App.Application.Context.GetSystemService(Context.BluetoothService);
+            _bleAdvertiser = _bluetoothManager.Adapter?.BluetoothLeAdvertiser;
+
+            if (_bleAdvertiser == null)
+            {
+                AdvertisingStateChanged?.Invoke(AdvertisingState.Started, "Bluetooth not powered on or not supported.");
+                return;
+            }
+
+            var settings = new AdvertiseSettings.Builder()
+                .SetAdvertiseMode(AdvertiseMode.Balanced)
+                .SetConnectable(true)
+                .SetTimeout(0) // 0 = no timeout
+                .SetTxPowerLevel(AdvertiseTx.PowerMedium)
+                .Build();
+
+            var data = new AdvertiseData.Builder()
+                .SetIncludeDeviceName(false)
+                .AddServiceUuid(Android.OS.ParcelUuid.FromString(serviceUuid.ToString()))
+                .Build();
+
+            _advertisingCallback = new AdvertisingCallback(
+                onSuccess: () => AdvertisingStateChanged?.Invoke(AdvertisingState.Started, $"Advertising as {name}"),
+                onFailure: (errorMessage) => AdvertisingStateChanged?.Invoke(AdvertisingState.Failed, errorMessage));
+
+            _bleAdvertiser.StartAdvertising(settings, data, _advertisingCallback);
         }
 
         public Task StopAdvertisingAsync()
         {
-            throw new NotImplementedException();
+            try
+            {
+                _bleAdvertiser?.StopAdvertising(_advertisingCallback);
+                AdvertisingStateChanged?.Invoke(AdvertisingState.Stopped, "Advertising stopped");
+            }
+            catch (Exception ex)
+            {
+                AdvertisingStateChanged?.Invoke(AdvertisingState.Failed, $"Failed to stop advertising: {ex.Message}");
+            }
+
+            _advertisingCallback = null;
+
+            return Task.CompletedTask;
         }
 
         /// <summary>
@@ -83,12 +129,14 @@ namespace MEOW.Components.Services
                 {
                     if (Permissions.ShouldShowRationale<Permissions.Bluetooth>())
                     {
-                        await Application.Current.MainPage.DisplayAlert(
-                            "Bluetooth Access Required",
-                            "This app needs access to bluetooth to function",
-                            "OK"
-                        );
-                    }
+                        if (Permissions.ShouldShowRationale<Permissions.Bluetooth>())
+                        {
+                            await Application.Current.MainPage.DisplayAlert(
+                                "Bluetooth Access Required",
+                                "This app needs access to bluetooth to function",
+                                "OK"
+                            );
+                        }
 
                     break;
                 }
@@ -99,4 +147,5 @@ namespace MEOW.Components.Services
         }
     }
 }
+
 #endif
