@@ -9,10 +9,6 @@ using Android.Bluetooth;
 using Android.Content;
 using Plugin.BLE.Abstractions.Exceptions;
 using Plugin.BLE.Abstractions;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Java.Util;
 
 namespace MEOW.Components.Services
