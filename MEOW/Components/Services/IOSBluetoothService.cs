@@ -79,7 +79,6 @@ public class IOSBluetoothService : NSObject, IBluetoothService, ICBPeripheralMan
             throw new Exception("Bluetooth is off");
 
         var foundDevices = new List<IDevice>();
-        var namedDevices = new List<MeowDevice>();
 
         EventHandler<DeviceEventArgs> discoveredHandler = (s, a) =>
         {
@@ -87,11 +86,6 @@ public class IOSBluetoothService : NSObject, IBluetoothService, ICBPeripheralMan
             foundDevices.Add(a.Device);
 
             if (a.Device.Name != null)
-            {
-                namedDevices.Add(new MeowDevice(a.Device.Name, a.Device.Id, a.Device));
-            }
-
-            if (a.Device.Name != null && a.Device.Name.StartsWith("(MEOW) "))
             {
                 Devices.Add(new MeowDevice(a.Device.Name, a.Device.Id, a.Device));
             }
@@ -106,14 +100,7 @@ public class IOSBluetoothService : NSObject, IBluetoothService, ICBPeripheralMan
         {
             _adapter.DeviceDiscovered -= discoveredHandler;
         }
-
-        if (Devices.Count == 0)
-        {
-            foreach (var device in namedDevices)
-            {
-                Devices.Add(device);
-            }
-        }
+        
         return true;
     }
 

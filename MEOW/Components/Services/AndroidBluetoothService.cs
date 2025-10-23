@@ -213,7 +213,7 @@ namespace MEOW.Components.Services
                 if (!foundDevices.Contains(a.Device))
                 {
                     foundDevices.Add(a.Device);
-                    if (a.Device.Name != null && a.Device.Name.StartsWith("(MEOW) "))
+                    if (a.Device.Name != null)
                     {
                         var device = new MeowDevice(a.Device.Name, a.Device.Id, a.Device);
                         device.Name = device.Name.Replace("(MEOW) ", "").Trim();
