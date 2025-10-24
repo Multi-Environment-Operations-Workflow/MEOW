@@ -101,7 +101,14 @@ else
 
     private async Task ConnectAsync(MeowDevice device)
     {
-        await Bluetooth.ConnectAsync(device);
+        try
+        {
+            await Bluetooth.ConnectAsync(device);
+        }
+        catch (Exception e)
+        {
+            _errorMessage = e.Message;
+        }
     }
     
     private async Task StartAdvertisingAsync()

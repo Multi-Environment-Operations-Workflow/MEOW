@@ -20,6 +20,8 @@ public static class MauiProgram
         builder.Services.AddSingleton<IUserStateService, UserStateService>();
         
         builder.Services.AddSingleton<IMessageService, MessageService>();
+        
+        builder.Services.AddSingleton<IBrowserDimensionService, BrowserDimensionService>();
 
         builder.Services.AddMauiBlazorWebView();
 
