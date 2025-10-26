@@ -11,6 +11,8 @@ namespace MEOW.Components.Services
     {
         private readonly IBluetoothLE _bluetooth = CrossBluetoothLE.Current;
         private readonly IAdapter _adapter = CrossBluetoothLE.Current.Adapter;
+        public event Action? PeerConnected;
+        public event Action<byte[]>? DeviceDataReceived;
 
         public event Action<AdvertisingState, string?>? AdvertisingStateChanged;
         public ObservableCollection<MeowDevice> Devices { get; } = new();
@@ -96,6 +98,22 @@ namespace MEOW.Components.Services
 
             status = await Permissions.RequestAsync<Permissions.Bluetooth>();
             return status == PermissionStatus.Granted;
+        }
+
+        
+        public int GetConnectedDevicesCount()
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<(bool anySuccess, List<Exception> allErrors)> SendToAllAsync(byte[] data)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task StartAdvertisingAsync(string name)
+        {
+            throw new NotImplementedException();
         }
     }
 }

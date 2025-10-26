@@ -1,4 +1,6 @@
+#if IOS
 using CoreBluetooth;
+#endif
 using Plugin.BLE.Abstractions.Contracts;
 
 namespace MEOW.Components.Models;
