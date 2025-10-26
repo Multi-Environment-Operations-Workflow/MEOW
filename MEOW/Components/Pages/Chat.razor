@@ -27,6 +27,8 @@
 
     protected override Task OnInitializedAsync()
     {
+        _messages = MessageService.GetMessages();
+
         _messageReceived = message =>
         {
             _messages.Add($"{message}");
