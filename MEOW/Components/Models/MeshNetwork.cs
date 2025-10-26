@@ -1,35 +1,21 @@
-using Aspose.Svg;
-using Aspose.Svg.Builder;
 using MEOW.Components.Services;
+using SVGCreator;
+using Color = System.Drawing.Color;
 
 namespace MEOW.Components.Models;
 
-public class MeshNetwork(IBrowserDimensionService browserDimensionService)
+public class MeshNetwork
 {
-    public List<MeshNetworkNode> Nodes { get; private set; } = new();
-    
-    public List<MeshNetworkConnection> Connections { get; private set; } = new();
+    private readonly IBrowserDimensionService _browserDimensionService;
 
-    
-    public void AddNode(MeshNetworkNode node, List<MeshNetworkConnection>? connections)
+    List<MeshNetworkNode> Nodes { get; } = new();
+    List<MeshNetworkConnection> Connections { get; } = new();
+
+    public MeshNetwork(IBrowserDimensionService browserDimensionService)
     {
-        Nodes.Add(node);
-        
-        if (connections == null) return;
-        
-        if(!connections.Any(c => !c.From.Equals(node) && !c.To.Equals(node))) throw new Exception("Connections must be related to the node being added.");
-        
-        foreach (var connection in connections)
-        {
-            Connections.Add(connection);
-        }
+        _browserDimensionService = browserDimensionService;
     }
-    
-    public void AddConnection(MeshNetworkConnection connection)
-    {
-        Connections.Add(connection);
-    }
-    
+
     public void AddNodesAndConnections(List<MeshNetworkNode> nodes, List<MeshNetworkConnection> connections)
     {
         Nodes.AddRange(nodes);
@@ -38,26 +24,82 @@ public class MeshNetwork(IBrowserDimensionService browserDimensionService)
 
     public async Task<string> ToSVG()
     {
-        var document = new SVGDocument();
-        var dimensions = await browserDimensionService.GetBrowserDimensions();
-        var svgElementBuilder = new SVGSVGElementBuilder()
-            .Width(dimensions.Width)
-            .Height(dimensions.Height)
-            .ViewBox(0, 0, dimensions.Width, dimensions.Height);
-        svgElementBuilder = DrawNodes(svgElementBuilder);
-        svgElementBuilder.Build(document.FirstChild as SVGSVGElement);
-        return 
+        var dimensions = await _browserDimensionService.GetBrowserDimensions();
+        var document = new SvgDocument();
+        document.SetWidth(dimensions.Width).SetHeight(dimensions.Height);
+
+        // Step 1: Calculate positions
+        CalculateNodePositions(dimensions.Width, dimensions.Height);
+
+        // Step 2: Draw connections first (so lines are behind nodes)
+        DrawConnections(document);
+
+        // Step 3: Draw nodes
+        DrawNodes(document);
+
+        return document.ToString();
     }
 
-    private SVGSVGElementBuilder DrawNodes(SVGSVGElementBuilder svgElementBuilder)
+    private void CalculateNodePositions(int width, int height)
+    {
+        if (Nodes.Count == 0) return;
+
+        const int topY = 60;
+        const int verticalSpacing = 120;
+        const int horizontalSpacing = 160;
+        const int perLayer = 3;
+
+        // Root node at top center
+        Nodes[0].X = width / 2;
+        Nodes[0].Y = topY;
+
+        // Split remaining nodes into layers
+        var layers = new List<List<MeshNetworkNode>>();
+        for (int i = 1; i < Nodes.Count; i += perLayer)
+        {
+            layers.Add(Nodes.Skip(i).Take(perLayer).ToList());
+        }
+
+        // Position each layer
+        for (int layerIndex = 0; layerIndex < layers.Count; layerIndex++)
+        {
+            var layer = layers[layerIndex];
+            var y = topY + (layerIndex + 1) * verticalSpacing;
+
+            var totalWidth = (layer.Count - 1) * horizontalSpacing;
+            var startX = (width / 2) - totalWidth / 2;
+
+            for (int i = 0; i < layer.Count; i++)
+            {
+                layer[i].X = startX + i * horizontalSpacing;
+                layer[i].Y = y;
+            }
+        }
+    }
+
+    private void DrawNodes(SvgDocument document)
     {
         foreach (var node in Nodes)
         {
-            svgElementBuilder.AddCircle(cx: node.X, cy: node.Y, r: 25, fill: "#1976d2", stroke: "black");
-            svgElementBuilder.AddText(x: node.X, y: node.Y + 4, fontSize: 12, fill: "white", content: String.Concat(node.Id  + ": ", node.Name));
+            document.AddCircle((node.X, node.Y), 25, Color.LightBlue, Color.Black, 2);
+            document.AddText(node.Name, (node.X, node.Y), 12, "Arial", Color.Black, Color.Black, 1);
         }
-        
-        return svgElementBuilder;
     }
-    
+
+    private void DrawConnections(SvgDocument document)
+    {
+        foreach (var conn in Connections)
+        {
+            var from = conn.From;
+            var to = conn.To;
+
+            // Simple straight line for now
+            document.AddLine((from.X, from.Y), (to.X, to.Y), Color.Gray, 2);
+
+            // Label with start / last
+            var midX = (from.X + to.X) / 2;
+            var midY = (from.Y + to.Y) / 2 - 12;
+            document.AddText($"{conn.StartedConnection.ToString("HH:mm")} / {conn.LastConfirmed.ToString("HH:mm")}", (midX, midY), 10, "Arial" ,Color.Black, Color.Black, 1);
+        }
+    }
 }

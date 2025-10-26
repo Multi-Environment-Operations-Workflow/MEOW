@@ -7,17 +7,10 @@ public class BrowserDimensions(int width, int height)
     public int Height { get; private set; } = height;
 } 
 
-public class BrowserDimensionService: IBrowserDimensionService
+public class BrowserDimensionService(IJSRuntime js) : IBrowserDimensionService
 {
-    private readonly IJSRuntime _js;
-    
-    public BrowserDimensionService(IJSRuntime js)
-    {
-        _js = js;
-    }
-    
     public async Task<BrowserDimensions> GetBrowserDimensions()
     {
-        return await _js.InvokeAsync<BrowserDimensions>("getDimensions");
+        return new BrowserDimensions(800, 800);
     }
 }
