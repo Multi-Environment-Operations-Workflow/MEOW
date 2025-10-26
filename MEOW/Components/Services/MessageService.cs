@@ -14,8 +14,10 @@ public class MessageService(IBluetoothService bluetooth, IUserStateService userS
             return (false, [new Exception("Message is empty")]);
         }
         var bytes = Encoding.UTF8.GetBytes(userStateService.GetName() + ": " + message);
-        var result = await bluetooth.SendToAllAsync(bytes).ConfigureAwait(false);
-        return (result.anySuccess, result.allErrors);
+
+        // Result from sending message
+        var (anySuccess, allErrors) = await bluetooth.SendToAllAsync(bytes).ConfigureAwait(false);
+        return (anySuccess, allErrors);
     }
 
     public void SetupMessageReceivedAction(Action<string> onMessage)
