@@ -93,18 +93,30 @@ else
     {
         // Somehow process the image and text in the service
         _result = await PinService.ProcessedValueAsync(_pin.Title);
-        
-        _pinList.Add(new PinItem
+
+        var newPin = new PinItem
         {
             Title = _pin.Title,
             TextContext = _pin.TextContext,
             File = _pin.File,
             FileDataUrl = _pin.FileDataUrl
-        });
+        }; 
+        _pinList.Add(newPin);
+        await PinService.SetPinList(newPin);
+
         _pin.Title = string.Empty;
         _pin.TextContext = string.Empty;
         _pin.File = null;
         _file = null;
         _isLoading = false;
+    }
+
+    private async Task DeletePin()
+    {
+        
+        _result = await PinService.getPinList();
+        
+        
+        _pinList.Remove()
     }
 }
