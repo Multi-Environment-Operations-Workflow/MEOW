@@ -1,43 +1,27 @@
 using MEOW.Components.Models;
-using Microsoft.AspNetCore.Components.Forms;
 
 namespace MEOW.Components.Services;
 
 public class PinService : IPinService
 {
+    private readonly List<PinItem> _pins = new();
 
-    public List<PinItem> PinList = new();
-   
-    
-    // First we gotta see if there is a bluetooth connection or if they are connected to any devices    
-
-    public async Task<string> ProcessedValueAsync(string input)
+    public void AddPinAsync(PinItem pin)
     {
-        await Task.Delay(100);
-        return $"Processed value: {input}";
-    }
-    
-    public async Task<string> SetPinList(PinItem pin) 
-    {
-        await Task.Delay(1000);
-        PinList.Add(pin);
-        Console.WriteLine(pin);
-        return $"Processed value: {Pin}";
+        _pins.Add(pin);
     }
 
-    public async Task<List<PinItem>> GetPinList()
+    public void RemovePinAsync(PinItem pin)
     {
-        await Task.Delay(1000);
-        return PinList;
+        _pins.Remove(pin);
     }
 
-    public Task<bool> SendPinMetadataAsync(PinItem pin)
+    public async Task<List<PinItem>> GetPinsAsync()
     {
-        throw new NotImplementedException();
+        await Task.Yield();
+        return _pins.ToList();
     }
-    
-    public Task OnPinDataReceivedAsync(byte[] data)
-    {
-        throw new NotImplementedException();
-    }
+
+    public Task<bool> SendPinMetadataAsync(PinItem pin) => throw new NotImplementedException();
+    public Task OnPinDataReceivedAsync(byte[] data) => throw new NotImplementedException();
 }
