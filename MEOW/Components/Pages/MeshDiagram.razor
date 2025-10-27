@@ -1,33 +1,286 @@
-@page "/mesh-diagram" // Sådan man definerer en rute til denne side
-@inject IJSRuntime JS // Sådan vi invoker JavaScript fra Blazor
+@page "/mesh-diagram" 
 @using MEOW.Components.Models
+@using MEOW.Components.Services
+@inject IBrowserDimensionService BrowserDimensionService
 
 
 <h3>Mesh Network</h3>
 <h4>Her kan du se hvem du er connected til.</h4>
-<svg id="networkSvg" width="800" height="500" style="border:1px solid #ccc"></svg> // her jeg smider mit diagram ind.
+@if (errorMessage != null)
+{
+    <p style="color:red">@errorMessage</p>
+}
 
-@code { // Her starter vores back-end del. 
-    protected override async Task OnAfterRenderAsync(bool firstRender) // Vi ønsker at invoke noget Javascript, men først efter siden er "rendered" Så vi skal bruge dette.
+@if (!string.IsNullOrEmpty(svgContent))
+{
+    @((MarkupString)svgContent)
+}
+
+
+<script>
+    /**
+    window.lastConnections = connections;
+
+
+    function reverseConnectionsIfSeen(connections) {
+        /**
+         * Hvis vi fx har "Carl" → "shadi" og senere "Leon" → "Carl",
+         * så vender vi den sidste om til "Carl" → "Leon", og så senere igen vis vi møder Thomas → Leon så bliver den vendt til Leon → Thomas
+         * så retningen bliver konsekvent "hirakisk".
+         
+        const seenFirst = new Set();
+
+        const processedLinks = connections.links.map(l => {
+            // Hvis name2 allerede har været "første" et andet sted → vend
+            if (seenFirst.has(l.name2) && !seenFirst.has(l.name1)) {
+                // Vend retningen, så "første" bevares som tidligere set
+                const reversed = {
+                    name1: l.name2,
+                    name2: l.name1,
+                    start: l.start,
+                    last: l.last
+                };
+
+                // Marker den nye første som set
+                seenFirst.add(reversed.name1);
+                return reversed;
+            }
+
+            // Ellers behold som det er og marker første som set
+            seenFirst.add(l.name1);
+
+            return {
+                name1: l.name1,
+                name2: l.name2,
+                start: l.start,
+                last: l.last
+            };
+        });
+
+        connections.links = processedLinks;
+    }
+        
+
+    // --- Tegn forbindelser mellem noder ---
+    // For hver forbindelse (link): find to noder, tegn linje, og skriv tekst
+    function drawLinks(svg, nodes, links) {
+        /**
+         * # logik til at tegne forbindelser mellem noder
+         * Fx skal det være buer eller lige linjer
+         * Det er så vidt muligt lavet til at undgå overlap af tekster, og tekster under noderne
+         
+        const texts = [];
+        const labelPositions = [];
+
+        const labelOffsetStep = 10;// Hvor meget vi skubber teksten ned vis vi mistænker overlap
+        const minXDistance = 60;// Minimum afstand på X-aksen for at undgå overlap
+        const minYDistance = 10;// Minimum afstand på Y-aksen for at undgå overlap
+
+        links.forEach(l => {
+            const n1 = nodes.find(n => n.label === l.name1);
+            const n2 = nodes.find(n => n.label === l.name2);
+            if (!n1 || !n2) return; // Casen gør at en node mangler springer bare over. 
+
+            const sameLayerNodes = nodes.filter(n => Math.abs(n.y - n1.y) < 40); // alle noder der ligger på samme lag (y-værdi inden for 40 pixels vilkårligt tal, jeg prøvede mig frem)
+            sameLayerNodes.sort((a, b) => a.x - b.x);// sorter efter x-værdi for at finde rækkefølgen, som vi skal bruge, for at finde ud af om der er en node imellem
+
+            const i1 = sameLayerNodes.indexOf(n1);
+            const i2 = sameLayerNodes.indexOf(n2);
+            const hasBetweenNode = Math.abs(i2 - i1) > 1;
+
+
+            if (hasBetweenNode) {
+                drawCurvedLine(svg, n1, n2);
+            } else {
+                drawStraightLine(svg, n1, n2);
+            }
+
+            // ---  Beregn grundposition for tekst ---
+            const positionFactor = 0.3; // hvor langt væk fra n1 mod n2 teksten skal placeres (0.5 = midtpunkt)
+            let labelX = n1.x + (n2.x - n1.x) * positionFactor;
+            let labelY = n1.y + (n2.y - n1.y) * positionFactor - 12;
+
+            // ---  Hvis det er en bue, flyt teksten under buen ---
+            if (hasBetweenNode) {
+                const curveDepth = 60; // samme som i drawCurvedLine
+                labelY += curveDepth * 0.6; // fx 60 % af buens dybde – du kan justere
+            }
+
+            // --- Tjek overlap på hver akse --- med alle tidligere placerede labels vis for tæt på, skub ned
+            for (const pos of labelPositions) {
+                const dx = Math.abs(pos.x - labelX);
+                const dy = Math.abs(pos.y - labelY);
+                if (dx < minXDistance && dy < minYDistance) {
+                    labelY += labelOffsetStep;
+                }
+            }
+
+            labelPositions.push({ x: labelX, y: labelY });
+
+            // Beregn linjens vinkel i grader, så vi kan sætte vinkel på teksten
+            const angleRad = Math.atan2(n2.y - n1.y, n2.x - n1.x);
+            let angleDeg = (angleRad * 180) / Math.PI;
+            if (angleDeg > 90 || angleDeg < -90) {
+                angleDeg += 180;
+            }
+
+            const label = `${l.start} / ${l.last}`;
+            const textEl = createSvgElement("text", {
+                x: labelX,
+                y: labelY,
+                "font-size": 10,
+                fill: "black",
+                "text-anchor": "middle",
+                "dominant-baseline": "middle",
+                transform: `rotate(${angleDeg}, ${labelX}, ${labelY})`,
+                style: "pointer-events:none; font-weight:bold;"
+            }, label);
+
+            texts.push(textEl);
+        });
+
+        texts.forEach(t => svg.appendChild(t));
+    }
+
+    function drawStraightLine(svg, n1, n2) {
+        const line = createSvgElement("line", {
+            x1: n1.x,
+            y1: n1.y,
+            x2: n2.x,
+            y2: n2.y,
+            stroke: "gray",
+            "stroke-width": 2
+        });
+        svg.appendChild(line);
+    }
+
+    function drawCurvedLine(svg, n1, n2) {
+        const midX = (n1.x + n2.x) / 2;
+        const midY = (n1.y + n2.y) / 2;
+
+        // Bue altid nedad
+        const curveDepth = 40; // hvor meget buen skal hænge
+        const controlY = midY + curveDepth;
+
+        const pathData = `M ${n1.x},${n1.y} Q ${midX},${controlY} ${n2.x},${n2.y}`;
+
+        const path = createSvgElement("path", {
+            d: pathData,
+            stroke: "gray",
+            "stroke-width": 2,
+            fill: "none"
+        });
+
+        svg.appendChild(path);
+    }
+    
+
+    // --- Hjælpefunktion til at oprette SVG-elementer nemt ---
+    // type = "circle", "text", "line" osv.
+    // attributes = objekt med key:value (fx { x:10, y:20, fill:"red" })
+    // textContent = (valgfrit) tekst der skal vises
+    function createSvgElement(type, attributes, textContent = null) {
+        const el = document.createElementNS("http://www.w3.org/2000/svg", type);
+        for (const [key, value] of Object.entries(attributes)) {
+            el.setAttribute(key, value);
+        }
+        if (textContent) el.textContent = textContent;
+        return el;
+    }
+
+    window.addEventListener("resize", () => {
+        if (window.lastConnections) {
+            window.renderNetwork(window.lastConnections);
+        }
+    });*/
+</script>
+
+@code {
+    string? errorMessage { get; set; }
+    string? svgContent = string.Empty;
+    public BrowserDimensions? Dimensions { get; set; }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender) return;
-
-        var connections = new List<ConnectionPair>
+        try
         {
-            new() { Name1="Carl", Name2="Shadi", StartConnection="09:00", LastConfirmed=DateTime.Now.AddMinutes(-5)},
-            new() { Name1="Shadi", Name2="Maksim",  StartConnection="09:15", LastConfirmed=DateTime.Now.AddMinutes(-1)},
-            new() { Name1="Maksim",   Name2="Leon",  StartConnection="09:10", LastConfirmed=DateTime.Now.AddMinutes(-3)},
-            new() { Name1="Leon",   Name2="Carl", StartConnection="09:20", LastConfirmed=DateTime.Now.AddMinutes(-2)},
-            new() { Name1="Carl",   Name2="Thomas", StartConnection="09:20", LastConfirmed=DateTime.Now.AddMinutes(-2)},
-            new() { Name1="Carl",   Name2="Theis", StartConnection="09:20", LastConfirmed=DateTime.Now.AddMinutes(-2)},
-            new() { Name1="Leon",   Name2="Shadi", StartConnection="09:20", LastConfirmed=DateTime.Now.AddMinutes(-2)},
-            new() { Name1="Thomas",   Name2="Javascript", StartConnection="09:20", LastConfirmed=DateTime.Now.AddMinutes(-2)},
+            Dimensions = await BrowserDimensionService.GetBrowserDimensions();
+        }
+        catch (Exception e)
+        {
+            Console.Write(e.Message);
+            errorMessage = e.Message;
+        }
 
+        var meshNetwork = new MeshNetwork(BrowserDimensionService);
+
+        var carlNode = new MeshNetworkNode(1, "Carl");
+        var shadiNode = new MeshNetworkNode(2, "Shadi");
+        var maksimNode = new MeshNetworkNode(3, "Maksim");
+        var leonNode = new MeshNetworkNode(4, "Leon");
+        var thomasNode = new MeshNetworkNode(5, "Thomas");
+        var theisNode = new MeshNetworkNode(6, "Theis");
+        var jsNode = new MeshNetworkNode(7, "Javascript");
+        var nodes = new List<MeshNetworkNode>()
+        {
+            carlNode,
+            shadiNode,
+            maksimNode,
+            leonNode,
+            thomasNode,
+            theisNode,
+            jsNode
         };
 
-        await JS.InvokeVoidAsync("renderNetwork", new {// Jeg konvatere det til javascript objekter  og sender det med til min javascript funktion
-            nodes = ConnectionPair.ToNodes(connections),
-            links = ConnectionPair.ToLinks(connections)
-        });
+        var connections = new List<MeshNetworkConnection>
+        {
+            new(carlNode, shadiNode, new DateTime(2025, 10, 23, 9, 0, 0), DateTime.Now.AddMinutes(-5)),
+            new(shadiNode, maksimNode, new DateTime(2025, 10, 23, 9, 15, 0), DateTime.Now.AddMinutes(-1)),
+            new(maksimNode, leonNode, new DateTime(2025, 10, 23, 9, 10, 0), DateTime.Now.AddMinutes(-3)),
+            new(leonNode, carlNode, new DateTime(2025, 10, 23, 9, 20, 0), DateTime.Now.AddMinutes(-2)),
+            new(carlNode, thomasNode, new DateTime(2025, 10, 23, 9, 20, 0), DateTime.Now.AddMinutes(-2)),
+            new(carlNode, theisNode, new DateTime(2025, 10, 23, 9, 20, 0), DateTime.Now.AddMinutes(-2)),
+            new(leonNode, shadiNode, new DateTime(2025, 10, 23, 9, 20, 0), DateTime.Now.AddMinutes(-2)),
+            new(thomasNode, jsNode, new DateTime(2025, 10, 23, 9, 20, 0), DateTime.Now.AddMinutes(-2))
+        };
+
+        meshNetwork.AddNodesAndConnections(nodes, connections);
+        await RenderNetwork(meshNetwork);
     }
+
+    async Task RenderNetwork(MeshNetwork meshNetwork)
+    {
+        try
+        {
+            svgContent = await meshNetwork.ToSVG();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+
+        StateHasChanged(); // Make sure Blazor re-renders the component
+        /**const width = window.innerWidth || 800;   // fallback hvis ikke defineret
+        const height = window.innerHeight || 500; // fallback hvis ikke defineret
+
+        const layout = {
+            width: width,
+            height: height,
+            centerX: width / 2,       // midten af skærmen
+            centerY: height / 2,
+            radius: Math.min(width, height) * 0.35 // sæt radius som 35% af mindste dimension
+        };
+
+        reverseConnectionsIfSeen(connections);
+
+        positionNodes(connections.nodes, layout);
+
+
+        drawLinks(svg, connections.nodes, connections.links);
+
+
+        drawNodes(svg, connections.nodes);*/
+    }
+
 }
+
+

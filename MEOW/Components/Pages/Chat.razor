@@ -1,6 +1,4 @@
 @page "/Chat"
-@using System.Text
-@using MEOW.Components.Models
 @inject Services.IMessageService MessageService
 @inject NavigationManager Navigation
 
@@ -27,15 +25,23 @@
 
     protected override Task OnInitializedAsync()
     {
-        _messageReceived = message =>
+        try
         {
-            _messages.Add($"{message}");
-            InvokeAsync(StateHasChanged);
-        };
+            _messageReceived = message =>
+            {
+                _messages.Add($"{message}");
+                InvokeAsync(StateHasChanged);
+            };
 
-        MessageService.SetupMessageReceivedAction(_messageReceived);
+            MessageService.SetupMessageReceivedAction(_messageReceived);
 
-        return Task.CompletedTask;
+            return Task.CompletedTask;
+        }
+        catch (Exception e)
+        {
+            _messages.Add("Error: " + e.Message);
+            return Task.CompletedTask;
+        }
     }
     private async Task SendAsync()
     {
