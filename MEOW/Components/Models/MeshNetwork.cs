@@ -82,7 +82,7 @@ public class MeshNetwork
         foreach (var node in Nodes)
         {
             document.AddCircle((node.X, node.Y), 25, Color.LightBlue, Color.Black, 2);
-            document.AddText(node.Name, (node.X, node.Y), 12, "Arial", Color.Black, Color.Black, 1);
+            document.AddText(node.Name, (node.X, node.Y), 12, "Arial", 0, Color.Black, Color.Black, 1);
         }
     }
 
@@ -99,7 +99,7 @@ public class MeshNetwork
             // Label with start / last
             var midX = (from.X + to.X) / 2;
             var midY = (from.Y + to.Y) / 2 - 12;
-            document.AddText($"{conn.StartedConnection.ToString("HH:mm")} / {conn.LastConfirmed.ToString("HH:mm")}", (midX, midY), 10, "Arial" ,Color.Black, Color.Black, 1);
+            document.AddText($"{conn.StartedConnection.ToString("HH:mm")} / {conn.LastConfirmed.ToString("HH:mm")}", (midX, midY), 10, "Arial", 0 ,Color.Black, Color.Black, 1);
         }
     }
 }
