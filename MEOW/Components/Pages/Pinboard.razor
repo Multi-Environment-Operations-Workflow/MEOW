@@ -1,0 +1,110 @@
+@page "/pinboard"
+@using MEOW.Components.Models
+@inject Services.PinService PinService
+
+<button @onclick="TogglePinVisibility">@(_showPin ? "Hide pin module" : "Add pin")</button>
+@if (_showPin)
+{
+    <div>
+        <input type="text" placeholder="Title..." @bind="_pin.Title"/> <br/>
+        <InputFile OnChange="LoadFiles" />
+        @if (!string.IsNullOrEmpty(_pin.FileDataUrl))
+        {
+            <img src="@_pin.FileDataUrl" alt="Preview" style="max-width:100px;" />
+        } <br/>
+        <input type="text" placeholder="Insert context here..." @bind="_pin.TextContext"/> <br/>
+        <button type="submit" @onclick="CreatePin">Create pin</button>
+    </div>
+}
+
+@if (_isLoading && _file != null)
+{
+    <ul>
+        <li>Name: @_file.Name</li>
+        <li>Last modified: @_file.LastModified.ToString()</li>
+        <li>Size (bytes): @_file.Size</li>
+        <li>Content type: @_file.ContentType</li>
+    </ul>
+}
+
+@if (!_pinList.Any())
+{
+    <p>No pins created.</p>
+}
+else
+{
+    <ul>
+        @foreach (var pin in _pinList)
+        {
+            <li>
+                <strong>@pin.Title</strong><br />
+                @pin.TextContext<br />
+                @if (!string.IsNullOrEmpty(_pin.FileDataUrl))
+                {
+                    <img src="@pin.FileDataUrl" alt="image" style="max-width:100px;" />
+                }
+            </li>
+            
+        }
+    </ul>
+}
+
+<div>
+    <h1>@_result</h1>
+</div>
+
+@code
+{
+    private bool _showPin;
+    private bool _isLoading;
+    private IBrowserFile? _file;
+    private string _result = "";
+    
+    private readonly PinItem _pin = new();
+    private List<PinItem> _pinList = new();
+
+    private void TogglePinVisibility()
+    {
+        _showPin = !_showPin;
+        _isLoading = false;
+    }
+    
+    
+    private async Task LoadFiles(InputFileChangeEventArgs e)
+    {
+        _file = e.File;
+        _pin.File = e.File;
+        _isLoading = true;
+
+        try
+        {
+            var buffer = new byte[_file.Size];
+            await _file.OpenReadStream().ReadAsync(buffer);
+            var base64 = Convert.ToBase64String(buffer);
+            _pin.FileDataUrl = $"data:{_file.ContentType};base64,{base64}";   
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error reading file: {ex.Message}");
+        }
+    }
+
+    private async Task CreatePin()
+    {
+        // Somehow process the image and text in the service
+        _result = await PinService.ProcessedValueAsync(_pin.Title);
+        
+        _pinList.Add(new PinItem
+        {
+            Title = _pin.Title,
+            TextContext = _pin.TextContext,
+            File = _pin.File,
+            FileDataUrl = _pin.FileDataUrl
+        });
+        _pin.Title = string.Empty;
+        _pin.TextContext = string.Empty;
+        _pin.File = null;
+        _file = null;
+        _isLoading = false;
+    }
+}
