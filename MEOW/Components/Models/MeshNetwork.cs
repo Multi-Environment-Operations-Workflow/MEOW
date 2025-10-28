@@ -6,15 +6,8 @@ namespace MEOW.Components.Models;
 
 public class MeshNetwork
 {
-    private readonly IBrowserDimensionService _browserDimensionService;
-
     List<MeshNetworkNode> Nodes { get; } = new();
     List<MeshNetworkConnection> Connections { get; } = new();
-
-    public MeshNetwork(IBrowserDimensionService browserDimensionService)
-    {
-        _browserDimensionService = browserDimensionService;
-    }
 
     public void AddNodesAndConnections(List<MeshNetworkNode> nodes, List<MeshNetworkConnection> connections)
     {
@@ -24,12 +17,11 @@ public class MeshNetwork
 
     public async Task<string> ToSVG()
     {
-        var dimensions = await _browserDimensionService.GetBrowserDimensions();
         var document = new SvgDocument();
-        document.SetWidth(dimensions.Width).SetHeight(dimensions.Height);
+        document.SetWidth(800).SetHeight(800);
 
         // Step 1: Calculate positions
-        CalculateNodePositions(dimensions.Width, dimensions.Height);
+        CalculateNodePositions(800, 800);
 
         // Step 2: Draw connections first (so lines are behind nodes)
         DrawConnections(document);
