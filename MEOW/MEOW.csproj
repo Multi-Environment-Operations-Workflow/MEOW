@@ -50,6 +50,7 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="9.0.5" />
     <PackageReference Include="Microsoft.Maui.Controls.Core" Version="9.0.111" />
     <PackageReference Include="Plugin.BLE" Version="3.1.0" />
+    <PackageReference Include="SVGCreator" Version="1.1.0" />
   </ItemGroup>
 
 </Project>

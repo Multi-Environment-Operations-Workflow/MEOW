@@ -13,54 +13,102 @@ using Java.Util;
 
 namespace MEOW.Components.Services
 {
+    
+    
+    
+    /// <summary>
+    /// Implementering af Bluetooth-service til Android-platformen.
+    /// Det er lavet til at skulle:
+    ///     - Søge efter andre enheder (ScanAsync)
+    ///     - Oprette forbindelse til en enhed (ConnectAsync)
+    ///     - Starte advertising som en Bluetooth-peripheral (StartAdvertisingAsync)
+    ///     - Stoppe advertising (StopAdvertisingAsync)
+    ///     - Sende data til alle forbundne enheder (SendToAllAsync
+    ///     - Håndtere indkommende data fra forbundne enheder (DeviceDataReceived event)
+    ///     - Retunere antal forbundne enheder (GetConnectedDevicesCount)
+    ///     - Spørger om tilladelser (CheckPermissions)
+    /// 
+    /// </summary>
+    
+    
     public class AndroidBluetoothService : IBluetoothService // Implementering af IBluetoothService til Android
     {
+
+        // Plugin abstraktion til Bluetooth local enhed. Giver os adgang til fx _bluetooth.IsOn
+        // Tjekker, om Bluetooth er slået til, tilladelser, tilgængelighed osv.
         private readonly IBluetoothLE _bluetooth = CrossBluetoothLE.Current;
+
+        // instance af Bluetooth-adapteren, som håndterer scanning, forbindelser osv.
         private readonly IAdapter _adapter = CrossBluetoothLE.Current.Adapter;
 
+        // Enum vi bruger til at holde styr på advertising state. 
+        // AdvertisingStateChanged eventet bruges til at informere UI'et om ændringer i advertising status.
+        // Så vi fx på "front enden" kan sætte funktioner til at kører via dette event. Man kan se det som en tom funktion.
+        // Hvor man kan tilføje funktioner der skal kører når eventet bliver "udløst".
+        // Action<AdvertisingState, string?> betyder at funktionerne der tilføjes til eventet skal tage to parametre: kan ikke tilføjes vis ikke vi har dem.
         public event Action<AdvertisingState, string?>? AdvertisingStateChanged;
+
+        //Til at informere UI'et om, at en peer er forbundet, uden information på
         public event Action? PeerConnected;
+
+        // Udløst når vi modtager data fra en forbundet enhed.
         public event Action<byte[]>? DeviceDataReceived;
 
+
+        // Liste vi bruger til at holde styr på fundne enheder under scanning.
+        // Devices.Add(device);  også til ui (var d in _devices) <div> d.Name</div>
         public ObservableCollection<MeowDevice> Devices { get; } = new();
+
+
+        //Styre advertising (Bluetooth peripheral) “Server” Gør sig synlig, venter på at nogen forbinder
+        //En funktion du tænder og slukker for (som “gør mig synlig for andre”) Android specific, plugin gør det ikke
         private BluetoothLeAdvertiser? _bleAdvertiser;
+
+        // Android specific callback til at håndtere advertising resultater
+        // Som vi så sender videre via AdvertisingStateChanged eventet
         private AdvertisingCallback? _advertisingCallback;
 
-        // NYT: lokal GATT-server så Android kan modtage beskeder
+        // Lokal GATT-server så Android kan modtage beskeder. Er "client" i forhold til peripheral server forholdet. 
         private MeowAndroidGattServer? _gattServer;
 
-        // IBluetoothService.GetConnectedDevicesCount
         public int GetConnectedDevicesCount()
         {
             return _adapter.ConnectedDevices?.Count ?? 0;
         }
 
-        // IBluetoothService.SendToAllAsync(byte[])
+        
         public async Task<(bool, List<Exception>)> SendToAllAsync(byte[] data)
         {
             var anySuccess = false;
             var exceptions = new List<Exception>();
 
-            // A) Send som CENTRAL til allerede forbundne enheder (Plugin.BLE)
+            // Send som CENTRAL/server/host til allerede forbundne enheder (Plugin.BLE)
             foreach (var device in _adapter.ConnectedDevices.ToList())
             {
                 try
                 {
+                    // Standard måde at sende pakker er en størelse af 20 bytes pr pakke. Men det er ikke effektivt. 
+                    // Så vi forspørger om vi kan få lov til at sende en større MTU pakke (max 185 bytes)
+                    // Gør det hurtigere. Aner ikke hvor meget hurtige dog....
                     try { await device.RequestMtuAsync(185).ConfigureAwait(false); } catch { /* best effort */ }
 
+
+                    // Services -> Chatservervice -> Characteristics -> messagereciveChar.
+                    // Er Services på anden device, finder chatservice, finder hvad vi kan gøre på chatservice, finder characteristic vi kan skrive til.
+                    // Finder services, som den anden enhed "tilbyder" Burde gerne være de samme, i denne fil.
+                    // Vi får Generic Attribute Profile (Gatt). Nødvendigt da IOS kun kan komunikere via GATT.
                     var services = await device.GetServicesAsync().ConfigureAwait(false);
                     var chatService = services.FirstOrDefault(s => s.Id == ChatUuids.ChatService);
-
                     if (chatService == null)
                         throw new Exception($"Service {ChatUuids.ChatService} not found on {device.Name}");
-
                     var characteristics = await chatService.GetCharacteristicsAsync().ConfigureAwait(false);
                     var messageReceiveChar = characteristics.FirstOrDefault(c => c.Id == ChatUuids.MessageReceiveCharacteristic);
-
                     if (messageReceiveChar == null)
                         throw new Exception($"Characteristic {ChatUuids.MessageReceiveCharacteristic} not found on {device.Name}");
 
                     // Plugin.BLE: brug WriteType + WriteAsync(data)
+                    // Her er det så at vi faktisk sender data mellem enhederne. WithResponse = bekræftelse på modtagelse.
+                    // Vi sender som Central til folk på denne måde.  Og modtager beskeder på denne måde i peripheral ish. 
                     if (messageReceiveChar.Properties.HasFlag(CharacteristicPropertyType.Write))
                     {
                         messageReceiveChar.WriteType = CharacteristicWriteType.WithResponse;
@@ -85,6 +133,7 @@ namespace MEOW.Components.Services
             }
 
             // B) Notify centraler der er forbundet til VORES Android-peripheral (GATT-serveren)
+            // Som Peripheral sender vi data via denne, og som central modtager vi data via denne.
             try
             {
                 if (_gattServer?.NotifyAll(data) == true)
@@ -111,9 +160,11 @@ namespace MEOW.Components.Services
             // 1) GATT-server (peripheral) – samme service/char UUIDs som iOS
             _gattServer = new MeowAndroidGattServer(Android.App.Application.Context);
             _gattServer.MessageReceived += bytes => DeviceDataReceived?.Invoke(bytes);
+            // Start håndtering af GATT-requests
             _gattServer.Start();
 
             // 2) Advertising med service UUID = ChatUuids.ChatService
+            // Mere opsætning til advertising
             var bluetoothManager = (BluetoothManager?)Android.App.Application.Context.GetSystemService(Context.BluetoothService);
             var adapter = bluetoothManager?.Adapter;
             var advertiser = adapter?.BluetoothLeAdvertiser;
@@ -124,13 +175,14 @@ namespace MEOW.Components.Services
                 return;
             }
 
+            // Det navn folk vil se i deres Bluetooth-liste
             adapter?.SetName($"(MEOW) {name}");
-
+            // Mere settings
             var settings = new AdvertiseSettings.Builder()
                 .SetAdvertiseMode(AdvertiseMode.Balanced)
                 .SetConnectable(true)
                 .SetTimeout(0)
-                .SetTxPowerLevel(AdvertiseTx.PowerMedium)
+                .SetTxPowerLevel(AdvertiseTx.PowerMedium)// måske burde vi sætte til high, giver bedre rækkevidde
                 .Build();
 
             var data = new AdvertiseData.Builder()
@@ -138,10 +190,11 @@ namespace MEOW.Components.Services
                 .SetIncludeDeviceName(true)
                 .Build();
 
+            // Callback til at håndtere advertising resultater
             var callback = new AdvertisingCallback(
                 onSuccess: () => AdvertisingStateChanged?.Invoke(AdvertisingState.Started, $"Advertising as {name}"),
                 onFailure: (errorMessage) => AdvertisingStateChanged?.Invoke(AdvertisingState.Failed, errorMessage));
-
+            // Her starter vi så faktisk det som gør vi kan se enheden på andre enheder.
             advertiser.StartAdvertising(settings, data, callback);
             await Task.CompletedTask;
         }
@@ -153,6 +206,7 @@ namespace MEOW.Components.Services
                 return;
 
             // 1) GATT-server (serviceUuid bruges her)
+            //Gemmer UUID’er for: selve chat-servicen, “send besked”-characteristikken, “modtag besked”-characteristikken.
             _gattServer = new MeowAndroidGattServer(Android.App.Application.Context, serviceUuid);
             _gattServer.MessageReceived += bytes => DeviceDataReceived?.Invoke(bytes);
             _gattServer.Start();
@@ -196,7 +250,8 @@ namespace MEOW.Components.Services
         {
             await CheckPermissions();
 
-            Devices.Clear();
+            Devices.Clear(); // Vi fjerner alle tidigere devices før en ny scan. !! Kan give problemer måske
+            //betyder denne logik ikke at vi Skal connecte til alle devices før vi hopper i en chat, for ellers skal vi connecte til alle igen for at tilføje et nyt medlem?
             if (_bluetooth == null || _adapter == null)
                 throw new InvalidOperationException("Bluetooth not initialized");
 
@@ -204,13 +259,13 @@ namespace MEOW.Components.Services
                 throw new Exception("Bluetooth is off");
 
             var foundDevices = new List<IDevice>();
-            _adapter.DeviceDiscovered += (s, a) =>
+            _adapter.DeviceDiscovered += (s, a) => // Event der sker hver gang en enhed bliver fundet under scanning
             {
                 if (!foundDevices.Contains(a.Device))
                 {
                     foundDevices.Add(a.Device);
                     if (a.Device.Name != null)
-                    {
+                    {// Vi fjerner (MEOW) fra navnet, ser pænere ud i UI'et. Det er så genialt at det bare kommer med alt. 
                         var device = new MeowDevice(a.Device.Name, a.Device.Id, a.Device);
                         device.Name = device.Name.Replace("(MEOW) ", "").Trim();
                         Devices.Add(device);
@@ -353,6 +408,7 @@ namespace MEOW.Components.Services
         }
 
         // Overload hvis du vil hoste med custom serviceUuid
+        
         public MeowAndroidGattServer(Context ctx, Guid serviceUuid)
         {
             _btManager = (BluetoothManager)ctx.GetSystemService(Context.BluetoothService)!;
