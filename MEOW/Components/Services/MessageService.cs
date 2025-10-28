@@ -5,10 +5,11 @@ namespace MEOW.Components.Services;
 
 public class MessageService(IBluetoothService bluetooth, IUserStateService userStateService) : IMessageService
 {
-    private readonly List<string> _messages = new();
+    //private readonly List<string> _messages = new();
     private readonly List<IMessage> _typedMessages = new();
     private MessageSerializer _serializer = new MessageSerializer();
 
+    /*
     public async Task<(bool, List<Exception>)> SendMessage(string message)
     {
         if (string.IsNullOrWhiteSpace(message))
@@ -21,6 +22,7 @@ public class MessageService(IBluetoothService bluetooth, IUserStateService userS
         var (anySuccess, allErrors) = await bluetooth.SendToAllAsync(bytes).ConfigureAwait(false);
         return (anySuccess, allErrors);
     }
+    */
 
     public async Task<(bool, List<Exception>)> SendMessageTest(string message)
     {
@@ -36,6 +38,7 @@ public class MessageService(IBluetoothService bluetooth, IUserStateService userS
         return (anySuccess, allErrors);
     }
 
+    /*
     public void SetupMessageReceivedAction(Action<string> onMessage)
     {
         bluetooth.DeviceDataReceived += (receivedData) =>
@@ -44,6 +47,7 @@ public class MessageService(IBluetoothService bluetooth, IUserStateService userS
             onMessage(message);
         };
     }
+    */
 
     public void SetupMessageReceivedActionTest<T>(Action<T> onMessage) where T : IMessage
     {
@@ -73,5 +77,5 @@ public class MessageService(IBluetoothService bluetooth, IUserStateService userS
         return bluetooth.GetConnectedDevicesCount() + 1;
     }
 
-    public List<string> GetMessages() => _messages;
+    //public List<string> GetMessages() => _messages;
 }

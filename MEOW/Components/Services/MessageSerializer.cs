@@ -16,7 +16,6 @@ public class MessageSerializer : IMessageSerializer
     public IMessage Deserialize(byte[] data)
     {
         var json = Encoding.UTF8.GetString(data);
-        throw new Exception("This should be json: " + json);
 
         using var document = JsonDocument.Parse(json);
         if (document.RootElement.TryGetProperty("Type", out var typeElement))
