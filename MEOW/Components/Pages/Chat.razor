@@ -13,9 +13,13 @@
         {
             <div>@m</div>
         }
+        @foreach (var m in _typedMessages)
+        {
+            <div><strong>@m.Sender:</strong> @m.Msg</div>
+        }
     </div>
 
-    <input @bind="_outgoing" placeholder="Type a message..."/>
+    <input @bind="_outgoing" placeholder="Type a message..." />
     <button @onclick="SendAsync">Send</button>
     <button @onclick="GoBack">Back</button>
 </div>
@@ -23,7 +27,9 @@
 @code {
     private string _outgoing = string.Empty;
     private List<string> _messages = new();
+    private List<MeowMessageText> _typedMessages = new();
     private Action<string>? _messageReceived;
+    private Action<MeowMessageText>? _messageReceivedTest;
 
     protected override Task OnInitializedAsync()
     {
@@ -35,7 +41,14 @@
             InvokeAsync(StateHasChanged);
         };
 
+        _messageReceivedTest = message =>
+        {
+            _typedMessages.Add(message);
+            InvokeAsync(StateHasChanged);
+        };
+
         MessageService.SetupMessageReceivedAction(_messageReceived);
+        MessageService.SetupMessageReceivedActionTest<MeowMessageText>(_messageReceivedTest);
 
         return Task.CompletedTask;
     }
@@ -46,12 +59,14 @@
             if (string.IsNullOrWhiteSpace(_outgoing))
                 return;
 
-            var result = await MessageService.SendMessage(_outgoing);
-            _messages.Add(result.Item1 ? $"You: {_outgoing}" : $"<Failed to send>: {_outgoing}");
-            foreach (var exception in result.Item2)
-            {
-                _messages.Add($"Error in send: " + exception.Message);
-            }
+            //var result = await MessageService.SendMessage(_outgoing);
+            var test = await MessageService.SendMessageTest(_outgoing);
+            //_messages.Add(result.Item1 ? $"You: {_outgoing}" : $"<Failed to send>: {_outgoing}");
+            _typedMessages.Add(new MeowMessageText(_outgoing, "You"));
+            //foreach (var exception in result.Item2)
+            //{
+            // _messages.Add($"Error in send: " + exception.Message);
+            //}
 
             _outgoing = string.Empty;
             await InvokeAsync(StateHasChanged);
