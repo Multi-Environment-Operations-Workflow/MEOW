@@ -6,20 +6,19 @@ public class PinService : IPinService
 {
     private readonly List<PinItem> _pins = new();
 
-    public void AddPinAsync(PinItem pin)
+    public void AddPin(PinItem pin)
     {
         _pins.Add(pin);
     }
 
-    public void RemovePinAsync(PinItem pin)
+    public void RemovePin(PinItem pin)
     {
         _pins.Remove(pin);
     }
 
-    public async Task<List<PinItem>> GetPinsAsync()
+    public Task<List<PinItem>> GetPins()
     {
-        await Task.Yield();
-        return _pins.ToList();
+        return Task.FromResult(_pins.ToList());
     }
 
     public Task<bool> SendPinMetadataAsync(PinItem pin) => throw new NotImplementedException();

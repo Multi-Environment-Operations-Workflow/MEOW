@@ -14,7 +14,7 @@
         <ValidationMessage For="@(() => _currentPin.Title)" />
 
         <br/>
-        <InputText @bind-Value="_currentPin.TextContext" placeholder="Insert context here..." />
+        <textarea cols="15" rows="5" @bind="_currentPin.TextContext" placeholder="Insert context here..."></textarea>
         <ValidationMessage For="@(() => _currentPin.TextContext)" />
 
         <br/>
@@ -98,16 +98,16 @@ else
 
     private async Task AddPinAsync()
     {    
-        PinService.AddPinAsync(_currentPin);
-        _pinList = await PinService.GetPinsAsync();
+        PinService.AddPin(_currentPin);
+        _pinList = await PinService.GetPins();
 
         ResetForm();
     }
 
     private async Task RemovePinAsync(PinItem pin)
     {
-        PinService.RemovePinAsync(pin);
-        _pinList = await PinService.GetPinsAsync();
+        PinService.RemovePin(pin);
+        _pinList = await PinService.GetPins();
     }
 
     private void ResetForm()
@@ -119,6 +119,6 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        _pinList = await PinService.GetPinsAsync();
+        _pinList = await PinService.GetPins();
     }
 }
