@@ -20,14 +20,17 @@ public class MessageSerializer : IMessageSerializer
         using var document = JsonDocument.Parse(json);
         if (document.RootElement.TryGetProperty("Type", out var typeElement))
         {
-            var typeString = typeElement.GetString();
-            if (typeString is not null && Enum.TryParse<MessageType>(typeString, out var messageType))
-                return messageType switch
-                {
-                    MessageType.TEXT => JsonSerializer.Deserialize<MeowMessageText>(json) ?? throw new InvalidDataException("Failed to deserialize TEXT message."),
-                    MessageType.GPS => JsonSerializer.Deserialize<MeowMessageGps>(json) ?? throw new InvalidDataException("Failed to deserialize GPS message."),
-                    _ => throw new NotSupportedException($"Message type {messageType} is not supported")
-                };
+            int typeNumber;
+            typeElement.TryGetInt32(out typeNumber);
+
+            MessageType type = (MessageType)typeNumber;
+
+            return type switch
+            {
+                MessageType.TEXT => JsonSerializer.Deserialize<MeowMessageText>(json) ?? throw new InvalidDataException("Failed to deserialize TEXT message."),
+                MessageType.GPS => JsonSerializer.Deserialize<MeowMessageGps>(json) ?? throw new InvalidDataException("Failed to deserialize GPS message."),
+                _ => throw new NotSupportedException($"Message type {type} is not supported")
+            };
         }
 
         throw new InvalidDataException("Invalid message format: Type property not found");
