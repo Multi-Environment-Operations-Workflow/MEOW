@@ -6,7 +6,7 @@ namespace MEOW.Components.Services;
 public class MessageService(IBluetoothService bluetooth, IUserStateService userStateService) : IMessageService
 {
     //private readonly List<string> _messages = new();
-    private readonly List<IMessage> _typedMessages = new();
+    private readonly List<MeowMessage> _typedMessages = new();
     private MessageSerializer _serializer = new MessageSerializer();
 
     /*
@@ -49,7 +49,7 @@ public class MessageService(IBluetoothService bluetooth, IUserStateService userS
     }
     */
 
-    public void SetupMessageReceivedActionTest<T>(Action<T> onMessage) where T : IMessage
+    public void SetupMessageReceivedActionTest<T>(Action<T> onMessage) where T : MeowMessage
     {
         bluetooth.DeviceDataReceived += (receivedData) =>
         {

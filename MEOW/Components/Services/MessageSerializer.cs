@@ -7,13 +7,13 @@ namespace MEOW.Components.Services;
 
 public class MessageSerializer : IMessageSerializer
 {
-    public byte[] Serialize(IMessage message)
+    public byte[] Serialize(MeowMessage message)
     {
         var json = JsonSerializer.Serialize(message, message.GetType());
         return Encoding.UTF8.GetBytes(json);
     }
 
-    public IMessage Deserialize(byte[] data)
+    public MeowMessage Deserialize(byte[] data)
     {
         var json = Encoding.UTF8.GetString(data);
 

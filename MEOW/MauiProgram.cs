@@ -16,11 +16,13 @@ public static class MauiProgram
         builder.Services.AddSingleton<IBluetoothService, AndroidBluetoothService>();
 #elif IOS
         builder.Services.AddSingleton<IBluetoothService, IOSBluetoothService>();
+        builder.Services.AddSingleton<IChatService, ChatService>();
+        builder.Services.AddTransient<INotificationManagerService, NotificationManagerService>();
 #endif
         builder.Services.AddSingleton<IUserStateService, UserStateService>();
-        
+
         builder.Services.AddSingleton<IMessageService, MessageService>();
-        
+
         builder.Services.AddMauiBlazorWebView();
 
 #if DEBUG

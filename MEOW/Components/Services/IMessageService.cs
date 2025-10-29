@@ -10,7 +10,7 @@ public interface IMessageService
 
     //void SetupMessageReceivedAction(Action<string> onMessage);
 
-    void SetupMessageReceivedActionTest<T>(Action<T> onMessage) where T : IMessage;
+    void SetupMessageReceivedActionTest<T>(Action<T> onMessage) where T : MeowMessage;
 
     int GetParticipantsCount();
 

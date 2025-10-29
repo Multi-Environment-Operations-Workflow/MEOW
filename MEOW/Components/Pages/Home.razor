@@ -6,6 +6,7 @@
 @inject IBluetoothService Bluetooth
 @inject IUserStateService UserStateService
 @inject NavigationManager Navigation
+@inject INotificationManagerService NotificationManagerService
 
 <h1>Bluetooth Devices</h1>
 <p>Welcome, @_name!</p>
@@ -68,6 +69,14 @@ else
         _devices = Bluetooth.Devices;
         Bluetooth.AdvertisingStateChanged += OnAdvertisingStateChanged;
         Bluetooth.PeerConnected += OnPeerConnected;
+        try
+        {
+            NotificationManagerService.SendNotification("Welcome to MEOW!", "You are now ready to connect with others.", DateTime.Now + TimeSpan.FromSeconds(30));
+        }
+        catch (PermissionException exception)
+        {
+            _errorMessage = exception.Message;
+        }
     }
     
     private void OnPeerConnected()
