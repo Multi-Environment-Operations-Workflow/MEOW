@@ -14,7 +14,7 @@
             <div>@m</div>
         }
         *@
-        @foreach (var m in _typedMessages)
+        @foreach (var m in _messages)
         {
             <div><strong>@m.Sender:</strong> @m.Msg</div>
         }
@@ -27,14 +27,12 @@
 
 @code {
     private string _outgoing = string.Empty;
-    private List<string> _messages = new();
-    private List<MeowMessageText> _typedMessages = new();
-    private Action<string>? _messageReceived;
-    private Action<MeowMessageText>? _messageReceivedTest;
+    private List<MeowMessageText> _messages = new();
+    private Action<MeowMessageText>? _messageReceived;
 
     protected override Task OnInitializedAsync()
     {
-        //_messages = MessageService.GetMessages();
+        _messages = MessageService.GetMessages<MeowMessageText>();
 
         try
         {
@@ -46,20 +44,20 @@
             };
             */
 
-            _messageReceivedTest = message =>
+            _messageReceived = message =>
             {
-                _typedMessages.Add(message);
+                _messages.Add(message);
                 InvokeAsync(StateHasChanged);
             };
 
             //MessageService.SetupMessageReceivedAction(_messageReceived);
-            MessageService.SetupMessageReceivedActionTest<MeowMessageText>(_messageReceivedTest);
+            MessageService.SetupMessageReceivedAction<MeowMessageText>(_messageReceived);
 
             return Task.CompletedTask;
         }
         catch (Exception e)
         {
-            _messages.Add("Error: " + e.Message);
+            _messages.Add(new MeowMessageText(e.Message, "error"));
             return Task.CompletedTask;
         }
     }
@@ -71,9 +69,9 @@
                 return;
 
             //var result = await MessageService.SendMessage(_outgoing);
-            var test = await MessageService.SendMessageTest(_outgoing);
+            var test = await MessageService.SendMessage(_outgoing);
             //_messages.Add(result.Item1 ? $"You: {_outgoing}" : $"<Failed to send>: {_outgoing}");
-            _typedMessages.Add(new MeowMessageText(_outgoing, "You"));
+            _messages.Add(new MeowMessageText(_outgoing, "You"));
             //foreach (var exception in result.Item2)
             //{
             // _messages.Add($"Error in send: " + exception.Message);
@@ -82,9 +80,9 @@
             _outgoing = string.Empty;
             await InvokeAsync(StateHasChanged);
         }
-        catch (Exception exception)
+        catch (Exception e)
         {
-            _messages.Add($"Error in send: " + exception.Message);
+            _messages.Add(new MeowMessageText(e.Message, "error"));
         }
     }
 
