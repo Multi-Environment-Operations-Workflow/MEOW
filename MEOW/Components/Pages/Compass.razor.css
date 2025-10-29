@@ -1,17 +1,43 @@
 ﻿.compass {
     height: 150px;
     width: 150px;
-    border: 1px solid black;
+    background-color: darkolivegreen;
     border-radius: 50%;
+    box-sizing: border-box;
     display: block;
     position: relative;
 }
 
+.compass-inner {
+    display: flex;
+    position: absolute;
+    justify-content: center;
+    height: 100%;
+    width: 100%;
+    padding: 5%;
+    top: 0;
+}
+
+.nav-point-ring {
+    display: block;
+    height: 90%;
+    width: 90%;
+    position: absolute;
+    top: 5%;
+    left: 5%;
+
+    border-radius: 50%;
+    border-color: transparent;
+    background-color: white;
+    z-index: 1;
+}
+
 .nav-point {
     position: absolute;
-    height: 15px;
-    width: 15px;
-    border: 1px solid greenyellow;
+    height: 8%;
+    width: 8%;
+    border: 1px solid transparent;
+    box-sizing: border-box;
     border-radius: 50%;
-    background-color: greenyellow;
+    background-color: rgba(85, 107, 47, 0.7); /* RGB for DarkOliveGreen (with 70% Opacity) */
 }

@@ -14,37 +14,29 @@ public class NavService
 
     public static (int, int) NavPointToVector(NavPoint loc, NavPoint point)
     {
-        const int radius = 60;
+        const int radius = 50; // Radius is 50, Diameter is 100. Treated as percent
 
-        var deg2rad = Math.PI / 180;
-        var latA = loc.Latitude * deg2rad;
-        var lonA = loc.Longitude * deg2rad;
-        var latB = point.Latitude * deg2rad;
-        var lonB = point.Longitude * deg2rad;
+        // convert to radians
+        double lat1 = loc.Latitude * Math.PI / 180.0;
+        double lat2 = point.Latitude * Math.PI / 180.0;
+        double dLon = (point.Longitude - loc.Longitude) * Math.PI / 180.0;
 
-        var deltaRatio = MathF.Tan((float)(latB / 2 + MathF.PI / 4))
-                         / MathF.Tan((float)(latA / 2 + MathF.PI / 4));
-        var deltaLon = MathF.Abs((float)(lonA - lonB)) ;
+        // great-circle / atan2(y, x) bearing
+        double atY = Math.Sin(dLon) * Math.Cos(lat2);
+        double atX = Math.Cos(lat1) * Math.Sin(lat2) -
+                     Math.Sin(lat1) * Math.Cos(lat2) * Math.Cos(dLon);
 
-        deltaLon %= MathF.PI;
-        var bearing = MathF.Atan2(deltaLon, deltaRatio) / deg2rad;
+        double brng = Math.Atan2(atY, atX);
+        brng = brng * 180.0 / Math.PI; // → degrees
+        brng = (brng + 360.0) % 360.0; // normalize to 0..360
 
-        var radians = (float)((bearing % 360 - 90) * deg2rad);
-        var left = radius + radius * MathF.Cos(radians);
-        var top = radius - radius * MathF.Sin(radians);
+        double radians = brng * Math.PI / 180.0;
+        double x = radius + radius * Math.Cos(radians);
+        double y = radius + radius * Math.Sin(radians);
 
-
-        Console.WriteLine("Point: " + point.Longitude + ", " + point.Latitude + ": Bearing: " + bearing);
-
-        return ((int)left, (int)top);
+        return ((int)y, (int)x);
     }
-
-    /*
-     * South: 9;56
-     * Center: 8:56
-     * West: 8;57
-     */
-
+    
     public async Task StartAsync()
     {
         if (!Compass.Default.IsSupported)
