@@ -1,6 +1,9 @@
-#if IOS
+#if IOS || MACCATALYST
 using CoreBluetooth;
+// iOS-specifik kode her
 #endif
+
+
 using Plugin.BLE.Abstractions.Contracts;
 
 namespace MEOW.Components.Models;

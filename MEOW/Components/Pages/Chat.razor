@@ -1,6 +1,4 @@
 @page "/Chat"
-@using System.Text
-@using MEOW.Components.Models
 @inject Services.IMessageService MessageService
 @inject NavigationManager Navigation
 
@@ -27,36 +25,45 @@
 
     protected override Task OnInitializedAsync()
     {
-        _messageReceived = message =>
+        try
         {
-            _messages.Add($"{message}");
-            InvokeAsync(StateHasChanged);
-        };
+            _messageReceived = message =>
+            {
+                _messages.Add($"{message}");
+                InvokeAsync(StateHasChanged);
+            };
 
-        MessageService.SetupMessageReceivedAction(_messageReceived);
+            MessageService.SetupMessageReceivedAction(_messageReceived);
 
-        return Task.CompletedTask;
+            return Task.CompletedTask;
+        }
+        catch (Exception e)
+        {
+            _messages.Add("Error: " + e.Message);
+            return Task.CompletedTask;
+        }
     }
     private async Task SendAsync()
     {
-        if (string.IsNullOrWhiteSpace(_outgoing))
-            return;
-
-        var result = await MessageService.SendMessage(_outgoing);
-        if(result.Item1) {
-            _messages.Add($"You: {_outgoing}");
-        }
-        else
+        try
         {
-            _messages.Add($"<Failed to send>: {_outgoing}");
-  
+            if (string.IsNullOrWhiteSpace(_outgoing))
+                return;
+
+            var result = await MessageService.SendMessage(_outgoing);
+            _messages.Add(result.Item1 ? $"You: {_outgoing}" : $"<Failed to send>: {_outgoing}");
+            foreach (var exception in result.Item2)
+            {
+                _messages.Add($"Error in send: " + exception.Message);
+            }
+
+            _outgoing = string.Empty;
+            await InvokeAsync(StateHasChanged);
         }
-        foreach (var exception in result.Item2)
+        catch (Exception exception)
         {
             _messages.Add($"Error in send: " + exception.Message);
         }
-        _outgoing = string.Empty;
-        await InvokeAsync(StateHasChanged);
     }
 
     private void GoBack()

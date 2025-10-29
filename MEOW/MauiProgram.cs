@@ -22,7 +22,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<PinService>();
         
         builder.Services.AddSingleton<IMessageService, MessageService>();
-
+        
         builder.Services.AddMauiBlazorWebView();
 
 #if DEBUG
