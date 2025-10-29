@@ -1,0 +1,93 @@
+﻿@page "/compass"
+@using MEOW.Components.Services
+@implements IAsyncDisposable
+@inject NavService Nav
+
+<h3>Compass</h3>
+
+@if (_location is null)
+{
+    <p>Acquiring GPS...</p>
+}
+else
+{
+    <div>@_location.Latitude : @_location.Longitude</div>
+    <div class="compass" style="transform: rotate(@(_headingDeg)deg);">
+        <div
+            style="display: flex; position: absolute; justify-content: center; height: 100%; width: 100%; border: solid 1px red; top: 0">
+            <p style="color: red">N</p>
+        </div>
+        <div style="display: block; height: 100%; width:100%; position: absolute; border: solid 1px blueviolet; top: 0">
+            @foreach (var (left, top) in _navPointTuples)
+            {
+                <div class="nav-point" style="top:@(top + "px"); left:@(left + "px");"></div>
+            }
+        </div>
+
+    </div>
+    <button onclick=@(() => Nav.AddDebugPoints(_location, "north"))>Add Debug North</button>
+    <button onclick=@(() => Nav.AddDebugPoints(_location, "east"))>Add Debug East</button>
+    <button onclick=@(() => Nav.AddDebugPoints(_location, "south"))>Add Debug South</button>
+    <button onclick=@(() => Nav.AddDebugPoints(_location, "west"))>Add Debug West</button>
+    @foreach (var (lon, lat) in _navPointTuples)
+    {
+        <p>Long: @lon; Lat: @lat</p>
+    }
+}
+
+@code
+{
+    double _heading;
+    int _headingDeg;
+    NavPoint? _location;
+    List<(int, int)> _navPointTuples = [];
+
+    bool _started;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _started) return;
+        _started = true;
+
+        Nav.CompassReadingChanged += OnHeading;
+        Nav.LocationChanged += OnLocation;
+        Nav.NavPointsChanged += OnNavPoints;
+
+        await Nav.StartAsync(); // compass
+        _ = Nav.StartTrackingAsync(); // gps (fire & forget, but cleanup on dispose)
+    }
+
+    void OnHeading(object? _, CompassData data)
+    {
+        _heading = data.HeadingMagneticNorth;
+        _headingDeg = 360 - (int)_heading;
+        UpdateWaypoints();
+        InvokeAsync(StateHasChanged);
+    }
+
+    void OnLocation(object? _, NavPoint loc)
+    {
+        _location = loc;
+        UpdateWaypoints();
+        InvokeAsync(StateHasChanged);
+    }
+
+    void OnNavPoints(object? _, List<NavPoint> __)
+        => UpdateWaypoints();
+
+    void UpdateWaypoints()
+    {
+        if (_location is null) return;
+        _navPointTuples = Nav.GetNavPoints()
+            .Select(p => NavService.NavPointToVector(_location, p))
+            .ToList();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        Nav.CompassReadingChanged -= OnHeading;
+        Nav.LocationChanged -= OnLocation;
+        Nav.NavPointsChanged -= OnNavPoints;
+        Nav.StopCompass();
+    }
+}
