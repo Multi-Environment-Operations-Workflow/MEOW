@@ -5,26 +5,10 @@ namespace MEOW.Components.Services;
 
 public class MessageService(IBluetoothService bluetooth, IUserStateService userStateService) : IMessageService
 {
-    //private readonly List<string> _messages = new();
-    private readonly List<MeowMessage> _typedMessages = new();
-    private MessageSerializer _serializer = new MessageSerializer();
+    private readonly List<MeowMessage> _messages = new();
+    private MessageSerializer _serializer = new();
 
-    /*
     public async Task<(bool, List<Exception>)> SendMessage(string message)
-    {
-        if (string.IsNullOrWhiteSpace(message))
-        {
-            return (false, [new Exception("Message is empty")]);
-        }
-        var bytes = Encoding.UTF8.GetBytes(userStateService.GetName() + ": " + message);
-
-        //Result from sending message
-        var (anySuccess, allErrors) = await bluetooth.SendToAllAsync(bytes).ConfigureAwait(false);
-        return (anySuccess, allErrors);
-    }
-    */
-
-    public async Task<(bool, List<Exception>)> SendMessageTest(string message)
     {
         if (message is null)
         {
@@ -38,25 +22,14 @@ public class MessageService(IBluetoothService bluetooth, IUserStateService userS
         return (anySuccess, allErrors);
     }
 
-    /*
-    public void SetupMessageReceivedAction(Action<string> onMessage)
-    {
-        bluetooth.DeviceDataReceived += (receivedData) =>
-        {
-            var message = Encoding.UTF8.GetString(receivedData);
-            onMessage(message);
-        };
-    }
-    */
-
-    public void SetupMessageReceivedActionTest<T>(Action<T> onMessage) where T : MeowMessage
+    public void SetupMessageReceivedAction<T>(Action<T> onMessage) where T : MeowMessage
     {
         bluetooth.DeviceDataReceived += (receivedData) =>
         {
             try
             {
                 var message = _serializer.Deserialize(receivedData);
-                _typedMessages.Add(message);
+                _messages.Add(message);
 
                 if (message is T typedMessage)
                 {
@@ -77,5 +50,8 @@ public class MessageService(IBluetoothService bluetooth, IUserStateService userS
         return bluetooth.GetConnectedDevicesCount() + 1;
     }
 
-    //public List<string> GetMessages() => _messages;
+    public List<T> GetMessages<T>() where T : MeowMessage
+    {
+        return _messages.FindAll(m => m is T).Cast<T>().ToList();
+    }
 }

@@ -4,15 +4,11 @@ namespace MEOW.Components.Services;
 
 public interface IMessageService
 {
-    //Task<(bool, List<Exception>)> SendMessage(string message);
-
-    Task<(bool, List<Exception>)> SendMessageTest(string message);
-
-    //void SetupMessageReceivedAction(Action<string> onMessage);
-
-    void SetupMessageReceivedActionTest<T>(Action<T> onMessage) where T : MeowMessage;
+    Task<(bool, List<Exception>)> SendMessage(string message);
+    
+    void SetupMessageReceivedAction<T>(Action<T> onMessage) where T : MeowMessage;
 
     int GetParticipantsCount();
 
-    //List<string> GetMessages();
+    public List<T> GetMessages<T>() where T : MeowMessage;
 }
