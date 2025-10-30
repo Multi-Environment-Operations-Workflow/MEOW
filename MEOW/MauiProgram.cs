@@ -1,4 +1,5 @@
-﻿using MEOW.Components.Services;
+﻿using MatBlazor;
+using MEOW.Components.Services;
 using Microsoft.Extensions.Logging;
 
 namespace MEOW;
@@ -10,11 +11,7 @@ public static class MauiProgram
         var builder = MauiApp.CreateBuilder();
         builder
             .UseMauiApp<App>()
-            .ConfigureFonts(fonts =>
-            {
-                fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
-                fonts.AddFont("MaterialSymbolsOutlined.ttf", "MaterialIcon");
-            });
+            .ConfigureFonts(fonts => { fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular"); });
 
 #if ANDROID
         builder.Services.AddSingleton<IBluetoothService, AndroidBluetoothService>();
@@ -22,9 +19,11 @@ public static class MauiProgram
         builder.Services.AddSingleton<IBluetoothService, IOSBluetoothService>();
 #endif
         builder.Services.AddSingleton<IUserStateService, UserStateService>();
+        
         builder.Services.AddSingleton<IMessageService, MessageService>();
+        
         builder.Services.AddMauiBlazorWebView();
-        builder.Services.AddSingleton<NavService>();
+
 #if DEBUG
         builder.Services.AddBlazorWebViewDeveloperTools();
         builder.Logging.AddDebug();

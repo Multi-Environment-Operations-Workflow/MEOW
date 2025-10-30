@@ -13,9 +13,9 @@
         }
     </div>
 
-    <input @bind="_outgoing" placeholder="Type a message..."/>
-    <button @onclick="SendAsync">Send</button>
-    <button @onclick="GoBack">Back</button>
+    <MatTextField @bind-Value="_outgoing" Label="Send a message"/>
+    <MatButton @onclick="SendAsync">Send</MatButton>
+    <MatButton @onclick="GoBack">Back</MatButton>
 </div>
 
 @code {
@@ -43,6 +43,7 @@
             return Task.CompletedTask;
         }
     }
+
     private async Task SendAsync()
     {
         try
@@ -70,4 +71,5 @@
     {
         Navigation.NavigateTo("/");
     }
+
 }
