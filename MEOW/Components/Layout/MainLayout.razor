@@ -1,20 +1,19 @@
-﻿@inherits LayoutComponentBase
+﻿@using Microsoft.Maui.Controls.PlatformConfiguration
+@inherits LayoutComponentBase
 @inject NavigationManager Navigation
 
-<MatAppBarContainer Style="display: flex; flex-direction: column; height: 100vh;">
+<MatAppBarContainer Style="display: flex; flex-direction: column; height: 100vh">
 
-    <MatAppBarContent Style="flex: 1; overflow-y: auto;">
+    <MatAppBarContent Style="flex: 1 0 auto; overflow-y: auto;">
         @Body
     </MatAppBarContent>
-
-    <MatAppBar Fixed="true" Style="bottom: 0; width: 100%; height: 10vh; position: sticky; z-index: 1000;">
+    <MatAppBar Fixed="true" Style="bottom: 0; width: 100%; height: 10vh; position: sticky; z-index: 1000;  padding-bottom: 1rem;">
         <MatAppBarRow>
-            <MatAppBarSection Style="align-items: center; justify-content: space-around;">
+            <MatAppBarSection class="app-bar-sec" Style="align-items: center; justify-content: space-around;">
                 <MatIconButton Icon="home" @onclick='() => Navigation.NavigateTo("/")'></MatIconButton>
                 <MatIconButton Icon="chat" @onclick='() => Navigation.NavigateTo("/Chat")'></MatIconButton>
                 <MatIconButton Icon="logout" @onclick='() => Navigation.NavigateTo("/logout")'></MatIconButton>
             </MatAppBarSection>
         </MatAppBarRow>
     </MatAppBar>
-
 </MatAppBarContainer>

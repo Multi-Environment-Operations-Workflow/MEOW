@@ -4,6 +4,11 @@
     background-color: #0c4128;
 }
 
+.app-bar-sec > * {
+    width: 45px;
+    height: 45px;
+}
+
 .content {
     padding-bottom: 4rem;
 }
