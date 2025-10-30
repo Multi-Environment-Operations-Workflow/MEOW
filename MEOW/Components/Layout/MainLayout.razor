@@ -1,13 +1,18 @@
 ﻿@inherits LayoutComponentBase
+@inject NavigationManager Navigation
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu/>
-    </div>
+<MatAppBarContainer Style="display: flex; flex-direction: column; height: 100vh">
 
-    <main>
-        <article class="content px-4">
-            @Body
-        </article>
-    </main>
-</div>
+    <MatAppBarContent Style="flex: 1 0 auto; overflow-y: auto;">
+        @Body
+    </MatAppBarContent>
+    <MatAppBar Fixed="true" Style="bottom: 0; width: 100%; height: 10vh; position: sticky; z-index: 1000;  padding-bottom: 1rem;">
+        <MatAppBarRow>
+            <MatAppBarSection class="app-bar-sec" Style="align-items: center; justify-content: space-around;">
+                <MatIconButton Icon="home" @onclick='() => Navigation.NavigateTo("/")'></MatIconButton>
+                <MatIconButton Icon="chat" @onclick='() => Navigation.NavigateTo("/Chat")'></MatIconButton>
+                <MatIconButton Icon="logout" @onclick='() => Navigation.NavigateTo("/logout")'></MatIconButton>
+            </MatAppBarSection>
+        </MatAppBarRow>
+    </MatAppBar>
+</MatAppBarContainer>
