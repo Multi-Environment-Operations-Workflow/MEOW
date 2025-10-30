@@ -110,7 +110,7 @@
     private bool _isPinFormVisible;
     private IBrowserFile? _selectedFile;
 
-    private PinItem _currentPin = new();
+    private PinItem _currentPin = new("", "");
     private List<PinItem> _pinList = new();
     private List<string> list = new();
 
@@ -125,27 +125,10 @@
         }
     }
 
-    private async Task OnFileSelected(InputFileChangeEventArgs e)
-    {
-        _selectedFile = e.File;
-        _currentPin.File = e.File;
-
-        try
-        {
-            await using var stream = _selectedFile.OpenReadStream();
-            var buffer = new byte[_selectedFile.Size];
-            await stream.ReadAsync(buffer);
-            _currentPin.FileDataUrl = $"data:{_selectedFile.ContentType};base64,{Convert.ToBase64String(buffer)}";
-        }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine($"File load error: {ex.Message}");
-        }
-    }
-
     private async Task AddPinAsync()
     {
-        PinService.AddPin(_currentPin);
+        PinItem createPin = new (_currentPin.Title, _currentPin.TextContext);
+        PinService.AddPin(createPin);
         _pinList = await PinService.GetPins();
         ResetForm();
     }
@@ -158,7 +141,8 @@
 
     private void ResetForm()
     {
-        _currentPin = new PinItem();
+        _currentPin.Title = "";
+        _currentPin.TextContext = "";
         _selectedFile = null;
         list.Clear();
     }
