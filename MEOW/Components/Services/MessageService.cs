@@ -15,7 +15,8 @@ public class MessageService(IBluetoothService bluetooth, IUserStateService userS
             return (false, [new Exception("No message")]);
         }
 
-        message.Sender = userStateService.GetName();
+        _messages.Add(message);
+
         var bytes = _serializer.Serialize(message);
 
         var (anySuccess, allErrors) = await bluetooth.SendToAllAsync(bytes).ConfigureAwait(false);
