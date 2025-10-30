@@ -1,5 +1,6 @@
 ﻿@page "/compass"
 @using MEOW.Components.Services
+@using MEOW.Components.UIComponents
 @implements IAsyncDisposable
 @inject NavService Nav
 
@@ -26,7 +27,7 @@
 <button onclick=@(() => Nav.AddDebugPoints(_location, "east"))>Add Debug East</button>
 <button onclick=@(() => Nav.AddDebugPoints(_location, "south"))>Add Debug South</button>
 <button onclick=@(() => Nav.AddDebugPoints(_location, "west"))>Add Debug West</button>
-
+<NavNode/>
 
 @code
 {
