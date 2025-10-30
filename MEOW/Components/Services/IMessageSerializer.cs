@@ -4,6 +4,6 @@ namespace MEOW.Components.Services;
 
 public interface IMessageSerializer
 {
-    byte[] Serialize(IMessage message);
-    IMessage Deserialize(byte[] data);
+    byte[] Serialize(MeowMessage message);
+    MeowMessage Deserialize(byte[] data);
 }

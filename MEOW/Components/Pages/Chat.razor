@@ -8,12 +8,6 @@
 <div class="chat-window">
     <span>Connected devices: @MessageService.GetParticipantsCount()</span>
     <div class="messages">
-        @*
-        @foreach (var m in _messages)
-        {
-            <div>@m</div>
-        }
-        *@
         @foreach (var m in _messages)
         {
             <div><strong>@m.Sender:</strong> @m.Msg</div>
@@ -36,21 +30,12 @@
 
         try
         {
-            /*
-            _messageReceived = message =>
-            {
-            _messages.Add($"{message}");
-            InvokeAsync(StateHasChanged);
-            };
-            */
-
             _messageReceived = message =>
             {
                 _messages.Add(message);
                 InvokeAsync(StateHasChanged);
             };
 
-            //MessageService.SetupMessageReceivedAction(_messageReceived);
             MessageService.SetupMessageReceivedAction<MeowMessageText>(_messageReceived);
 
             return Task.CompletedTask;
@@ -61,6 +46,7 @@
             return Task.CompletedTask;
         }
     }
+
     private async Task SendAsync()
     {
         try
@@ -68,14 +54,10 @@
             if (string.IsNullOrWhiteSpace(_outgoing))
                 return;
 
-            //var result = await MessageService.SendMessage(_outgoing);
-            var test = await MessageService.SendMessage(_outgoing);
-            //_messages.Add(result.Item1 ? $"You: {_outgoing}" : $"<Failed to send>: {_outgoing}");
+            MeowMessageText message = new(_outgoing, MessageService.GetSender());
+
+            var test = await MessageService.SendMessage(message);
             _messages.Add(new MeowMessageText(_outgoing, "You"));
-            //foreach (var exception in result.Item2)
-            //{
-            // _messages.Add($"Error in send: " + exception.Message);
-            //}
 
             _outgoing = string.Empty;
             await InvokeAsync(StateHasChanged);

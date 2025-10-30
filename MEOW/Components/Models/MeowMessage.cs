@@ -1,11 +1,5 @@
 namespace MEOW.Components.Models;
 
-public interface IMessage
-{
-    MessageType Type { get; }
-    public string Sender { get; set; }
-}
-
 public enum MessageType
 {
     CONNECTED,
@@ -15,38 +9,22 @@ public enum MessageType
     TEXT,
 }
 
-public abstract class MeowMessage : IMessage
+public abstract class MeowMessage(string sender)
 {
     public abstract MessageType Type { get; }
-    public string Sender { get; set; }
-
-    protected MeowMessage(string sender)
-    {
-        Sender = sender;
-    }
+    public string Sender { get; set; } = sender;
 }
 
-public class MeowMessageText : MeowMessage
+public class MeowMessageText(string msg, string sender) : MeowMessage(sender)
 {
     public override MessageType Type => MessageType.TEXT;
-    public string Msg { get; set; }
+    public string Msg { get; set; } = msg;
     public bool HasSeen { get; set; } = false;
-
-    public MeowMessageText(string msg, string sender) : base(sender)
-    {
-        Msg = msg;
-    }
 }
 
-public class MeowMessageGps : MeowMessage
+public class MeowMessageGps(string sender, float longitude, float latitude) : MeowMessage(sender)
 {
     public override MessageType Type => MessageType.GPS;
-    public float Longitude { get; set; }
-    public float Latitude { get; set; }
-
-    public MeowMessageGps(string sender, float longitude, float latitude) : base(sender)
-    {
-        Longitude = longitude;
-        Latitude = latitude;
-    }
+    public float Longitude { get; set; } = longitude;
+    public float Latitude { get; set; } = latitude;
 }

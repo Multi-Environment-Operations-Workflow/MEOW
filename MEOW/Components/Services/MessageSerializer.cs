@@ -1,22 +1,24 @@
 using System.Text;
 using System.Text.Json;
 using MEOW.Components.Models;
-using MEOW.Components.Services;
 
 namespace MEOW.Components.Services;
 
 public class MessageSerializer : IMessageSerializer
 {
-    public byte[] Serialize(IMessage message)
+    // Serializes a MeowMessage to JSON and returns it as a byte array
+    public byte[] Serialize(MeowMessage message)
     {
         var json = JsonSerializer.Serialize(message, message.GetType());
         return Encoding.UTF8.GetBytes(json);
     }
 
-    public IMessage Deserialize(byte[] data)
+    // Deserializes a byte array into an object
+    public MeowMessage Deserialize(byte[] data)
     {
         var json = Encoding.UTF8.GetString(data);
 
+        // Tries to retrieve the Type field to know which class to deserialize to
         using var document = JsonDocument.Parse(json);
         if (document.RootElement.TryGetProperty("Type", out var typeElement))
         {

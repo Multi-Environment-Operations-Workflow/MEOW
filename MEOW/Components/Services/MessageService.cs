@@ -1,28 +1,29 @@
-using System.Text;
 using MEOW.Components.Models;
 
 namespace MEOW.Components.Services;
 
 public class MessageService(IBluetoothService bluetooth, IUserStateService userStateService) : IMessageService
 {
-    private readonly List<IMessage> _messages = new();
-    private MessageSerializer _serializer = new();
+    private readonly List<MeowMessage> _messages = new();
+    private readonly MessageSerializer _serializer = new();
 
-    public async Task<(bool, List<Exception>)> SendMessage(string message)
+    // Sends a message using the bluetooth service
+    public async Task<(bool, List<Exception>)> SendMessage(MeowMessage message)
     {
         if (message is null)
         {
             return (false, [new Exception("No message")]);
         }
 
-        MeowMessageText _message = new(message, userStateService.GetName());
-        var bytes = _serializer.Serialize(_message);
+        message.Sender = userStateService.GetName();
+        var bytes = _serializer.Serialize(message);
 
         var (anySuccess, allErrors) = await bluetooth.SendToAllAsync(bytes).ConfigureAwait(false);
         return (anySuccess, allErrors);
     }
 
-    public void SetupMessageReceivedAction<T>(Action<T> onMessage) where T : IMessage
+    // Sets up actions when messages are received
+    public void SetupMessageReceivedAction<T>(Action<T> onMessage) where T : MeowMessage
     {
         bluetooth.DeviceDataReceived += (receivedData) =>
         {
@@ -31,6 +32,8 @@ public class MessageService(IBluetoothService bluetooth, IUserStateService userS
                 var message = _serializer.Deserialize(receivedData);
                 _messages.Add(message);
 
+                // Only send messages of type T to actions that wants that type
+                // e.g if a service wants MeowMessageText, it will only receive those
                 if (message is T typedMessage)
                 {
                     onMessage((T)message);
@@ -50,8 +53,15 @@ public class MessageService(IBluetoothService bluetooth, IUserStateService userS
         return bluetooth.GetConnectedDevicesCount() + 1;
     }
 
-    public List<T> GetMessages<T>() where T : IMessage
+    // Returns only messages of the specified types
+    public List<T> GetMessages<T>() where T : MeowMessage
     {
         return _messages.FindAll(m => m is T).Cast<T>().ToList();
+    }
+
+    // Returns the name of the sender
+    public string GetSender()
+    {
+        return userStateService.GetName();
     }
 }
