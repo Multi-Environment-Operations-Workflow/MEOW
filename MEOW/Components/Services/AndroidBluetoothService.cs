@@ -40,8 +40,6 @@ namespace MEOW.Components.Services
 
         // instance af Bluetooth-adapteren, som håndterer scanning, forbindelser osv.
         private readonly IAdapter _adapter = CrossBluetoothLE.Current.Adapter;
-        public event Action? PeerConnected;
-        public event Action<byte[]>? DeviceDataReceived;
 
         // Enum vi bruger til at holde styr på advertising state. 
         // AdvertisingStateChanged eventet bruges til at informere UI'et om ændringer i advertising status.
@@ -352,22 +350,6 @@ namespace MEOW.Components.Services
 
             status = await Permissions.RequestAsync<Permissions.Bluetooth>();
             return status == PermissionStatus.Granted;
-        }
-
-        
-        public int GetConnectedDevicesCount()
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<(bool anySuccess, List<Exception> allErrors)> SendToAllAsync(byte[] data)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task StartAdvertisingAsync(string name)
-        {
-            throw new NotImplementedException();
         }
     }
 

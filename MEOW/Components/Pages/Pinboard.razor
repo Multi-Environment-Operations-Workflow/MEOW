@@ -2,7 +2,7 @@
 @using MEOW.Components.Models
 @inject Services.PinService PinService
 
-<link href="../wwwroot/css/pinboard.css" rel="stylesheet" />
+<link href="wwwroot/css/Pinboard.razor.css" rel="stylesheet" />
 <button @onclick="TogglePinVisibility">@(_isPinFormVisible ? "Hide pin module" : "Add pin")</button>
 
 @if (_isPinFormVisible)
