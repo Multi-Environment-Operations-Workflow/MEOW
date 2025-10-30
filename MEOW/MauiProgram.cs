@@ -1,4 +1,5 @@
-﻿using MEOW.Components.Services;
+﻿using MatBlazor;
+using MEOW.Components.Services;
 using Microsoft.Extensions.Logging;
 
 namespace MEOW;
@@ -24,6 +25,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<IMessageService, MessageService>();
         
         builder.Services.AddMauiBlazorWebView();
+        builder.Services.AddMatBlazor();
 
 #if DEBUG
         builder.Services.AddBlazorWebViewDeveloperTools();

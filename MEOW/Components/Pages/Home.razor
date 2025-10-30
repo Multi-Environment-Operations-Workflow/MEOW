@@ -16,9 +16,9 @@
 }
 
 <div class="button-bar">
-    <button class="action-button" @onclick="ScanAsync">🔍 Scan for Devices</button>
-    <button class="advertise-button" @onclick="StartAdvertisingAsync">📡 Start Advertising</button>
-    <button class="stop-button" @onclick="StopAdvertisingAsync">🛑 Stop Advertising</button>
+    <MatButton class="action-button" @onclick="ScanAsync">🔍 Scan for Devices</MatButton>
+    <MatButton class="advertise-button" @onclick="StartAdvertisingAsync">📡 Start Advertising</MatButton>
+    <MatButton class="stop-button" @onclick="StopAdvertisingAsync">🛑 Stop Advertising</MatButton>
 </div>
 
 @if (_isScanning)
@@ -40,9 +40,9 @@ else
         @foreach (var d in _devices)
         {
             <li>
-                <button class="device-button" @onclick="() => ConnectAsync(d)">
+                <MatButton class="device-button" @onclick="() => ConnectAsync(d)">
                     @GetDeviceDisplay(d)
-                </button>
+                </MatButton>
             </li>
         }
     </ul>
