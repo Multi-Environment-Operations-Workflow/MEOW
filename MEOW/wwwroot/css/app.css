@@ -1,6 +1,8 @@
-﻿/*#if (SampleContent)*/
-html, body {
+﻿html, body {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    overscroll-behavior: none;
 }
 
 a, .btn-link {
