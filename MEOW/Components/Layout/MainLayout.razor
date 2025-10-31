@@ -10,7 +10,6 @@
 else
 {
     <MatAppBarContainer Style="display: flex; flex-direction: column; height: 100vh">
-
         <MatAppBarContent Style="flex: 1 0 auto; overflow-y: auto;">
             @Body
         </MatAppBarContent>
@@ -19,6 +18,7 @@ else
                 <MatAppBarSection class="app-bar-sec" Style="align-items: center; justify-content: space-around;">
                     <MatIconButton Icon="home" @onclick='() => Navigation.NavigateTo("/")'></MatIconButton>
                     <MatIconButton Icon="chat" @onclick='() => Navigation.NavigateTo("/Chat")'></MatIconButton>
+                    <MatIconButton Icon="dashboard" @onclick='() => Navigation.NavigateTo("/Pinboard")'></MatIconButton>
                     <MatIconButton Icon="more" @onclick='() => Navigation.NavigateTo("/MeshDiagram")'></MatIconButton>
                     <MatIconButton Icon="logout" @onclick='Logout'></MatIconButton>
                 </MatAppBarSection>

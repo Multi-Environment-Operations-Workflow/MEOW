@@ -20,6 +20,8 @@ public static class MauiProgram
 #endif
         builder.Services.AddSingleton<IUserStateService, UserStateService>();
         
+        builder.Services.AddSingleton<PinService>();
+        
         builder.Services.AddSingleton<IMessageService, MessageService>();
         
         builder.Services.AddMauiBlazorWebView();
