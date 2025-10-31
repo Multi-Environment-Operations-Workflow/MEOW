@@ -1,10 +1,18 @@
-@page "/pinboard"
+@page "/Pinboard"
+@using System.Diagnostics
+@using MEOW.Components.DTO_s
 @using MEOW.Components.Models
 @inject Services.PinService PinService
 
-<link href="wwwroot/css/Pinboard.razor.css" rel="stylesheet" />
-
 <MatCard Class="p-6 m-4">
+    
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <MatCard Class="mb-4 p-4 bg-red-100 text-red-800">
+            <MatIcon>error</MatIcon>
+            <span class="ml-2">@_errorMessage</span>
+        </MatCard>
+    }
 
     <MatButton Raised="true" OnClick="TogglePinVisibility" Icon="add_circle_outline">
         @(_isPinFormVisible ? "Hide Pin Module" : "Add Pin")
@@ -14,51 +22,39 @@
     {
         <MatCard Class="mt-4 p-4">
 
-            <EditForm Model="@_currentPin" OnValidSubmit="AddPinAsync">
-                <DataAnnotationsValidator />
+            <EditForm Model="@_currentPin" OnValidSubmit="AddPin">
+                <DataAnnotationsValidator/>
 
                 <MatTextField Label="Title"
                               @bind-Value="_currentPin.Title"
                               Required="true"
                               FullWidth="true"
-                              Class="mb-4" />
-                <ValidationMessage For="@(() => _currentPin.Title)" />
+                              Class="mb-4"/>
+                <ValidationMessage For="@(() => _currentPin.Title)"/>
 
                 <MatTextField Label="Context"
                               @bind-Value="_currentPin.TextContext"
                               TextArea="true"
                               Rows="5"
                               FullWidth="true"
-                              Class="mb-4" />
-                <ValidationMessage For="@(() => _currentPin.TextContext)" />
+                              Class="mb-4"/>
+                <ValidationMessage For="@(() => _currentPin.TextContext)"/>
 
-                <MatDivider Class="my-3" />
+                <MatDivider Class="my-3"/>
 
                 <MatFileUpload OnChange="@FilesReady"
                                Label="Drop a file or browse"
                                Icon="cloud_upload"
-                               Accept="image/*" />
+                               Accept="image/*"/>
 
-                @if (list.Any())
-                {
-                    <MatList Class="mt-2">
-                        @foreach (var f in list)
-                        {
-                            <MatListItem>@f</MatListItem>
-                        }
-                    </MatList>
-                }
-
-                @if (!string.IsNullOrEmpty(_currentPin.FileDataUrl))
+                @if (_currentPin.FileData != null)
                 {
                     <div class="mt-3 flex justify-center">
-                        <img src="@_currentPin.FileDataUrl"
-                             alt="Preview"
-                             style="max-width:150px;border-radius:8px;" />
+                        <img src="data:image/png;base64,@_currentPin.FileData" style="max-width:150px;border-radius:8px;"/>
                     </div>
                 }
 
-                <MatDivider Class="my-4" />
+                <MatDivider Class="my-4"/>
 
                 <MatButton Raised="true" Icon="add_task" Type="submit" Color="MatThemeColor.Primary">
                     Create Pin
@@ -67,7 +63,7 @@
         </MatCard>
     }
 
-    <MatDivider Class="my-6" />
+    <MatDivider Class="my-6"/>
 
     @if (!_pinList.Any())
     {
@@ -85,19 +81,17 @@
                         <h3 class="font-semibold text-lg mb-1">@pin.Title</h3>
                         <p class="text-sm text-gray-700 mb-2">@pin.TextContext</p>
 
-                        @if (!string.IsNullOrEmpty(pin.FileDataUrl))
+                        @if (pin.FileData != null)
                         {
-                            <img src="@pin.FileDataUrl"
-                                 alt="image"
-                                 style="max-width:120px;border-radius:8px;" />
+                            <img src="data:image/png;base64,@pin.FileData" style="max-width:120px;border-radius:8px;"/>
                         }
                     </div>
 
                     <div class="flex items-start">
                         <MatIconButton Icon="delete_forever"
-                                       OnClick="@(() => RemovePinAsync(pin))"
+                                       OnClick="@(() => RemovePin(pin))"
                                        Color="MatThemeColor.Secondary"
-                                       Title="Delete pin" />
+                                       Title="Delete pin"/>
                     </div>
                 </MatCard>
             }
@@ -108,47 +102,69 @@
 
 @code {
     private bool _isPinFormVisible;
-    private IBrowserFile? _selectedFile;
+    private string _errorMessage = string.Empty;
 
-    private PinItem _currentPin = new("", "");
+    private PinItemDto _currentPin = new();
     private List<PinItem> _pinList = new();
-    private List<string> list = new();
 
-    private void TogglePinVisibility() => _isPinFormVisible = !_isPinFormVisible;
+    public void TogglePinVisibility() => _isPinFormVisible = !_isPinFormVisible;
 
-    private void FilesReady(IMatFileUploadEntry[] files)
+    
+    async Task FilesReady(IMatFileUploadEntry[] files)
     {
-        list.Clear();
-        foreach (var file in files)
+        try
         {
-            list.Add($"Name: {file.Name} - Size: {file.Size}");
+            var file = files.FirstOrDefault();
+            if (file == null)
+            {
+                return;
+            }
+
+            var stream = new MemoryStream();
+            var sw = Stopwatch.StartNew();
+            await file.WriteToStreamAsync(stream);
+            sw.Stop();
+            _currentPin.FileData = Convert.ToBase64String(stream.ToArray());
+        }
+        catch (Exception e)
+        {
+            _errorMessage = $"Error:\r\n{e.Message}\r\n{e.StackTrace}";
+        }
+        finally
+        {
+            await InvokeAsync(StateHasChanged);
         }
     }
 
-    private async Task AddPinAsync()
+    private void AddPin()
     {
-        PinItem createPin = new (_currentPin.Title, _currentPin.TextContext);
-        PinService.AddPin(createPin);
-        _pinList = await PinService.GetPins();
-        ResetForm();
+        try
+        {
+            var createPin = new PinItem(_currentPin.Title, _currentPin.TextContext, _currentPin.FileData);
+            PinService.AddPin(createPin);
+            _pinList = PinService.GetPins();
+            ResetForm();
+        }
+        catch (Exception e)
+        {
+            _errorMessage = $"Error:\r\n{e.Message}\r\n{e.StackTrace}";
+        }
     }
 
-    private async Task RemovePinAsync(PinItem pin)
+    private void RemovePin(PinItem pin)
     {
         PinService.RemovePin(pin);
-        _pinList = await PinService.GetPins();
+        _pinList = PinService.GetPins();
     }
 
     private void ResetForm()
     {
-        _currentPin.Title = "";
-        _currentPin.TextContext = "";
-        _selectedFile = null;
-        list.Clear();
+        _currentPin = new PinItemDto();
     }
 
-    protected override async Task OnInitializedAsync()
+    protected override Task OnInitializedAsync()
     {
-        _pinList = await PinService.GetPins();
+        _pinList = PinService.GetPins();
+        return base.OnInitializedAsync();
     }
 }

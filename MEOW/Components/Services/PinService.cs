@@ -16,9 +16,9 @@ public class PinService : IPinService
         _pins.Remove(pin);
     }
 
-    public Task<List<PinItem>> GetPins()
+    public List<PinItem> GetPins()
     {
-        return Task.FromResult(_pins.ToList());
+        return _pins.ToList();
     }
 
     public Task<bool> SendPinMetadataAsync(PinItem pin) => throw new NotImplementedException();
