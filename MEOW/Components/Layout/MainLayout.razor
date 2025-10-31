@@ -1,13 +1,36 @@
-﻿@inherits LayoutComponentBase
+﻿@using MEOW.Components.Services
+@inherits LayoutComponentBase
+@inject NavigationManager Navigation
+@inject IUserStateService UserStateService
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu/>
-    </div>
-
-    <main>
-        <article class="content px-4">
+@if (!UserStateService.IsLoggedIn())
+{
+    @Body
+}
+else
+{
+    <MatAppBarContainer Style="display: flex; flex-direction: column; height: 100vh">
+        <MatAppBarContent Style="flex: 1 0 auto; overflow-y: auto;">
             @Body
-        </article>
-    </main>
-</div>
+        </MatAppBarContent>
+        <MatAppBar Fixed="true" Style="bottom: 0; width: 100%; height: 10vh; position: sticky; z-index: 1000;  padding-bottom: 1rem;">
+            <MatAppBarRow>
+                <MatAppBarSection class="app-bar-sec" Style="align-items: center; justify-content: space-around;">
+                    <MatIconButton Icon="home" @onclick='() => Navigation.NavigateTo("/")'></MatIconButton>
+                    <MatIconButton Icon="chat" @onclick='() => Navigation.NavigateTo("/Chat")'></MatIconButton>
+                    <MatIconButton Icon="dashboard" @onclick='() => Navigation.NavigateTo("/Pinboard")'></MatIconButton>
+                    <MatIconButton Icon="more" @onclick='() => Navigation.NavigateTo("/MeshDiagram")'></MatIconButton>
+                    <MatIconButton Icon="logout" @onclick='Logout'></MatIconButton>
+                </MatAppBarSection>
+            </MatAppBarRow>
+        </MatAppBar>
+    </MatAppBarContainer>
+}
+
+@code {
+    public void Logout()
+    {
+        UserStateService.ResetState();
+        Navigation.NavigateTo("/login");
+    }
+}

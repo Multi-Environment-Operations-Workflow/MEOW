@@ -1,4 +1,3 @@
-using System.Text;
 using MEOW.Components.Models;
 
 namespace MEOW.Components.Services;
@@ -6,17 +5,19 @@ namespace MEOW.Components.Services;
 public class MessageService(IBluetoothService bluetooth, IUserStateService userStateService) : IMessageService
 {
     private readonly List<MeowMessage> _messages = new();
-    private MessageSerializer _serializer = new();
+    private readonly MessageSerializer _serializer = new();
 
-    public async Task<(bool, List<Exception>)> SendMessage(string message)
+    // Sends a message using the bluetooth service
+    public async Task<(bool, List<Exception>)> SendMessage(MeowMessage message)
     {
         if (message is null)
         {
             return (false, [new Exception("No message")]);
         }
 
-        MeowMessageText _message = new(message, userStateService.GetName());
-        var bytes = _serializer.Serialize(_message);
+        _messages.Add(message);
+
+        var bytes = _serializer.Serialize(message);
 
         var (anySuccess, allErrors) = await bluetooth.SendToAllAsync(bytes).ConfigureAwait(false);
         return (anySuccess, allErrors);
@@ -31,6 +32,8 @@ public class MessageService(IBluetoothService bluetooth, IUserStateService userS
                 var message = _serializer.Deserialize(receivedData);
                 _messages.Add(message);
 
+                // Only send messages of type T to actions that wants that type
+                // e.g if a service wants MeowMessageText, it will only receive those
                 if (message is T typedMessage)
                 {
                     onMessage((T)message);
@@ -53,5 +56,10 @@ public class MessageService(IBluetoothService bluetooth, IUserStateService userS
     public List<T> GetMessages<T>() where T : MeowMessage
     {
         return _messages.FindAll(m => m is T).Cast<T>().ToList();
+    }
+
+    public string GetSender()
+    {
+        return userStateService.GetName();
     }
 }
