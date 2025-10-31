@@ -20,7 +20,7 @@ public static class MauiProgram
 #endif
         builder.Services.AddSingleton<IUserStateService, UserStateService>();
         
-        builder.Services.AddSingleton<PinService>();
+        builder.Services.AddSingleton<IPinService, PinService>();
         
         builder.Services.AddSingleton<IMessageService, MessageService>();
         
