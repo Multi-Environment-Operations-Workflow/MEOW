@@ -15,11 +15,10 @@ public abstract class MeowMessage(string sender)
     public string Sender { get; set; } = sender;
 }
 
-public class MeowMessageText(string msg, string sender) : MeowMessage(sender)
+public class MeowMessageText(string message, string sender) : MeowMessage(sender)
 {
     public override MessageType Type => MessageType.TEXT;
-    public string Msg { get; set; } = msg;
-    public bool HasSeen { get; set; } = false;
+    public string Message { get; set; } = message;
 }
 
 public class MeowMessageGps(string sender, float longitude, float latitude) : MeowMessage(sender)

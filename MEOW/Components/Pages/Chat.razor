@@ -10,11 +10,11 @@
     <div class="messages">
         @foreach (var m in _messages)
         {
-            <div><strong>@m.Sender:</strong> @m.Msg</div>
+            <div><strong>@m.Sender:</strong> @m.Message</div>
         }
     </div>
 
-    <MatTextField @bind-Value="_outgoing" Label="Send a message"/>
+    <MatTextField @bind-Value="_outgoing" Label="Send a message" />
     <MatButton @onclick="SendAsync">Send</MatButton>
     <MatButton @onclick="GoBack">Back</MatButton>
 </div>
@@ -56,7 +56,7 @@
 
             MeowMessageText message = new(_outgoing, MessageService.GetSender());
 
-            var test = await MessageService.SendMessage(message);
+            var result = await MessageService.SendMessage(message);
             _messages.Add(new MeowMessageText(_outgoing, "You"));
 
             _outgoing = string.Empty;
