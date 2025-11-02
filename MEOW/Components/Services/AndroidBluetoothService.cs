@@ -70,7 +70,11 @@ namespace MEOW.Components.Services
 
         // Lokal GATT-server så Android kan modtage beskeder. Er "client" i forhold til peripheral server forholdet. 
         private MeowAndroidGattServer? _gattServer;
-
+        
+        private readonly HashSet<string> _receivedMessageIds = new(); // Vi skal holde styr på id´er vi har modtaget fra (controlled flod)
+        private static long _msgCounter = 0;
+        private readonly object _lock = new(); // Flere id´er må ikke blive tilføjet samtidig samtidig. Kunne ske vis flere noder er konnectet samtidig. 
+        
         public int GetConnectedDevicesCount()
         {
             return _adapter.ConnectedDevices?.Count ?? 0;
@@ -81,7 +85,30 @@ namespace MEOW.Components.Services
         {
             var anySuccess = false;
             var exceptions = new List<Exception>();
+        
+            // laver beskeden til string, så vi kan tjekke om den har id
+            var msg = System.Text.Encoding.UTF8.GetString(data);
+            // Vis det er os der sender beskeden så kommer vi herind. Da det betyder vores besked ikke har nogen header.
+            if (!msg.Contains('\n'))
+            {
+                // til at hente vores navn. Fx Carl så vi kan sætte det foran i vores header
+                var btManager = (BluetoothManager)Android.App.Application.Context.GetSystemService(Context.BluetoothService)!;
+                var btAdapter = btManager.Adapter;
+                var nodeName = btAdapter?.Name ?? "UnknownNode";
 
+                // Lav et unikt ID for denne besked.  Lægger vores id sammen med resten af vores besked.
+                var time = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                var id = $"{nodeName}_{time}_{System.Threading.Interlocked.Increment(ref _msgCounter)}";
+                msg = id + "\n" + msg;
+                data = System.Text.Encoding.UTF8.GetBytes(msg);
+
+                // Husk at markere som set, så vi ikke får den tilbage. Du kan jo modtage fra flere devices på en gang. 
+                // Så vi skal sørger for at der ikke er 2 der prøver at skrive samme id 2 gange. Samtidigt. 
+                lock (_lock)
+                {
+                    _receivedMessageIds.Add(id);
+                }
+            }
             // Send som CENTRAL/server/host til allerede forbundne enheder (Plugin.BLE)
             foreach (var device in _adapter.ConnectedDevices.ToList())
             {
@@ -159,7 +186,39 @@ namespace MEOW.Components.Services
 
             // 1) GATT-server (peripheral) – samme service/char UUIDs som iOS
             _gattServer = new MeowAndroidGattServer(Android.App.Application.Context);
-            _gattServer.MessageReceived += bytes => DeviceDataReceived?.Invoke(bytes);
+
+            // Når vi skal modtage beskeder skal vi så igen gemme id. også sende beskden videre vis ikke vi har den.
+            _gattServer.MessageReceived += bytes =>
+            {
+                try
+                {
+                    // Vi fjerner headeren fra beskeden. Altså id. 
+                    var msg = System.Text.Encoding.UTF8.GetString(bytes);
+                    var split = msg.IndexOf('\n');
+                    if (split <= 0) return;
+
+                    var msgId = msg.Substring(0, split);
+                    var payload = msg.Substring(split + 1);
+
+                    lock (_lock)
+                    {
+                        if (_receivedMessageIds.Contains(msgId))
+                            return; // vi har allerede haft denne besked, så gør vi kke noget.
+                        _receivedMessageIds.Add(msgId); // ellers tilføjer vi id fra beskeden
+                    }
+
+                    // laver det tilbagde til bytes, for ikke at ændre på hvad vi sender op til front end.
+                    DeviceDataReceived?.Invoke(System.Text.Encoding.UTF8.GetBytes(payload));
+
+                    // Send den videre ud i netværket
+                    _ = SendToAllAsync(bytes);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Mesh handle error: {ex.Message}");
+                }
+            };
+
             // Start håndtering af GATT-requests
             _gattServer.Start();
 
