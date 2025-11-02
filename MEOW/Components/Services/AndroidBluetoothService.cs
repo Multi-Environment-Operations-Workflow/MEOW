@@ -10,6 +10,7 @@ using Android.Content;
 using Plugin.BLE.Abstractions.Exceptions;
 using Plugin.BLE.Abstractions;
 using Java.Util;
+using Plugin.BLE.Abstractions.EventArgs;
 
 namespace MEOW.Components.Services
 {
@@ -75,6 +76,10 @@ namespace MEOW.Components.Services
         private static long _msgCounter = 0;
         private readonly object _lock = new(); // Flere id´er må ikke blive tilføjet samtidig samtidig. Kunne ske vis flere noder er konnectet samtidig. 
         
+        // For at ungå dupes
+        private bool _isAdvertising = false;
+        private bool _isScanning = false;
+
         public int GetConnectedDevicesCount()
         {
             return _adapter.ConnectedDevices?.Count ?? 0;
@@ -177,6 +182,14 @@ namespace MEOW.Components.Services
         // IBluetoothService.StartAdvertisingAsync
         public async Task StartAdvertisingAsync(string name)
         {
+            // Giver jo ikke mening at starte flere scannere op.
+            if (_isAdvertising)
+            {
+                AdvertisingStateChanged?.Invoke(AdvertisingState.Failed, "Already advertising");
+                return;
+            }
+            _isAdvertising = true;
+
             // Start GATT-server først (så write-requests kan modtages)
             if (!await CheckPermissions())
             {
@@ -309,31 +322,35 @@ namespace MEOW.Components.Services
         {
             await CheckPermissions();
 
-            Devices.Clear(); // Vi fjerner alle tidigere devices før en ny scan. !! Kan give problemer måske
-            //betyder denne logik ikke at vi Skal connecte til alle devices før vi hopper i en chat, for ellers skal vi connecte til alle igen for at tilføje et nyt medlem?
+            Devices.Clear(); // Når vi scanner ønsker vi at fjerne dem som allerede er på listen.
+        
             if (_bluetooth == null || _adapter == null)
                 throw new InvalidOperationException("Bluetooth not initialized");
 
             if (!_bluetooth.IsOn)
                 throw new Exception("Bluetooth is off");
 
-            var foundDevices = new List<IDevice>();
-            _adapter.DeviceDiscovered += (s, a) => // Event der sker hver gang en enhed bliver fundet under scanning
-            {
-                if (!foundDevices.Contains(a.Device))
-                {
-                    foundDevices.Add(a.Device);
-                    if (a.Device.Name != null)
-                    {// Vi fjerner (MEOW) fra navnet, ser pænere ud i UI'et. Det er så genialt at det bare kommer med alt. 
-                        var device = new MeowDevice(a.Device.Name, a.Device.Id, a.Device);
-                        device.Name = device.Name.Replace("(MEOW) ", "").Trim();
-                        Devices.Add(device);
-                    }
-                }
-            };
+            // Vi fjerner ældre event og tilføjer vores nye. 
+            _adapter.DeviceDiscovered -= OnDeviceDiscovered; 
+            _adapter.DeviceDiscovered += OnDeviceDiscovered; 
+
             await _adapter.StartScanningForDevicesAsync();
             return true;
         }
+
+        private void OnDeviceDiscovered(object? s, Plugin.BLE.Abstractions.EventArgs.DeviceEventArgs a) 
+        { // Tjekker om vi allerede har den. Vis vi har gør vi ikke noget. Ellers tilføjer vi den til vores liste.
+            if (Devices.Any(d => d.Id == a.Device.Id)) 
+                return; 
+                                                        
+            if (a.Device.Name != null) 
+            { 
+                var device = new MeowDevice(a.Device.Name, a.Device.Id, a.Device); 
+                device.Name = device.Name.Replace("(MEOW) ", "").Trim(); 
+                Devices.Add(device); 
+            } 
+        } 
+
 
         async public Task ConnectAsync(MeowDevice device)
         {
@@ -362,18 +379,50 @@ namespace MEOW.Components.Services
         {
             try
             {
-                _bleAdvertiser?.StopAdvertising(_advertisingCallback);
+                //  Stop aktiv scanning, hvis en kører. Virker delvist
+                if (_isScanning) 
+                { 
+                    try
+                    { 
+                        if (_adapter.IsScanning) 
+                            _adapter.StopScanningForDevicesAsync(); 
+                    } 
+                    catch (Exception ex) 
+                    {
+                        System.Diagnostics.Debug.WriteLine($"StopScanning error: {ex.Message}"); 
+                    } 
+                    finally 
+                    { 
+                        _isScanning = false; 
+                        _adapter.DeviceDiscovered -= OnDeviceDiscovered; // Fjerner handles fordi vi også stopper scanning.  
+                    } 
+                } 
+
+                // Vis ikke vi cleare den risikere vi den går med over. Måske. Skal jeg lige teste !TODO
+                Devices.Clear(); 
+
+                if (_bleAdvertiser != null && _advertisingCallback != null) 
+                {
+                    try { _bleAdvertiser.StopAdvertising(_advertisingCallback); }
+                    catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"StopAdvertising error: {ex.Message}"); }
+                }
+
                 _gattServer?.Stop();
                 _gattServer = null;
+
+                _advertisingCallback = null;
+                _isAdvertising = false;
 
                 AdvertisingStateChanged?.Invoke(AdvertisingState.Stopped, "Advertising stopped");
             }
             catch (Exception ex)
             {
-                AdvertisingStateChanged?.Invoke(AdvertisingState.Failed, $"Failed to stop advertising: {ex.Message}");
+                AdvertisingStateChanged?.Invoke(AdvertisingState.Failed, $"Failed to stop advertising: {ex.Message}"); // kan fx ske vis den ikke advetizer til at starte med.
+                _isAdvertising = false;
+                _advertisingCallback = null;
+                _adapter.DeviceDiscovered -= OnDeviceDiscovered;
+                _isScanning = false; 
             }
-
-            _advertisingCallback = null;
 
             return Task.CompletedTask;
         }
