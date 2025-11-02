@@ -1,4 +1,6 @@
 ﻿@page "/counter"
+@using MEOW.Components.Models
+@inject Services.IBluetoothService BluetoothService
 
 <h1>Counter</h1>
 
@@ -6,12 +8,46 @@
 
 <MatButton class="btn btn-primary" @onclick="IncrementCount">Click me</MatButton>
 
+<hr />
+
+<h3>Bluetooth-status</h3>
+
+<p>Forbundne enheder: @connectedCount</p>
+
+@if (BluetoothService.Devices is { Count: > 0 })
+{
+    <ul>
+        @foreach (var d in BluetoothService.Devices)
+        {
+            <li>@d.Name (@d.Id)</li>
+        }
+    </ul>
+}
+else
+{
+    <p>Ingen enheder fundet endnu.</p>
+}
+
+<MatButton class="btn btn-secondary" @onclick="RefreshConnections">Opdater</MatButton>
+
 @code {
     private int currentCount = 0;
+    private int connectedCount;
 
     private void IncrementCount()
     {
         currentCount++;
     }
 
+    protected override void OnInitialized()
+    {
+        RefreshConnections();
+        // opdatér UI automatisk hvis Devices ændrer sig
+        BluetoothService.Devices.CollectionChanged += (_, __) => InvokeAsync(StateHasChanged);
+    }
+
+    private void RefreshConnections()
+    {
+        connectedCount = BluetoothService.GetConnectedDevicesCount();
+    }
 }
