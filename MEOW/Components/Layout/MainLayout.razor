@@ -2,6 +2,7 @@
 @inherits LayoutComponentBase
 @inject NavigationManager Navigation
 @inject IUserStateService UserStateService
+@inject IChatService ChatService
 
 @if (!UserStateService.IsLoggedIn())
 {
@@ -28,6 +29,12 @@ else
 }
 
 @code {
+    protected override Task OnInitializedAsync()
+    {
+        ChatService.Initialize();
+        return base.OnInitializedAsync();
+    }
+    
     public void Logout()
     {
         UserStateService.ResetState();

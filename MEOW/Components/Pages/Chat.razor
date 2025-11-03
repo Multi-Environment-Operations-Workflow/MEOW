@@ -1,12 +1,13 @@
 @page "/Chat"
-@using MEOW.Components.Models;
-@inject Services.IMessageService MessageService
+@using MEOW.Components.Models
+@using MEOW.Components.Services
+@inject IChatService ChatService
 @inject NavigationManager Navigation
 
 <h3>Chat</h3>
 
 <div class="chat-window">
-    <span>Connected devices: @MessageService.GetParticipantsCount()</span>
+    <span>Connected devices: @ChatService.GetChatParticipantsCount()</span>
     <div class="messages">
         @foreach (var m in _messages)
         {
@@ -22,29 +23,27 @@
 @code {
     private string _outgoing = string.Empty;
     private List<MeowMessageText> _messages = new();
-    private Action<MeowMessageText>? _messageReceived;
 
     protected override Task OnInitializedAsync()
     {
-        _messages = MessageService.GetMessages<MeowMessageText>();
-
         try
         {
-            _messageReceived = message =>
-            {
-                _messages.Add(message);
-                InvokeAsync(StateHasChanged);
-            };
+            _messages = ChatService.GetChatMessages();
+            ChatService.SetupChatMessageReceivedAction(OnMessageReceived);
 
-            MessageService.SetupMessageReceivedAction<MeowMessageText>(_messageReceived);
-
-            return Task.CompletedTask;
+            return base.OnInitializedAsync();
         }
         catch (Exception e)
         {
-            _messages.Add(new MeowMessageText(e.Message, "error"));
-            return Task.CompletedTask;
+            _messages.Add(new MeowMessageText("Error initializing chat: " + e.Message, "error"));
+            return base.OnInitializedAsync();
         }
+    }
+    
+    private void OnMessageReceived(MeowMessageText message)
+    {
+        _messages.Add(message);
+        InvokeAsync(StateHasChanged);
     }
 
     private async Task SendAsync()
@@ -53,11 +52,17 @@
         {
             if (string.IsNullOrWhiteSpace(_outgoing))
                 return;
-
-            MeowMessageText message = new(_outgoing, MessageService.GetSender());
-
-            var result = await MessageService.SendMessage(message);
+            
+            var result = await ChatService.SendMessage(_outgoing);
             _messages.Add(new MeowMessageText(_outgoing, "You"));
+        
+            if (!result.Item1)
+            {
+                var errorText = !result.Item2.Any() ? "unknown error"
+                    : string.Join("; ", result.Item2.Select(ex => ex.Message ?? ex.ToString()));
+
+                _messages.Add(new MeowMessageText("Failed to send message. " + errorText, "error"));
+            }
 
             _outgoing = string.Empty;
             await InvokeAsync(StateHasChanged);
@@ -65,6 +70,7 @@
         catch (Exception e)
         {
             _messages.Add(new MeowMessageText(e.Message, "error"));
+            await InvokeAsync(StateHasChanged);
         }
     }
 
@@ -72,5 +78,4 @@
     {
         Navigation.NavigateTo("/");
     }
-
 }
