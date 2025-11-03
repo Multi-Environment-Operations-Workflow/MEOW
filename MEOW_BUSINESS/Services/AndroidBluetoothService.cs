@@ -10,6 +10,7 @@ using Plugin.BLE.Abstractions;
 using Java.Util;
 using MEOW_BUSINESS.Enums;
 using MEOW_BUSINESS.Models;
+using Microsoft.Maui.ApplicationModel;
 using IAdapter = Plugin.BLE.Abstractions.Contracts.IAdapter;
 
 namespace MEOW_BUSINESS.Services
