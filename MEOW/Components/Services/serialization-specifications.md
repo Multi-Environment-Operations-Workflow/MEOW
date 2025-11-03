@@ -7,25 +7,24 @@ Any MeowMessage shall follow this template for serializing a message.
 The serialization of a message should return a byte array where the first 4 bytes a reserved for:
 
 1. byte 1 is the message type
-2. byte 2 is the sender uuid
-3. byte 3-4 is the senders message id
-   - (gives the sender the possibility of sending 65k messages)
+2. byte 2 is the sender length n
+3. byte 3-n is the sender(name)
 
 The bytes from byte 5 and on are free to be used in any way needed to represent the message.
 
 ### Example
 
-The below example shows the serialization of a message with type == 0, the sender has the id 3, and it is there second message. The ellipsis denote the possibility of additional data.
+The example is an encoding of the abstract base class MeowMEssage:
 
-```c#
-Byte[] message = [0x00, 0x03, 0x0001, ...]
+```cs
+Byte[] message = [0x00, 0x01, 0x51, 0x12, ...]
 ```
 
 The example is given in hexadecimal.
 
 ## MeowMessageText
 
-```c#
+```cs
 public class MeowMessageText(string message, string sender) : MeowMessage(sender)
 {
     public override MessageType Type => MessageType.TEXT;
@@ -37,7 +36,6 @@ MeowMessageText introduces the Message field of type string, this string is unbo
 
 This looks like:
 
-```c#
-
+```cs
 Byte[] message = [..., byte representation of length, byte representation of message string]
 ```
