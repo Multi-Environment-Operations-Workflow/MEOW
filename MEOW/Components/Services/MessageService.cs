@@ -54,6 +54,11 @@ public class MessageService(IBluetoothService bluetooth, IUserStateService userS
         return bluetooth.GetConnectedDevicesCount() + 1;
     }
 
+    public List<string> GetConnectedDeviceName()
+    {
+        return bluetooth.GetConnectedDeviceName();
+    }
+
     // Returns only messages of the specified types
     public List<T> GetMessages<T>() where T : MeowMessage
     {

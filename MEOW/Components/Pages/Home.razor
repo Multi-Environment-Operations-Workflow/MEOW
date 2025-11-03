@@ -19,6 +19,7 @@
     <MatButton class="action-button" @onclick="ScanAsync">🔍 Scan for Devices</MatButton>
     <MatButton class="advertise-button" @onclick="StartAdvertisingAsync">📡 Start Advertising</MatButton>
     <MatButton class="stop-button" @onclick="StopAdvertisingAsync">🛑 Stop Advertising</MatButton>
+    <MatButton class="sync-automatically" @onclick="ScanAsyncAutomatically">🔍 Scan and Connect Devices</MatButton>
 </div>
 
 @if (_isScanning)
@@ -90,6 +91,23 @@ else
         try
         {
             await Bluetooth.ScanAsync();
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            _errorMessage = e.Message;
+        }
+        _isScanning = false;
+    }
+    
+    private async Task ScanAsyncAutomatically()
+    {
+        if (_isScanning) return;
+        _isScanning = true;
+        _errorMessage = string.Empty;
+        try
+        {
+            await Bluetooth.ScanAsyncAutomatically();
         }
         catch (Exception e)
         {

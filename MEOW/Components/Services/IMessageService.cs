@@ -10,6 +10,8 @@ public interface IMessageService
 
     int GetParticipantsCount();
 
+    List<string> GetConnectedDeviceName();
+
     public List<T> GetMessages<T>() where T : MeowMessage;
 
     public string GetSender();

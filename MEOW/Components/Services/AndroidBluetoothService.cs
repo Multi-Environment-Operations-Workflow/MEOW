@@ -41,7 +41,7 @@ namespace MEOW.Components.Services
 
         // instance af Bluetooth-adapteren, som håndterer scanning, forbindelser osv.
         private readonly IAdapter _adapter = CrossBluetoothLE.Current.Adapter;
-
+        
         // Enum vi bruger til at holde styr på advertising state. 
         // AdvertisingStateChanged eventet bruges til at informere UI'et om ændringer i advertising status.
         // Så vi fx på "front enden" kan sætte funktioner til at kører via dette event. Man kan se det som en tom funktion.
@@ -83,6 +83,16 @@ namespace MEOW.Components.Services
         public int GetConnectedDevicesCount()
         {
             return _adapter.ConnectedDevices?.Count ?? 0;
+        }
+
+        public List<string> GetConnectedDeviceName()
+        {
+            List<string> deviceNames = new();
+            foreach (var deviceName in _adapter.ConnectedDevices.ToList())
+            {
+                deviceNames.Add(deviceName.Name);
+            }
+            return deviceNames;
         }
 
         
@@ -334,11 +344,42 @@ namespace MEOW.Components.Services
             _adapter.DeviceDiscovered -= OnDeviceDiscovered; 
             _adapter.DeviceDiscovered += OnDeviceDiscovered;
             
-            await _adapter.StartScanningForDevicesAsync(serviceUuids: new []{ChatUuids.ChatService});
-            
+            await _adapter.StartScanningForDevicesAsync();            
             return true;
         }
+        
+        public async Task<bool> ScanAsyncAutomatically()
+        {
+            try{
+                await CheckPermissions();
 
+                Devices.Clear(); // Når vi scanner ønsker vi at fjerne dem som allerede er på listen.
+        
+                if (_bluetooth == null || _adapter == null)
+                    throw new InvalidOperationException("Bluetooth not initialized");
+
+                if (!_bluetooth.IsOn)
+                    throw new Exception("Bluetooth is off");
+
+                // Vi fjerner ældre event og tilføjer vores nye. 
+                _adapter.DeviceDiscovered -= OnDeviceDiscovered; 
+                _adapter.DeviceDiscovered += OnDeviceDiscovered;
+            
+                await _adapter.StartScanningForDevicesAsync(serviceUuids: new []{ChatUuids.ChatService});
+
+                foreach (var discoveredDevice in _adapter.DiscoveredDevices)
+                {
+                    Console.WriteLine($"trying to connect to device {discoveredDevice}");
+                    await _adapter.ConnectToDeviceAsync(discoveredDevice);
+                    PeerConnected?.Invoke();
+                }
+
+                return true;
+            } catch (DeviceConnectionException ex){
+                throw new Exception($"Failed to automatically connect to device: {ex.Message}");
+            }
+        }
+        
         private void OnDeviceDiscovered(object? s, Plugin.BLE.Abstractions.EventArgs.DeviceEventArgs a) 
         { // Tjekker om vi allerede har den. Vis vi har gør vi ikke noget. Ellers tilføjer vi den til vores liste.
             if (Devices.Any(d => d.Id == a.Device.Id)) 
@@ -349,7 +390,7 @@ namespace MEOW.Components.Services
                 var device = new MeowDevice(a.Device.Name, a.Device.Id, a.Device); 
                 device.Name = device.Name.Replace("(MEOW) ", "").Trim(); 
                 Devices.Add(device); 
-            } 
+            }
         } 
 
 

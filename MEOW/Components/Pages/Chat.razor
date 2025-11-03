@@ -7,6 +7,12 @@
 
 <div class="chat-window">
     <span>Connected devices: @MessageService.GetParticipantsCount()</span>
+    <div>
+        @foreach (var name in @MessageService.GetConnectedDeviceName())
+        {
+            <li>@name</li>
+        }
+    </div>
     <div class="messages">
         @foreach (var m in _messages)
         {
