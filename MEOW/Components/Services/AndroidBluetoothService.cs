@@ -332,9 +332,10 @@ namespace MEOW.Components.Services
 
             // Vi fjerner ældre event og tilføjer vores nye. 
             _adapter.DeviceDiscovered -= OnDeviceDiscovered; 
-            _adapter.DeviceDiscovered += OnDeviceDiscovered; 
-
-            await _adapter.StartScanningForDevicesAsync();
+            _adapter.DeviceDiscovered += OnDeviceDiscovered;
+            
+            await _adapter.StartScanningForDevicesAsync(serviceUuids: new []{ChatUuids.ChatService});
+            
             return true;
         }
 
