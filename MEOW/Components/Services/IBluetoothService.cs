@@ -21,7 +21,7 @@ public interface IBluetoothService
     
     int GetConnectedDevicesCount();
     List<string> GetConnectedDeviceName();
-    
+    Task RunInBackground(TimeSpan timeSpan, Func<Task> func);
     Task<(bool anySuccess, List<Exception> allErrors)> SendToAllAsync(byte[] data);
     
     

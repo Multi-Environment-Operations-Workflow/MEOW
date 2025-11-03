@@ -19,7 +19,7 @@
     <MatButton class="action-button" @onclick="ScanAsync">🔍 Scan for Devices</MatButton>
     <MatButton class="advertise-button" @onclick="StartAdvertisingAsync">📡 Start Advertising</MatButton>
     <MatButton class="stop-button" @onclick="StopAdvertisingAsync">🛑 Stop Advertising</MatButton>
-    <MatButton class="sync-automatically" @onclick="ScanAsyncAutomatically">🔍 Scan and Connect Devices</MatButton>
+    <MatButton class="sync-automatically" @onclick="RunAsyncScan">🔍 Scan and Connect Devices</MatButton>
 </div>
 
 @if (_isScanning)
@@ -149,5 +149,10 @@ else
     private string GetDeviceDisplay(MeowDevice device)
     {
         return $"{device.Name} ({device.Id})";
+    }
+
+    private async void RunAsyncScan()
+    {
+        await Bluetooth.RunInBackground(TimeSpan.FromSeconds(10), ScanAsyncAutomatically);
     }
 }

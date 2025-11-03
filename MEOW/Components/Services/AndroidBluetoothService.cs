@@ -380,6 +380,16 @@ namespace MEOW.Components.Services
             }
         }
         
+        public async Task RunInBackground(TimeSpan timeSpan, Func<Task> func)
+        {
+            var periodicTimer = new PeriodicTimer(timeSpan);
+            while (await periodicTimer.WaitForNextTickAsync())
+            {
+                await func();
+            }
+        }
+
+        
         private void OnDeviceDiscovered(object? s, Plugin.BLE.Abstractions.EventArgs.DeviceEventArgs a) 
         { // Tjekker om vi allerede har den. Vis vi har gør vi ikke noget. Ellers tilføjer vi den til vores liste.
             if (Devices.Any(d => d.Id == a.Device.Id)) 
