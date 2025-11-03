@@ -1,4 +1,6 @@
-﻿namespace MEOW.Components.Services;
+﻿using MEOW.Components.Enums;
+
+namespace MEOW.Components.Services;
 
 public class NavService
 {
@@ -36,7 +38,7 @@ public class NavService
 
         return ((int)y, (int)x);
     }
-    
+
     public async Task StartAsync()
     {
         if (!Compass.Default.IsSupported)
@@ -67,10 +69,10 @@ public class NavService
 
     public void AddDebugPoints(NavPoint pos, string dir)
     {
-        var north = new NavPoint(pos.Latitude + 1f, pos.Longitude);
-        var south = new NavPoint(pos.Latitude - 1f, pos.Longitude);
-        var east = new NavPoint(pos.Latitude, pos.Longitude + 1f);
-        var west = new NavPoint(pos.Latitude, pos.Longitude - 1f);
+        var north = new NavPoint(pos.Latitude + 1f, pos.Longitude, NavPointType.Danger);
+        var south = new NavPoint(pos.Latitude - 1f, pos.Longitude, NavPointType.OtherDevice);
+        var east = new NavPoint(pos.Latitude, pos.Longitude + 1f, NavPointType.Danger);
+        var west = new NavPoint(pos.Latitude, pos.Longitude - 1f, NavPointType.OtherDevice);
 
         switch (dir)
         {
@@ -105,7 +107,8 @@ public class NavService
 
                 if (location != null)
                 {
-                    NavPoint pos = new NavPoint((float)location.Latitude, (float)location.Longitude, -1);
+                    NavPoint pos = new NavPoint((float)location.Latitude, (float)location.Longitude,
+                        NavPointType.OtherDevice, -1);
                     LocationChanged?.Invoke(this, pos);
                 }
 
@@ -121,4 +124,4 @@ public class NavService
     public void StopCompass() => Compass.Default.Stop();
 }
 
-public record NavPoint(float Latitude, float Longitude, int Id = 0);
+public record NavPoint(float Latitude, float Longitude, NavPointType type, int Id = 0);

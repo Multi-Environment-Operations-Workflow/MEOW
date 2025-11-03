@@ -15,9 +15,9 @@
         <div class="nav-point-ring">
             @if (_location is not null)
             {
-                @foreach (var (left, bottom) in _navPointTuples)
+                @foreach (var point in _navPoints)
                 {
-                    <div class="nav-point" style="bottom:@((bottom - 4) + "%"); left:@((left - 4) + "%");"></div>
+
                 }
             }
         </div>
@@ -27,14 +27,13 @@
 <button onclick=@(() => Nav.AddDebugPoints(_location, "east"))>Add Debug East</button>
 <button onclick=@(() => Nav.AddDebugPoints(_location, "south"))>Add Debug South</button>
 <button onclick=@(() => Nav.AddDebugPoints(_location, "west"))>Add Debug West</button>
-<NavNode/>
 
 @code
 {
     double _heading;
     int _headingDeg;
     NavPoint? _location;
-    List<(int, int)> _navPointTuples = [];
+    List<NavPoint> _navPoints = [];
 
     bool _started;
 
@@ -71,9 +70,7 @@
     void UpdateWaypoints()
     {
         if (_location is null) return;
-        _navPointTuples = Nav.GetNavPoints()
-            .Select(p => NavService.NavPointToVector(_location, p))
-            .ToList();
+        _navPoints = Nav.GetNavPoints();
     }
 
     public async ValueTask DisposeAsync()
@@ -84,3 +81,4 @@
         Nav.StopCompass();
     }
 }
+

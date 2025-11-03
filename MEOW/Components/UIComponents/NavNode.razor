@@ -1,11 +1,25 @@
-﻿@using MEOW.Components.Services
+﻿@using MEOW.Components.Enums
+@using MEOW.Components.Services
+@switch (NavType)
+{
+    case NavPointType.Danger:
+        <div class="arc"
+             style="transform: rotate(@(RotDeg + "deg"); bottom:@((PosTuple.Item1 - 4) + "%"); left:@((PosTuple.Item2 - 4) + "%");">
+            <MatIcon Icon="@MatIconNames.Error_outline" Style="color: red"/>
+        </div>
+        break;
+    default:
+        <div>
+            <div class="arc"
+                 style="transform: rotate(@(RotDeg + "deg"); bottom:@((PosTuple.Item1 - 4) + "%"); left:@((PosTuple.Item2 - 4) + "%");">
+                <MatIcon Icon="@MatIconNames.Settings_input_antenna" Style="color: darkolivegreen"/>
+            </div>
+        </div>
+        break;
+}
 
-<div>
-    <Icon/>
-</div>
-
-@code {
-    //  [Parameter] public NavPoint navPoint { get; set; }
-
-
+@code{
+    [Parameter] public NavPointType NavType { get; set; }
+    [Parameter] public string RotDeg { get; set; }
+    [Parameter] public (int, int) PosTuple { get; set; }
 }

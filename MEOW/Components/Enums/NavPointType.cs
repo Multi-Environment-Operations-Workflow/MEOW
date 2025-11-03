@@ -1,6 +1,6 @@
 ﻿namespace MEOW.Components.Enums;
 
-public enum NavNodeType : ushort
+public enum NavPointType : ushort
 {
     OtherDevice = 0,
     Danger = 1,
