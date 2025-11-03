@@ -1,4 +1,5 @@
 @page "/Chat"
+@using MEOW.Components.Models;
 @inject Services.IMessageService MessageService
 @inject NavigationManager Navigation
 
@@ -9,37 +10,39 @@
     <div class="messages">
         @foreach (var m in _messages)
         {
-            <div>@m</div>
+            <div><strong>@m.Sender:</strong> @m.Message</div>
         }
     </div>
 
-    <MatTextField @bind-Value="_outgoing" Label="Send a message"/>
+    <MatTextField @bind-Value="_outgoing" Label="Send a message" />
     <MatButton @onclick="SendAsync">Send</MatButton>
     <MatButton @onclick="GoBack">Back</MatButton>
 </div>
 
 @code {
     private string _outgoing = string.Empty;
-    private List<string> _messages = new();
-    private Action<string>? _messageReceived;
+    private List<MeowMessageText> _messages = new();
+    private Action<MeowMessageText>? _messageReceived;
 
     protected override Task OnInitializedAsync()
     {
+        _messages = MessageService.GetMessages<MeowMessageText>();
+
         try
         {
             _messageReceived = message =>
             {
-                _messages.Add($"{message}");
+                _messages.Add(message);
                 InvokeAsync(StateHasChanged);
             };
 
-            MessageService.SetupMessageReceivedAction(_messageReceived);
+            MessageService.SetupMessageReceivedAction<MeowMessageText>(_messageReceived);
 
             return Task.CompletedTask;
         }
         catch (Exception e)
         {
-            _messages.Add("Error: " + e.Message);
+            _messages.Add(new MeowMessageText(e.Message, "error"));
             return Task.CompletedTask;
         }
     }
@@ -51,19 +54,17 @@
             if (string.IsNullOrWhiteSpace(_outgoing))
                 return;
 
-            var result = await MessageService.SendMessage(_outgoing);
-            _messages.Add(result.Item1 ? $"You: {_outgoing}" : $"<Failed to send>: {_outgoing}");
-            foreach (var exception in result.Item2)
-            {
-                _messages.Add($"Error in send: " + exception.Message);
-            }
+            MeowMessageText message = new(_outgoing, MessageService.GetSender());
+
+            var result = await MessageService.SendMessage(message);
+            _messages.Add(new MeowMessageText(_outgoing, "You"));
 
             _outgoing = string.Empty;
             await InvokeAsync(StateHasChanged);
         }
-        catch (Exception exception)
+        catch (Exception e)
         {
-            _messages.Add($"Error in send: " + exception.Message);
+            _messages.Add(new MeowMessageText(e.Message, "error"));
         }
     }
 
