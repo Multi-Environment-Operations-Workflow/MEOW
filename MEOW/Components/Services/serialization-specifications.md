@@ -37,5 +37,22 @@ MeowMessageText introduces the Message field of type string, this string is unbo
 This looks like:
 
 ```cs
-Byte[] message = [..., byte representation of length, byte representation of message string]
+byte[] message = [..., byte representation of length, byte representation of message string];
+```
+
+## MeowMessageGps
+
+```cs
+public class MeowMessageGps(string sender, float longitude, float latitude) : MeowMessage(sender)
+{
+    public override MessageType Type => MessageType.GPS;
+    public float Longitude { get; set; } = longitude;
+    public float Latitude { get; set; } = latitude;
+}
+```
+
+MeowMessageGps introduces Longitude and Latitude as 2 32-bit floats. This will be encoded as longitude followed by latitude:
+
+```cs
+byte[] message = [..., byte representation of longitude, byte representation of latitude];
 ```
