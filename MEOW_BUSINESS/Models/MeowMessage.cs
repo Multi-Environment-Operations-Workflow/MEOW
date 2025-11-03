@@ -1,4 +1,4 @@
-namespace MEOW.Components.Models;
+namespace MEOW_BUSINESS.Models;
 
 public enum MessageType
 {

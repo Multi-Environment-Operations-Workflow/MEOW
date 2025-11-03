@@ -1,8 +1,8 @@
 using System.Text;
 using System.Text.Json;
-using MEOW.Components.Models;
+using MEOW_BUSINESS.Models;
 
-namespace MEOW.Components.Services;
+namespace MEOW_BUSINESS.Services;
 
 public class MessageSerializer : IMessageSerializer
 {

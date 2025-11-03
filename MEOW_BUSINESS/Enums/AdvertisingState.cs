@@ -1,4 +1,4 @@
-namespace MEOW.Components.Enums;
+namespace MEOW_BUSINESS.Enums;
 
 public enum AdvertisingState
 {

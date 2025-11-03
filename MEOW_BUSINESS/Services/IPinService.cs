@@ -1,6 +1,6 @@
-using MEOW.Components.Models;
+using MEOW_BUSINESS.Models;
 
-namespace MEOW.Components.Services;
+namespace MEOW_BUSINESS.Services;
 
 public interface IPinService
 {

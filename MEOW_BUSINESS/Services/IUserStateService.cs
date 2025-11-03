@@ -1,4 +1,4 @@
-namespace MEOW.Components.Services;
+namespace MEOW_BUSINESS.Services;
 
 public interface IUserStateService
 {

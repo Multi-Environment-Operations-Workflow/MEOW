@@ -1,26 +1,26 @@
-namespace MEOW.Components.Services;
+namespace MEOW_BUSINESS.Services;
 
-public class UserStateService : IUserStateService
+public class UserStateService(IAppPreferences appPreferences) : IUserStateService
 {
     string _name = String.Empty;
     public string GetName()
     {
         if (string.IsNullOrEmpty(_name))
-            _name = Preferences.Get("username", String.Empty);
+            _name = appPreferences.Get("username", String.Empty);
         return _name;
     }
 
     public void SetName(string name)
     {
         _name = name;
-        Preferences.Set("username", name);
+        appPreferences.Set("username", name);
     }
 
     public bool ResetState()
     {
         try
         {
-            Preferences.Remove("username");
+            appPreferences.Remove("username");
             _name = String.Empty;
             return true;
         }

@@ -1,12 +1,6 @@
-#if IOS || MACCATALYST
-using CoreBluetooth;
-// iOS-specifik kode her
-#endif
-
-
 using Plugin.BLE.Abstractions.Contracts;
 
-namespace MEOW.Components.Models;
+namespace MEOW_BUSINESS.Models;
 
 public class MeowDevice(string name, Guid id, IDevice nativeDevice)
 {

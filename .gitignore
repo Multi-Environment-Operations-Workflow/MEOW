@@ -5,3 +5,7 @@
 /MEOW/obj
 /.idea
 *.bat
+/MEOW_TEST/obj
+/MEOW_BUSINESS/obj
+/MEOW_TEST/bin
+/MEOW_BUSINESS/bin

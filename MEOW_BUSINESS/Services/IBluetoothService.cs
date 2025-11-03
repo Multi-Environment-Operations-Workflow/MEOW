@@ -1,7 +1,8 @@
-using MEOW.Components.Enums;
-using MEOW.Components.Models;
 
-namespace MEOW.Components.Services;
+using MEOW_BUSINESS.Enums;
+using MEOW_BUSINESS.Models;
+
+namespace MEOW_BUSINESS.Services;
 
 using System;
 using System.Collections.Generic;

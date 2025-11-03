@@ -4,11 +4,10 @@ using Plugin.BLE;
 using Plugin.BLE.Abstractions.Contracts;
 using Plugin.BLE.Abstractions.EventArgs;
 using CoreBluetooth;
-using Foundation;
-using MEOW.Components.Enums;
-using MEOW.Components.Models;
+using MEOW_BUSINESS.Enums;
+using MEOW_BUSINESS.Models;
 
-namespace MEOW.Components.Services;
+namespace MEOW_BUSINESS.Services;
 
 public class IOSBluetoothService : NSObject, IBluetoothService, ICBPeripheralManagerDelegate
 {

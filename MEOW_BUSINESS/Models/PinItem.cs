@@ -1,7 +1,4 @@
-using System.Diagnostics.CodeAnalysis;
-using Microsoft.AspNetCore.Components.Forms;
-
-namespace MEOW.Components.Models;
+namespace MEOW_BUSINESS.Models;
 
 public class PinItem
 {

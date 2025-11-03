@@ -1,6 +1,7 @@
-using MEOW.Components.Models;
 
-namespace MEOW.Components.Services;
+using MEOW_BUSINESS.Models;
+
+namespace MEOW_BUSINESS.Services;
 
 public class MessageService(IBluetoothService bluetooth, IUserStateService userStateService) : IMessageService
 {

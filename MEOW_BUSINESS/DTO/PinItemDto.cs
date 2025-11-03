@@ -1,4 +1,4 @@
-namespace MEOW.Components.DTO_s;
+namespace MEOW_BUSINESS.DTO;
 
 public class PinItemDto
 {

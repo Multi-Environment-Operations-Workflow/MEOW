@@ -1,8 +1,7 @@
-using MEOW.Components.Services;
 using SVGCreator;
 using Color = System.Drawing.Color;
 
-namespace MEOW.Components.Models;
+namespace MEOW_BUSINESS.Models;
 
 public class MeshNetwork
 {

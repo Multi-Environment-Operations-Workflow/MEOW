@@ -2,17 +2,17 @@
 using Plugin.BLE;
 using Plugin.BLE.Abstractions.Contracts;
 using System.Collections.ObjectModel;
-using MEOW.Components.Enums;
-using MEOW.Components.Models;
 using Android.Bluetooth.LE;
 using Android.Bluetooth;
 using Android.Content;
 using Plugin.BLE.Abstractions.Exceptions;
 using Plugin.BLE.Abstractions;
 using Java.Util;
-using Plugin.BLE.Abstractions.EventArgs;
+using MEOW_BUSINESS.Enums;
+using MEOW_BUSINESS.Models;
+using IAdapter = Plugin.BLE.Abstractions.Contracts.IAdapter;
 
-namespace MEOW.Components.Services
+namespace MEOW_BUSINESS.Services
 {
     
     

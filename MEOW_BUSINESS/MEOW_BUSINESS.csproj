@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <!-- Base Framework -->
+        <TargetFrameworks>net9.0;net9.0-android</TargetFrameworks>
+
+        <!-- Add iOS and MacCatalyst only on macOS -->
+        <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('osx'))">
+            $(TargetFrameworks);net9.0-ios;net9.0-maccatalyst
+        </TargetFrameworks>
+
+        <!-- Add Windows only on Windows -->
+        <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">
+            $(TargetFrameworks);net9.0-windows10.0.19041.0
+        </TargetFrameworks>       
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Microsoft.Maui.Essentials" Version="9.0.111" />
+      <PackageReference Include="Plugin.BLE" Version="3.2.0" />
+      <PackageReference Include="SVGCreator" Version="1.1.0" />
+    </ItemGroup>
+</Project>
