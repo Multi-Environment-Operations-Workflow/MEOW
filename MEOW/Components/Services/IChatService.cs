@@ -4,9 +4,13 @@ namespace MEOW.Components.Services;
 
 public interface IChatService
 {
-    Task<(bool, List<Exception>)> SendChatMessage(string message);
+    void Initialize();
+    
+    Task<(bool, List<Exception>)> SendMessage(string message);
 
     void SetupChatMessageReceivedAction(Action<MeowMessageText> onMessage);
+
+    List<MeowMessageText> GetChatMessages();
 
     int GetChatParticipantsCount();
 }

@@ -2,20 +2,43 @@ using MEOW.Components.Models;
 
 namespace MEOW.Components.Services;
 
-public class ChatService(IMessageService messageService) : IChatService
+public class ChatService(
+    IMessageService messageService,
+    IUserStateService userStateService,
+    INotificationManagerService notificationManagerService)
+    : IChatService
 {
-    public Task<(bool, List<Exception>)> SendChatMessage(string message)
+    List<MeowMessageText> MeowMessageTexts { get; set; } = new();
+
+    public void Initialize()
     {
-        throw new NotImplementedException();
+        messageService.SetupMessageReceivedAction<MeowMessageText>(ChatMessageReceivedAction);
+    }
+    
+    public Task<(bool, List<Exception>)> SendMessage(string message)
+    {
+        var meowMessage = new MeowMessageText(message, userStateService.GetName());
+        return messageService.SendMessage(meowMessage);
+    }
+    
+    private void ChatMessageReceivedAction(MeowMessageText msg)
+    {
+        MeowMessageTexts.Add(msg);
+        notificationManagerService.SendNotification("New Chat Message", $"{msg.Sender}: {msg.Message}", DateTime.Now.AddSeconds(1));
     }
 
     public void SetupChatMessageReceivedAction(Action<MeowMessageText> onMessage)
     {
-        messageService.SetupMessageReceivedActionTest(onMessage);
+        messageService.SetupMessageReceivedAction(onMessage);
+    }
+    
+    public List<MeowMessageText> GetChatMessages()
+    {
+        return MeowMessageTexts;
     }
 
     public int GetChatParticipantsCount()
     {
-        throw new NotImplementedException();
+        return messageService.GetParticipantsCount();
     }
 }

@@ -1,25 +1,24 @@
+#if IOS
 using Foundation;
 using UserNotifications;
 
 namespace MEOW.Components.Services;
 
-public class NotificationManagerService : INotificationManagerService
+public class IOSNotificationManagerService : INotificationManagerService
 {
     int _messageId = 0;
     bool _hasNotificationsPermission;
 
     public event EventHandler? NotificationReceived;
 
-    public NotificationManagerService()
+    public IOSNotificationManagerService()
     {
         // Create a UNUserNotificationCenterDelegate to handle incoming messages.
-        UNUserNotificationCenter.Current.Delegate = new NotificationReceiver();
+        UNUserNotificationCenter.Current.Delegate = new IOSNotificationReceiver();
 
         // Request permission to use local notifications.
-        UNUserNotificationCenter.Current.RequestAuthorization(UNAuthorizationOptions.Alert, (approved, err) =>
-        {
-            _hasNotificationsPermission = approved;
-        });
+        UNUserNotificationCenter.Current.RequestAuthorization(UNAuthorizationOptions.Alert,
+            (approved, err) => { _hasNotificationsPermission = approved; });
     }
 
     public void SendNotification(string title, string message, DateTime? notifyTime = null)
@@ -77,3 +76,4 @@ public class NotificationManagerService : INotificationManagerService
         };
     }
 }
+#endif

@@ -1,8 +1,9 @@
+#if IOS
 using UserNotifications;
 
 namespace MEOW.Components.Services;
 
-public class NotificationReceiver : UNUserNotificationCenterDelegate
+public class IOSNotificationReceiver : UNUserNotificationCenterDelegate
 {
     // Called if app is in the foreground.
     public override void WillPresentNotification(UNUserNotificationCenter center, UNNotification notification, Action<UNNotificationPresentationOptions> completionHandler)
@@ -34,3 +35,4 @@ public class NotificationReceiver : UNUserNotificationCenterDelegate
         service?.ReceiveNotification(title, message);
     }
 }
+#endif

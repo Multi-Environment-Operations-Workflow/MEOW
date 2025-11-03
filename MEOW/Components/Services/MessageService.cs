@@ -57,9 +57,4 @@ public class MessageService(IBluetoothService bluetooth, IUserStateService userS
     {
         return _messages.FindAll(m => m is T).Cast<T>().ToList();
     }
-
-    public string GetSender()
-    {
-        return userStateService.GetName();
-    }
 }
