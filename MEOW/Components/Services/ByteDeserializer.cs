@@ -33,6 +33,29 @@ namespace MEOW.Components.Services
                     float latitude = BitConverter.ToSingle(payload, latitudeStart);
 
                     return new MeowMessageGps(sender, longitude, latitude);
+                case MessageType.TASK:
+                    // Title
+                    int titleLengthStart = 2 + senderLength;
+                    int titleLength = BitConverter.ToInt32(payload, titleLengthStart);
+
+                    int titleStart = titleLengthStart + 4;
+                    string title = Encoding.UTF8.GetString(payload, titleStart, titleLength);
+
+                    // TextContext
+                    int textContextLengthStart = titleStart + title.Length;
+                    int textContextLength = BitConverter.ToInt32(payload, textContextLengthStart);
+
+                    int textContextStart = textContextLengthStart + 4;
+                    string textContext = Encoding.UTF8.GetString(payload, textContextStart, textContextLength);
+
+                    // FileData
+                    int fileDataLengthStart = textContextStart + textContext.Length;
+                    int fileDataLength = BitConverter.ToInt32(payload, fileDataLengthStart);
+
+                    int fileDataStart = fileDataLengthStart + 4;
+                    string fileData = Encoding.UTF8.GetString(payload, fileDataStart, fileDataLength);
+
+                    return new MeowMessageTask(sender, title, textContext, fileData);
                 default:
                     return new MeowMessageText("Unsupported message type", "Error");
             }

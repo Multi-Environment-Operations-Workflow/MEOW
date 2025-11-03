@@ -56,3 +56,32 @@ MeowMessageGps introduces Longitude and Latitude as 2 32-bit floats. This will b
 ```cs
 byte[] message = [..., byte representation of longitude, byte representation of latitude];
 ```
+
+## MeowMessageTask
+
+```cs
+public class MeowMessageTask(string sender, string title, string textContext, string fileData) : MeowMessage(sender)
+{
+    public override MessageType Type => MessageType.TASK;
+
+    public string Title { get; private set; } = title;
+    public string? TextContext { get; private set; } = textContext;
+    public string? FileData { get; private set; } = fileData;
+
+    public override byte[] Serialize()
+    {
+        return [];
+    }
+}
+```
+
+MeowMessageTask introduces three new fields, a title string, a context string, and filedata string. This will be encoded as:
+
+foreach field
+
+- n = 4 bytes for the length
+- n bytes for the field
+
+```cs
+byte[] message = [..., title length, title as bytes, context length, context as bytes, filedata length, filedata as bytes ];
+```
