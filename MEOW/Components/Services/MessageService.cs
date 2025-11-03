@@ -29,7 +29,7 @@ public class MessageService(IBluetoothService bluetooth, IUserStateService userS
         {
             try
             {
-                var message = ByteDeserializer.Deserialize(receivedData);
+                var message = new ByteDeserializer(receivedData).Deserialize();
                 _messages.Add(message);
 
                 // Only send messages of type T to actions that wants that type

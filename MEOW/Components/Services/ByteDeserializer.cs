@@ -3,62 +3,74 @@ namespace MEOW.Components.Services
     using System.Text;
     using MEOW.Components.Models;
 
-    public class ByteDeserializer
+    public class ByteDeserializer(byte[] payload)
     {
-        public static MeowMessage Deserialize(byte[] payload)
+        private int _offset = 0;
+        private readonly byte[] _payload = payload;
+
+        public MeowMessage Deserialize()
         {
-            MessageType type = (MessageType)payload[0];
+            MessageType type = (MessageType)ReadByte();
+            byte senderLength = ReadByte();
+            string sender = ReadString(senderLength);
 
-            // Get sender length and deserialize sender bytes
-            byte senderLength = payload[1];
-            string sender = Encoding.UTF8.GetString(payload, 2, senderLength);
-
-            switch (type)
+            return type switch
             {
-                case MessageType.TEXT:
-                    // Get message lenght and deserialize message length bytes
-                    int messageLengthStart = 2 + senderLength;
-                    int messageLength = BitConverter.ToInt32(payload, messageLengthStart);
+                MessageType.TEXT => DeserializeTextMessage(sender),
+                MessageType.TASK => DeserializeTaskMessage(sender),
+                MessageType.GPS => DeserializeGpsMessage(sender),
+                _ => new MeowMessageText("Unsupported message type", "error")
+            };
+        }
 
-                    // Find start of message and deserialize message
-                    int messageStart = messageLengthStart + 4;
-                    string message = Encoding.UTF8.GetString(payload, messageStart, messageLength);
+        private MeowMessageText DeserializeTextMessage(string sender)
+        {
+            string message = ReadLenghtPrefixedString();
+            return new MeowMessageText(message, sender);
+        }
 
-                    return new MeowMessageText(message, sender);
-                case MessageType.GPS:
-                    int longitudeStart = 2 + senderLength;
-                    float longitude = BitConverter.ToSingle(payload, longitudeStart);
+        private MeowMessageTask DeserializeTaskMessage(string sender)
+        {
+            string title = ReadLenghtPrefixedString();
+            string textContext = ReadLenghtPrefixedString();
+            string fileData = ReadLenghtPrefixedString();
+            return new MeowMessageTask(sender, title, textContext, fileData);
+        }
 
-                    int latitudeStart = longitudeStart + 4;
-                    float latitude = BitConverter.ToSingle(payload, latitudeStart);
+        private MeowMessageGps DeserializeGpsMessage(string sender)
+        {
+            float longitude = ReadSingle();
+            float latitude = ReadSingle();
+            return new MeowMessageGps(sender, longitude, latitude);
+        }
 
-                    return new MeowMessageGps(sender, longitude, latitude);
-                case MessageType.TASK:
-                    // Title
-                    int titleLengthStart = 2 + senderLength;
-                    int titleLength = BitConverter.ToInt32(payload, titleLengthStart);
+        private byte ReadByte() => _payload[_offset++];
 
-                    int titleStart = titleLengthStart + 4;
-                    string title = Encoding.UTF8.GetString(payload, titleStart, titleLength);
+        private int ReadInt32()
+        {
+            int value = BitConverter.ToInt32(_payload, _offset);
+            _offset += 4;
+            return value;
+        }
 
-                    // TextContext
-                    int textContextLengthStart = titleStart + title.Length;
-                    int textContextLength = BitConverter.ToInt32(payload, textContextLengthStart);
+        private float ReadSingle()
+        {
+            float value = BitConverter.ToSingle(_payload, _offset);
+            _offset += 4;
+            return value;
+        }
 
-                    int textContextStart = textContextLengthStart + 4;
-                    string textContext = Encoding.UTF8.GetString(payload, textContextStart, textContextLength);
+        private string ReadString(int length)
+        {
+            string value = Encoding.UTF8.GetString(_payload, _offset, length);
+            _offset += length;
+            return value;
+        }
 
-                    // FileData
-                    int fileDataLengthStart = textContextStart + textContext.Length;
-                    int fileDataLength = BitConverter.ToInt32(payload, fileDataLengthStart);
-
-                    int fileDataStart = fileDataLengthStart + 4;
-                    string fileData = Encoding.UTF8.GetString(payload, fileDataStart, fileDataLength);
-
-                    return new MeowMessageTask(sender, title, textContext, fileData);
-                default:
-                    return new MeowMessageText("Unsupported message type", "Error");
-            }
+        private string ReadLenghtPrefixedString()
+        {
+            int length = ReadInt32();
+            return ReadString(length);
         }
     }
 }
