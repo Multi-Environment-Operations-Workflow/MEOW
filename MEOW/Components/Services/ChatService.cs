@@ -47,4 +47,9 @@ public class ChatService(
     {
         return messageService.GetParticipantsCount();
     }
+
+    public List<string> GetConnectedDeviceName()
+    {
+        return messageService.GetConnectedDeviceName();
+    }
 }

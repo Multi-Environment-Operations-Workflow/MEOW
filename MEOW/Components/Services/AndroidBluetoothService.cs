@@ -79,6 +79,16 @@ public class AndroidBluetoothService(IErrorService errorService) : IBluetoothSer
         return _adapter.ConnectedDevices?.Count ?? 0;
     }
 
+    public List<string> GetConnectedDeviceName()
+    {
+        List<string> deviceNames = new();
+        foreach (var deviceName in _adapter.ConnectedDevices.ToList())
+        {
+            deviceNames.Add(deviceName.Name);
+        }
+        return deviceNames;
+    }
+
     
     public async Task<(bool, List<Exception>)> SendToAllAsync(byte[] data)
     {
@@ -331,6 +341,47 @@ public class AndroidBluetoothService(IErrorService errorService) : IBluetoothSer
         await _adapter.StartScanningForDevicesAsync();
         return true;
     }
+
+    public async Task<bool> ScanAsyncAutomatically()
+        {
+            try{
+                await CheckPermissions();
+
+                Devices.Clear(); // Når vi scanner ønsker vi at fjerne dem som allerede er på listen.
+
+                if (_bluetooth == null || _adapter == null)
+                    throw new InvalidOperationException("Bluetooth not initialized");
+
+                if (!_bluetooth.IsOn)
+                    throw new Exception("Bluetooth is off");
+
+                // Vi fjerner ældre event og tilføjer vores nye. 
+                _adapter.DeviceDiscovered -= OnDeviceDiscovered; 
+                _adapter.DeviceDiscovered += OnDeviceDiscovered;
+
+                await _adapter.StartScanningForDevicesAsync(serviceUuids: new []{ChatUuids.ChatService});
+
+                foreach (var discoveredDevice in _adapter.DiscoveredDevices)
+                {
+                    Console.WriteLine($"trying to connect to device {discoveredDevice}");
+                    await _adapter.ConnectToDeviceAsync(discoveredDevice);
+                    PeerConnected?.Invoke();
+                }
+
+                return true;
+            } catch (DeviceConnectionException ex){
+                throw new Exception($"Failed to automatically connect to device: {ex.Message}");
+            }
+        }
+
+        public async Task RunInBackground(TimeSpan timeSpan, Func<Task> func)
+        {
+            var periodicTimer = new PeriodicTimer(timeSpan);
+            while (await periodicTimer.WaitForNextTickAsync())
+            {
+                await func();
+            }
+        }
 
     private void OnDeviceDiscovered(object? s, Plugin.BLE.Abstractions.EventArgs.DeviceEventArgs a) 
     { // Tjekker om vi allerede har den. Vis vi har gør vi ikke noget. Ellers tilføjer vi den til vores liste.

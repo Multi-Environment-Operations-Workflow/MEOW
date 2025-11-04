@@ -13,4 +13,5 @@ public interface IChatService
     List<MeowMessageText> GetChatMessages();
 
     int GetChatParticipantsCount();
+    List<string> GetConnectedDeviceName();
 }
