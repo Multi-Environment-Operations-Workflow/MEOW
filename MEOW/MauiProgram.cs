@@ -20,11 +20,11 @@ public static class MauiProgram
         builder.Services.AddSingleton<IBluetoothService, IOSBluetoothService>();
         builder.Services.AddSingleton<INotificationManagerService, IOSNotificationManagerService>();
 #endif
-        
         builder.Services.AddSingleton<IUserStateService, UserStateService>();
         builder.Services.AddSingleton<IPinService, PinService>();
         builder.Services.AddSingleton<IMessageService, MessageService>();
         builder.Services.AddSingleton<IChatService, ChatService>();
+        builder.Services.AddSingleton<IErrorService, MeowErrorService>();
 
         builder.Services.AddMauiBlazorWebView();
         builder.Services.AddMatBlazor();

@@ -2,7 +2,7 @@ using MEOW.Components.Models;
 
 namespace MEOW.Components.Services;
 
-public class MessageService(IBluetoothService bluetooth, IUserStateService userStateService) : IMessageService
+public class MessageService(IBluetoothService bluetooth, IErrorService errorService) : IMessageService
 {
     private readonly List<MeowMessage> _messages = new();
 
@@ -11,7 +11,9 @@ public class MessageService(IBluetoothService bluetooth, IUserStateService userS
     {
         if (message is null)
         {
-            return (false, [new Exception("No message")]);
+            var exception = new ArgumentNullException(nameof(message), "Message cannot be null");
+            errorService.Add(exception);
+            return (false, [exception]);
         }
 
         _messages.Add(message);
@@ -28,11 +30,9 @@ public class MessageService(IBluetoothService bluetooth, IUserStateService userS
         {
             try
             {
-                var message = new ByteDeserializer(receivedData).Deserialize();
+                var message = new ByteDeserializer(receivedData, errorService).Deserialize();
                 _messages.Add(message);
-
-                // Only send messages of type T to actions that wants that type
-                // e.g if a service wants MeowMessageText, it will only receive those
+                
                 if (message is T typedMessage)
                 {
                     onMessage(typedMessage);
@@ -40,8 +40,7 @@ public class MessageService(IBluetoothService bluetooth, IUserStateService userS
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Failed to deserialize message: {ex.Message}");
-                throw new Exception($"Failed to deserialize message: {ex.Message}");
+                errorService.Add(ex);
             }
         };
 
