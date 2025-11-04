@@ -10,9 +10,11 @@ public class IOSNotificationManagerService : INotificationManagerService
     bool _hasNotificationsPermission;
 
     public event EventHandler? NotificationReceived;
+    IErrorService _errorService;
 
-    public IOSNotificationManagerService()
+    public IOSNotificationManagerService(IErrorService errorService)
     {
+        _errorService = errorService;
         // Create a UNUserNotificationCenterDelegate to handle incoming messages.
         UNUserNotificationCenter.Current.Delegate = new IOSNotificationReceiver();
 
@@ -25,7 +27,9 @@ public class IOSNotificationManagerService : INotificationManagerService
     {
         if (!_hasNotificationsPermission)
         {
-            throw new PermissionException("App doesn't have permissions to send notifications.");
+            var permissionException = new PermissionException("App doesn't have permissions to send notifications.");
+            _errorService.Add(permissionException);
+            throw permissionException;
         }
 
         _messageId++;

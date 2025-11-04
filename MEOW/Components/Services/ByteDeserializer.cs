@@ -3,7 +3,7 @@ namespace MEOW.Components.Services;
 using System.Text;
 using MEOW.Components.Models;
 
-public class ByteDeserializer(byte[] payload)
+public class ByteDeserializer(byte[] payload, IErrorService errorService)
 {
     private int _offset = 0;
     private readonly byte[] _payload = payload;
@@ -19,10 +19,16 @@ public class ByteDeserializer(byte[] payload)
             MessageType.TEXT => DeserializeTextMessage(sender),
             MessageType.TASK => DeserializeTaskMessage(sender),
             MessageType.GPS => DeserializeGpsMessage(sender),
-            _ => new MeowMessageText("Unsupported message type", "error")
+            _ => DeserializeUnsupportedMessage(type)
         };
     }
-
+    private MeowMessage DeserializeUnsupportedMessage(MessageType type)
+    {
+        var exception = new NotSupportedException($"Message type {type} is not supported");
+        errorService.Add(exception);
+        throw exception;
+    }
+    
     private MeowMessageText DeserializeTextMessage(string sender)
     {
         string message = ReadLenghtPrefixedString();

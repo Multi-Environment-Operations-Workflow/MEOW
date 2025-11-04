@@ -4,9 +4,9 @@ namespace MEOW.Components.Services;
 
 public interface IChatService
 {
-    void Initialize();
-    
     Task<(bool, List<Exception>)> SendMessage(string message);
+
+    void SetupNotificationsAndChatService();
 
     void SetupChatMessageReceivedAction(Action<MeowMessageText> onMessage);
 

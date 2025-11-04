@@ -1,8 +1,10 @@
 ﻿@using MEOW.Components.Services
+
 @inherits LayoutComponentBase
 @inject NavigationManager Navigation
 @inject IUserStateService UserStateService
 @inject IChatService ChatService
+@inject IErrorService ErrorService
 
 @if (!UserStateService.IsLoggedIn())
 {
@@ -12,6 +14,18 @@ else
 {
     <MatAppBarContainer Style="display: flex; flex-direction: column; height: 100vh">
         <MatAppBarContent Style="flex: 1 0 auto; overflow-y: auto;">
+            <div>
+                @foreach (var err in errors)
+                {
+                    <MatCard style="margin: 1rem; border: 2px solid red; background-color: #ffe6e6;">
+                        <MatCardContent>
+                            <h4 style="color: red;">Error:</h4>
+                            <p style="color: red;">@err.Message</p>
+                            <MatButton Style="margin-top: 0.5rem;" @onclick="() => RemoveError(err)">Dismiss</MatButton>
+                        </MatCardContent>
+                    </MatCard>
+                }
+            </div>
             @Body
         </MatAppBarContent>
         <MatAppBar Fixed="true" Style="bottom: 0; width: 100%; height: 10vh; position: sticky; z-index: 1000;  padding-bottom: 1rem;">
@@ -29,21 +43,34 @@ else
 }
 
 @code {
-    protected override Task OnInitializedAsync()
-    {
-        try
-        {
-            ChatService.Initialize();
-        }catch(Exception ex)
-        {
-            Console.WriteLine("Error initializing ChatService in MainLayout: " + ex.Message);
-        }
-        return base.OnInitializedAsync();
-    }
+    List<Exception> errors = new();
     
+
     public void Logout()
     {
         UserStateService.ResetState();
         Navigation.NavigateTo("/login");
     }
+
+    protected override void OnInitialized()
+    {
+        ErrorService.OnError += HandleError;
+        ChatService.SetupNotificationsAndChatService();
+    }
+
+    void HandleError(IEnumerable<Exception> ex)
+    {
+        foreach (var exception in ex)
+        {
+            errors.Add(exception);
+        }
+        InvokeAsync(StateHasChanged);
+    }
+
+    void RemoveError(Exception ex)
+    {
+        errors.Remove(ex);
+        StateHasChanged();
+    }
+    
 }
