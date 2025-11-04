@@ -31,7 +31,13 @@ else
 @code {
     protected override Task OnInitializedAsync()
     {
-        ChatService.Initialize();
+        try
+        {
+            ChatService.Initialize();
+        }catch(Exception ex)
+        {
+            Console.WriteLine("Error initializing ChatService in MainLayout: " + ex.Message);
+        }
         return base.OnInitializedAsync();
     }
     

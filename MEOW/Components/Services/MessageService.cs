@@ -5,7 +5,6 @@ namespace MEOW.Components.Services;
 public class MessageService(IBluetoothService bluetooth, IUserStateService userStateService) : IMessageService
 {
     private readonly List<MeowMessage> _messages = new();
-    private readonly MessageSerializer _serializer = new();
 
     // Sends a message using the bluetooth service
     public async Task<(bool, List<Exception>)> SendMessage(MeowMessage message)
@@ -17,7 +16,7 @@ public class MessageService(IBluetoothService bluetooth, IUserStateService userS
 
         _messages.Add(message);
 
-        var bytes = _serializer.Serialize(message);
+        var bytes = message.Serialize();
 
         var (anySuccess, allErrors) = await bluetooth.SendToAllAsync(bytes).ConfigureAwait(false);
         return (anySuccess, allErrors);
@@ -29,14 +28,14 @@ public class MessageService(IBluetoothService bluetooth, IUserStateService userS
         {
             try
             {
-                var message = _serializer.Deserialize(receivedData);
+                var message = new ByteDeserializer(receivedData).Deserialize();
                 _messages.Add(message);
 
                 // Only send messages of type T to actions that wants that type
                 // e.g if a service wants MeowMessageText, it will only receive those
                 if (message is T typedMessage)
                 {
-                    onMessage((T)message);
+                    onMessage(typedMessage);
                 }
             }
             catch (Exception ex)

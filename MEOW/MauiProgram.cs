@@ -15,6 +15,7 @@ public static class MauiProgram
 
 #if ANDROID
         builder.Services.AddSingleton<IBluetoothService, AndroidBluetoothService>();
+        builder.Services.AddSingleton<INotificationManagerService, AndroidNotificationManagerService>();
 #elif IOS
         builder.Services.AddSingleton<IBluetoothService, IOSBluetoothService>();
         builder.Services.AddSingleton<INotificationManagerService, IOSNotificationManagerService>();
