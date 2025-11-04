@@ -21,10 +21,32 @@ else
                         <MatCardContent>
                             <h4 style="color: red;">Error:</h4>
                             <p style="color: red;">@err.Message</p>
+
+                            @if (err.StackTrace is not null)
+                            {
+                                var frame = GetErrorLocation(err);
+                                if (frame is not null)
+                                {
+                                    <div style="font-size: 0.9rem; color: darkred; word-wrap: break-word; overflow-wrap: anywhere; white-space: normal; max-width: 100%;">
+                                        <p style="margin: 0;">
+                                            <b>File:</b><br />
+                                            <code style="display: block; white-space: normal; word-break: break-all;">
+                                                @frame.GetFileName()
+                                            </code>
+                                        </p>
+                                        <p style="margin: 0.3rem 0;">
+                                            <b>Line:</b> @frame.GetFileLineNumber()
+                                        </p>
+                                    </div>
+                                }
+                            }
+
+
                             <MatButton Style="margin-top: 0.5rem;" @onclick="() => RemoveError(err)">Dismiss</MatButton>
                         </MatCardContent>
                     </MatCard>
                 }
+
             </div>
             @Body
         </MatAppBarContent>
@@ -44,7 +66,7 @@ else
 
 @code {
     List<Exception> errors = new();
-    
+
 
     public void Logout()
     {
@@ -73,4 +95,19 @@ else
         StateHasChanged();
     }
     
+    System.Diagnostics.StackFrame? GetErrorLocation(Exception ex)
+    {
+        var trace = new System.Diagnostics.StackTrace(ex, true);
+        foreach (var frame in trace.GetFrames())
+        {
+            if (!string.IsNullOrEmpty(frame.GetFileName()))
+            {
+                return frame;
+            }
+        }
+        return null;
+    }
+
 }
+
+
