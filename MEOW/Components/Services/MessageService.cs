@@ -35,7 +35,7 @@ public class MessageService(IBluetoothService bluetooth, IUserStateService userS
                 // e.g if a service wants MeowMessageText, it will only receive those
                 if (message is T typedMessage)
                 {
-                    onMessage((T)message);
+                    onMessage(typedMessage);
                 }
             }
             catch (Exception ex)
