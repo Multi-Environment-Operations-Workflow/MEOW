@@ -12,7 +12,6 @@ public interface IMessageService
 
     List<string> GetConnectedDeviceName();
 
-    public List<T> GetMessages<T>() where T : MeowMessage;
-
     public string GetSender();
+    List<T> GetMessages<T>() where T : MeowMessage;
 }

@@ -14,9 +14,6 @@ using Plugin.BLE.Abstractions.EventArgs;
 
 namespace MEOW.Components.Services
 {
-    
-    
-    
     /// <summary>
     /// Implementering af Bluetooth-service til Android-platformen.
     /// Det er lavet til at skulle:
@@ -30,8 +27,6 @@ namespace MEOW.Components.Services
     ///     - Spørger om tilladelser (CheckPermissions)
     /// 
     /// </summary>
-    
-    
     public class AndroidBluetoothService : IBluetoothService // Implementering af IBluetoothService til Android
     {
 

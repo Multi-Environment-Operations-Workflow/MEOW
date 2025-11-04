@@ -23,7 +23,6 @@ public class MessageService(IBluetoothService bluetooth, IUserStateService userS
         return (anySuccess, allErrors);
     }
 
-    // Sets up actions when messages are received
     public void SetupMessageReceivedAction<T>(Action<T> onMessage) where T : MeowMessage
     {
         bluetooth.DeviceDataReceived += (receivedData) =>
@@ -63,11 +62,5 @@ public class MessageService(IBluetoothService bluetooth, IUserStateService userS
     public List<T> GetMessages<T>() where T : MeowMessage
     {
         return _messages.FindAll(m => m is T).Cast<T>().ToList();
-    }
-
-    // Returns the name of the sender
-    public string GetSender()
-    {
-        return userStateService.GetName();
     }
 }
