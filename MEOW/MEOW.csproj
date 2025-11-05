@@ -54,10 +54,4 @@
     <PackageReference Include="SVGCreator" Version="1.1.0" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Content Update="Components\Pages\Compass.razor.css">
-      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
-    </Content>
-  </ItemGroup>
-
 </Project>

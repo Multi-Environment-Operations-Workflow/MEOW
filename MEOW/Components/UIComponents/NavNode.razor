@@ -1,25 +1,23 @@
 ﻿@using MEOW.Components.Enums
-@using MEOW.Components.Services
 @switch (NavType)
 {
     case NavPointType.Danger:
-        <div class="arc"
-             style="transform: rotate(@(RotDeg + "deg"); bottom:@((PosTuple.Item1 - 4) + "%"); left:@((PosTuple.Item2 - 4) + "%");">
-            <MatIcon Icon="@MatIconNames.Error_outline" Style="color: red"/>
+        <div class="node-outer"
+             style="border: solid red 1px">
+            <MatIcon Icon="@MatIconNames.Error_outline" Style="color: red; top: 5%; position: absolute"/>
+            <p>@PosTuple.Item1 , @PosTuple.Item2 , @RotDeg</p>
         </div>
         break;
     default:
-        <div>
-            <div class="arc"
-                 style="transform: rotate(@(RotDeg + "deg"); bottom:@((PosTuple.Item1 - 4) + "%"); left:@((PosTuple.Item2 - 4) + "%");">
-                <MatIcon Icon="@MatIconNames.Settings_input_antenna" Style="color: darkolivegreen"/>
-            </div>
+        <div class="node-outer">
+            <MatIcon Icon="@MatIconNames.Settings_input_antenna" Style="color: darkolivegreen; top: 5%; position: absolute; border: solid red 1px" Class="compass-icon-outer"/>
+            <p>@PosTuple.Item1 , @PosTuple.Item2 , @RotDeg</p>
         </div>
         break;
 }
 
 @code{
     [Parameter] public NavPointType NavType { get; set; }
-    [Parameter] public string RotDeg { get; set; }
+    [Parameter] public int RotDeg { get; set; }
     [Parameter] public (int, int) PosTuple { get; set; }
 }

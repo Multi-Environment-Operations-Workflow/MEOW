@@ -33,7 +33,7 @@ public class MessageService(IBluetoothService bluetooth, IUserStateService userS
                 var message = _serializer.Deserialize(receivedData);
                 _messages.Add(message);
 
-                // Only send messages of type T to actions that wants that type
+                // Only send messages of Type T to actions that wants that Type
                 // e.g if a service wants MeowMessageText, it will only receive those
                 if (message is T typedMessage)
                 {

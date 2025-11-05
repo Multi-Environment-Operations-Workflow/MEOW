@@ -1,100 +1,41 @@
 ﻿using MEOW.Components.Enums;
+using MEOW.Components.Models;
 
 namespace MEOW.Components.Services;
 
-public class NavService
+public class NavService : INavService
 {
-    public event EventHandler<CompassData>? CompassReadingChanged;
-
-    public event EventHandler<List<NavPoint>> NavPointsChanged;
-
-    private readonly List<NavPoint>
-        _navPoints = []; // ~Lattitude:57.0155703 Longitude: 9.9777961
-
     public event EventHandler<NavPoint>? LocationChanged;
+    public event EventHandler<CompassData>? CompassChanged;
+    public event EventHandler<List<NavPoint>>? NavPointsChanged;
+
+    private readonly object _navLock = new();
+    private readonly List<NavPoint> _navPoints = []; // ~Latitude:57.0155703 Longitude: 9.9777961
     private CancellationTokenSource? _cts;
 
-    public static (int, int) NavPointToVector(NavPoint loc, NavPoint point)
+
+    private void CompassChangedFnc(object? s, CompassChangedEventArgs e)
     {
-        const int radius = 50; // Radius is 50, Diameter is 100. Treated as percent
-
-        // convert to radians
-        double lat1 = loc.Latitude * Math.PI / 180.0;
-        double lat2 = point.Latitude * Math.PI / 180.0;
-        double dLon = (point.Longitude - loc.Longitude) * Math.PI / 180.0;
-
-        // great-circle / atan2(y, x) bearing
-        double atY = Math.Sin(dLon) * Math.Cos(lat2);
-        double atX = Math.Cos(lat1) * Math.Sin(lat2) -
-                     Math.Sin(lat1) * Math.Cos(lat2) * Math.Cos(dLon);
-
-        double brng = Math.Atan2(atY, atX);
-        brng = brng * 180.0 / Math.PI; // → degrees
-        brng = (brng + 360.0) % 360.0; // normalize to 0..360
-
-        double radians = brng * Math.PI / 180.0;
-        double x = radius + radius * Math.Cos(radians);
-        double y = radius + radius * Math.Sin(radians);
-
-        return ((int)y, (int)x);
+        CompassChanged?.Invoke(this, e.Reading);
     }
 
-    public async Task StartAsync()
+    public async Task StartCompass()
     {
-        if (!Compass.Default.IsSupported)
-            throw new NotSupportedException("Compass not supported on this device");
-
-        Compass.Default.ReadingChanged += (s, e) => { CompassReadingChanged?.Invoke(this, e.Reading); };
-
+        if (!Compass.IsSupported) return;
+        Compass.Default.ReadingChanged += CompassChangedFnc;
         Compass.Default.Start(SensorSpeed.UI);
     }
 
-    public void AddNavPoint(NavPoint navPoint)
+    public async Task StopCompass()
     {
-        _navPoints.Add(navPoint);
-        NavPointsChanged.Invoke(this, GetNavPoints());
+        if (!Compass.IsSupported) return;
+        Compass.Default.ReadingChanged -= CompassChangedFnc;
+        Compass.Default.Stop();
     }
 
-    public void RemoveNavPoint(int id)
+    public async Task TryStartGps()
     {
-        var index = _navPoints.FindIndex(point => id == point.Id);
-        if (index != -1) _navPoints.RemoveAt(index);
-        NavPointsChanged.Invoke(this, GetNavPoints());
-    }
-
-    public List<NavPoint> GetNavPoints()
-    {
-        return new List<NavPoint>().Concat(_navPoints).ToList();
-    }
-
-    public void AddDebugPoints(NavPoint pos, string dir)
-    {
-        var north = new NavPoint(pos.Latitude + 1f, pos.Longitude, NavPointType.Danger);
-        var south = new NavPoint(pos.Latitude - 1f, pos.Longitude, NavPointType.OtherDevice);
-        var east = new NavPoint(pos.Latitude, pos.Longitude + 1f, NavPointType.Danger);
-        var west = new NavPoint(pos.Latitude, pos.Longitude - 1f, NavPointType.OtherDevice);
-
-        switch (dir)
-        {
-            case "west":
-                AddNavPoint(west);
-                break;
-            case "east":
-                AddNavPoint(east);
-                break;
-            case "north":
-                AddNavPoint(north);
-                break;
-            case "south":
-                AddNavPoint(south);
-                break;
-        }
-    }
-
-    public async Task StartTrackingAsync()
-    {
-        _cts = new CancellationTokenSource();
-
+        if (_cts is not null) return;
         try
         {
             while (!_cts.Token.IsCancellationRequested)
@@ -107,12 +48,12 @@ public class NavService
 
                 if (location != null)
                 {
-                    NavPoint pos = new NavPoint((float)location.Latitude, (float)location.Longitude,
+                    NavPoint pos = new NavPoint((float)location.Longitude, (float)location.Latitude,
                         NavPointType.OtherDevice, -1);
                     LocationChanged?.Invoke(this, pos);
                 }
 
-                await Task.Delay(5000); // poll every 5 seconds
+                await Task.Delay(5000, _cts.Token); // poll every 5 seconds
             }
         }
         catch (Exception ex)
@@ -121,7 +62,27 @@ public class NavService
         }
     }
 
-    public void StopCompass() => Compass.Default.Stop();
-}
+    public async Task StopGps()
+    {
+        _cts?.CancelAsync();
+        _cts?.Dispose();
+    }
 
-public record NavPoint(float Latitude, float Longitude, NavPointType type, int Id = 0);
+    public List<NavPoint> GetNavPoints() => [.._navPoints];
+
+    public void AddNavPoint(NavPoint navPoint)
+    {
+        lock (_navLock)
+        {
+            _navPoints.Add(navPoint);
+            NavPointsChanged?.Invoke(this, GetNavPoints());
+        }
+    }
+
+    public void RemoveNavPoint(int id)
+    {
+        var index = _navPoints.FindIndex(point => id == point.Id);
+        if (index != -1) _navPoints.RemoveAt(index);
+        NavPointsChanged?.Invoke(this, GetNavPoints());
+    }
+}

@@ -1,0 +1,46 @@
+﻿.compass-outer {
+    position: relative;
+
+    width: 80vw;
+    padding: 7.5vw;
+    aspect-ratio: 1 / 1;
+
+    border-radius: 50%;
+    background-color: darkolivegreen;
+    /*animation: spin 10s linear infinite */
+}
+
+.compass-inner {
+    position: relative;
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background-color: white;
+}
+
+.north-indicator {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 7.5vw;
+    font-family: ui-rounded;
+    text-transform: uppercase;
+    color: red;
+
+    height: 7.5vw;
+    width: 100%;
+    top: 0;
+    left: 0;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
