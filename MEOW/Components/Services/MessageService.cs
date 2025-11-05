@@ -2,48 +2,45 @@ using MEOW.Components.Models;
 
 namespace MEOW.Components.Services;
 
-public class MessageService(IBluetoothService bluetooth, IUserStateService userStateService) : IMessageService
+public class MessageService(IBluetoothService bluetooth, IErrorService errorService) : IMessageService
 {
     private readonly List<MeowMessage> _messages = new();
-    private readonly MessageSerializer _serializer = new();
 
     // Sends a message using the bluetooth service
     public async Task<(bool, List<Exception>)> SendMessage(MeowMessage message)
     {
         if (message is null)
         {
-            return (false, [new Exception("No message")]);
+            var exception = new ArgumentNullException(nameof(message), "Message cannot be null");
+            errorService.Add(exception);
+            return (false, [exception]);
         }
 
         _messages.Add(message);
 
-        var bytes = _serializer.Serialize(message);
+        var bytes = message.Serialize();
 
         var (anySuccess, allErrors) = await bluetooth.SendToAllAsync(bytes).ConfigureAwait(false);
         return (anySuccess, allErrors);
     }
 
-    // Sets up actions when messages are received
     public void SetupMessageReceivedAction<T>(Action<T> onMessage) where T : MeowMessage
     {
         bluetooth.DeviceDataReceived += (receivedData) =>
         {
             try
             {
-                var message = _serializer.Deserialize(receivedData);
+                var message = new ByteDeserializer(receivedData, errorService).Deserialize();
                 _messages.Add(message);
-
-                // Only send messages of Type T to actions that wants that Type
-                // e.g if a service wants MeowMessageText, it will only receive those
+                
                 if (message is T typedMessage)
                 {
-                    onMessage((T)message);
+                    onMessage(typedMessage);
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Failed to deserialize message: {ex.Message}");
-                throw new Exception($"Failed to deserialize message: {ex.Message}");
+                errorService.Add(ex);
             }
         };
 
@@ -54,15 +51,8 @@ public class MessageService(IBluetoothService bluetooth, IUserStateService userS
         return bluetooth.GetConnectedDevicesCount() + 1;
     }
 
-    // Returns only messages of the specified types
     public List<T> GetMessages<T>() where T : MeowMessage
     {
         return _messages.FindAll(m => m is T).Cast<T>().ToList();
-    }
-
-    // Returns the name of the sender
-    public string GetSender()
-    {
-        return userStateService.GetName();
     }
 }

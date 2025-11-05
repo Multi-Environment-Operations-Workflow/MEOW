@@ -6,7 +6,10 @@
 @implements IAsyncDisposable
 @inject INavService Nav
 <h3>Compass</h3>
-<div>Location: @_location.ToString()</div>
+@if (_location is not null)
+{
+    <div>Location: @_location.ToString()</div>
+}
 
 <div class="compass-outer" style="transform: rotate(@((int)_north)deg);">
     <p class="north-indicator">N</p>
@@ -24,13 +27,8 @@
     </div>
 </div>
 
-@foreach (var nPoint in _navPoints)
-{
-    <p>@nPoint.ToScreenPositionFromOrigin(_location).ToString()</p>
-}
-
 @code {
-    NavPoint _location = new(9.9906f, 57.0127f, NavPointType.OtherDevice, -1);
+    NavPoint? _location;
     double _north; // Magnetic North in Degrees from where the phone is heading
     bool _started;
     List<NavPoint> _navPoints = [];
@@ -58,7 +56,6 @@
 
         await Nav.StartCompass();
         _ = Nav.TryStartGps();
-        AddDebugPoints();
     }
 
     private void OnHeading(object? _, CompassData cData)
@@ -71,7 +68,6 @@
     {
         _location = location;
         _navPoints = Nav.GetNavPoints();
-        Console.WriteLine(Nav.GetNavPoints().Count);
         InvokeAsync(StateHasChanged);
     }
 
@@ -83,7 +79,6 @@
 
     private void AddDebugPoints()
     {
-        Console.WriteLine("Added Points: " + Nav.GetNavPoints().Count);
         Nav.AddNavPoint(new NavPoint(_location.Longitude + 1f, _location.Latitude, NavPointType.Danger));
         Nav.AddNavPoint(new NavPoint(_location.Longitude - 1f, _location.Latitude, NavPointType.OtherDevice));
         Nav.AddNavPoint(new NavPoint(_location.Longitude, _location.Latitude + 1f, NavPointType.Danger));

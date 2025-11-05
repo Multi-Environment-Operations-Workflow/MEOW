@@ -6,6 +6,8 @@
 @inject IBluetoothService Bluetooth
 @inject IUserStateService UserStateService
 @inject NavigationManager Navigation
+@inject INotificationManagerService NotificationManagerService
+@inject IErrorService ErrorService
 
 <h1>Bluetooth Devices</h1>
 <p>Welcome, @_name!</p>
@@ -26,11 +28,7 @@
     <p>Scanning...</p>
 }
 
-@if (!string.IsNullOrEmpty(_errorMessage))
-{
-    <p class="error-text">@_errorMessage</p>
-}
-@if(!_devices.Any() && !_isScanning && string.IsNullOrEmpty(_errorMessage))
+@if(!_devices.Any() && !_isScanning)
 {
     <p>No devices found.</p>
 }
@@ -50,7 +48,6 @@ else
 
 @code {
     private string _name = string.Empty;
-    private string _errorMessage = string.Empty;
     private bool _isScanning;
     private ObservableCollection<MeowDevice> _devices = new();
     private string _advertisingMessage = string.Empty;
@@ -86,15 +83,13 @@ else
     {
         if (_isScanning) return;
         _isScanning = true;
-        _errorMessage = string.Empty;
         try
         {
             await Bluetooth.ScanAsync();
         }
         catch (Exception e)
         {
-            Console.WriteLine(e);
-            _errorMessage = e.Message;
+            ErrorService.Add(e);
         }
         _isScanning = false;
     }
@@ -104,10 +99,11 @@ else
         try
         {
             await Bluetooth.ConnectAsync(device);
+            Navigation.NavigateTo("/Chat");
         }
         catch (Exception e)
         {
-            _errorMessage = e.Message;
+            ErrorService.Add(e);
         }
     }
     
@@ -119,7 +115,7 @@ else
         }
         catch (Exception ex)
         {
-            _errorMessage = ex.Message;
+            ErrorService.Add(ex);
         }
     }
 

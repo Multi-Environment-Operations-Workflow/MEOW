@@ -33,16 +33,17 @@ public class NavService : INavService
         Compass.Default.Stop();
     }
 
-    public async Task TryStartGps()
+    public async Task TryStartGps() // ToDo add option to change polling rate and timeout
     {
         if (_cts is not null) return;
+        _cts = new CancellationTokenSource();
         try
         {
             while (!_cts.Token.IsCancellationRequested)
             {
                 var location = await Geolocation.Default.GetLocationAsync(
                     new GeolocationRequest(GeolocationAccuracy.Medium,
-                        TimeSpan.FromSeconds(10)), // ToDo add option for this to change
+                        TimeSpan.FromSeconds(10)),
                     _cts.Token
                 );
 
@@ -53,7 +54,7 @@ public class NavService : INavService
                     LocationChanged?.Invoke(this, pos);
                 }
 
-                await Task.Delay(5000, _cts.Token); // poll every 5 seconds
+                await Task.Delay(5000, _cts.Token);
             }
         }
         catch (Exception ex)
@@ -66,6 +67,7 @@ public class NavService : INavService
     {
         _cts?.CancelAsync();
         _cts?.Dispose();
+        _cts = null;
     }
 
     public List<NavPoint> GetNavPoints() => [.._navPoints];

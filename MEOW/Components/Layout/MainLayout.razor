@@ -1,7 +1,10 @@
 ﻿@using MEOW.Components.Services
+
 @inherits LayoutComponentBase
 @inject NavigationManager Navigation
 @inject IUserStateService UserStateService
+@inject IChatService ChatService
+@inject IErrorService ErrorService
 
 @if (!UserStateService.IsLoggedIn())
 {
@@ -11,6 +14,40 @@ else
 {
     <MatAppBarContainer Style="display: flex; flex-direction: column; height: 100vh">
         <MatAppBarContent Style="flex: 1 0 auto; overflow-y: auto;">
+            <div>
+                @foreach (var err in errors)
+                {
+                    <MatCard style="margin: 1rem; border: 2px solid red; background-color: #ffe6e6;">
+                        <MatCardContent>
+                            <h4 style="color: red;">Error:</h4>
+                            <p style="color: red;">@err.Message</p>
+
+                            @if (err.StackTrace is not null)
+                            {
+                                var frame = GetErrorLocation(err);
+                                if (frame is not null)
+                                {
+                                    <div style="font-size: 0.9rem; color: darkred; word-wrap: break-word; overflow-wrap: anywhere; white-space: normal; max-width: 100%;">
+                                        <p style="margin: 0;">
+                                            <b>File:</b><br />
+                                            <code style="display: block; white-space: normal; word-break: break-all;">
+                                                @frame.GetFileName()
+                                            </code>
+                                        </p>
+                                        <p style="margin: 0.3rem 0;">
+                                            <b>Line:</b> @frame.GetFileLineNumber()
+                                        </p>
+                                    </div>
+                                }
+                            }
+
+
+                            <MatButton Style="margin-top: 0.5rem;" @onclick="() => RemoveError(err)">Dismiss</MatButton>
+                        </MatCardContent>
+                    </MatCard>
+                }
+
+            </div>
             @Body
         </MatAppBarContent>
         <MatAppBar Fixed="true" Style="bottom: 0; width: 100%; height: 10vh; position: sticky; z-index: 1000;  padding-bottom: 1rem;">
@@ -29,9 +66,49 @@ else
 }
 
 @code {
+    List<Exception> errors = new();
+
+
     public void Logout()
     {
         UserStateService.ResetState();
         Navigation.NavigateTo("/login");
     }
+
+    protected override void OnInitialized()
+    {
+        ErrorService.OnError += HandleError;
+        ChatService.SetupNotificationsAndChatService();
+    }
+
+    void HandleError(IEnumerable<Exception> ex)
+    {
+        foreach (var exception in ex)
+        {
+            errors.Add(exception);
+        }
+        InvokeAsync(StateHasChanged);
+    }
+
+    void RemoveError(Exception ex)
+    {
+        errors.Remove(ex);
+        StateHasChanged();
+    }
+    
+    System.Diagnostics.StackFrame? GetErrorLocation(Exception ex)
+    {
+        var trace = new System.Diagnostics.StackTrace(ex, true);
+        foreach (var frame in trace.GetFrames())
+        {
+            if (!string.IsNullOrEmpty(frame.GetFileName()))
+            {
+                return frame;
+            }
+        }
+        return null;
+    }
+
 }
+
+

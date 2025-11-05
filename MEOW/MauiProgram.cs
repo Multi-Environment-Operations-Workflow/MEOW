@@ -15,16 +15,19 @@ public static class MauiProgram
 
 #if ANDROID
         builder.Services.AddSingleton<IBluetoothService, AndroidBluetoothService>();
+        builder.Services.AddSingleton<INotificationManagerService, AndroidNotificationManagerService>();
 #elif IOS
         builder.Services.AddSingleton<IBluetoothService, IOSBluetoothService>();
+        builder.Services.AddSingleton<INotificationManagerService, IOSNotificationManagerService>();
 #endif
         builder.Services.AddSingleton<IUserStateService, UserStateService>();
 
         builder.Services.AddSingleton<INavService, NavService>();
 
         builder.Services.AddSingleton<IPinService, PinService>();
-
         builder.Services.AddSingleton<IMessageService, MessageService>();
+        builder.Services.AddSingleton<IChatService, ChatService>();
+        builder.Services.AddSingleton<IErrorService, MeowErrorService>();
 
         builder.Services.AddMauiBlazorWebView();
         builder.Services.AddMatBlazor();
