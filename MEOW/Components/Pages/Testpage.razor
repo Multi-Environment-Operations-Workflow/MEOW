@@ -159,6 +159,8 @@
 
 @code {
     private string SelectedPresetMessage { get; set; } = "Hej";
+    private int ReceiveTimeoutSeconds { get; set; } = 5;
+
     private int MessageCount { get; set; } = 1;
     private int DurationSeconds { get; set; } = 1;
 
@@ -212,13 +214,22 @@
 
         // nulstil inaktivitets-timer (1 sek)
         _timeoutTimer?.Stop();
-        _timeoutTimer ??= new System.Timers.Timer(1000);
+        _timeoutTimer ??= new System.Timers.Timer(ReceiveTimeoutSeconds * 1000);
+
         _timeoutTimer.Elapsed -= TimeoutElapsed;
         _timeoutTimer.Elapsed += TimeoutElapsed;
         _timeoutTimer.AutoReset = false;
         _timeoutTimer.Start();
 
-        InvokeAsync(StateHasChanged);
+        try
+        {
+            InvokeAsync(StateHasChanged);
+        }
+        catch (NotImplementedException)
+        {
+            // ⚠️ Ignorer AndroidNotificationManagerService som ikke er implementeret
+            Console.WriteLine("NotImplementedException ignoreret – AndroidNotificationManagerService ikke aktiv.");
+        }
     }
 
     private void TimeoutElapsed(object? sender, System.Timers.ElapsedEventArgs e)
@@ -332,6 +343,13 @@
         }
         catch (Exception ex)
         {
+                // Ignorer "NotImplementedException" fra AndroidNotificationManagerService
+            if (ex is NotImplementedException)
+            {
+                StatusMessage = "⚠️ Notifikationer er ikke implementeret (ignoreres i test).";
+                StateHasChanged();
+                return;
+            }
             foreach (var inner in UnwrapExceptions(ex))
             {
                 ErrorDetails.Add(new ErrorInfo
