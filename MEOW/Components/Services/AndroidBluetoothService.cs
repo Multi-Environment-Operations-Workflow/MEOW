@@ -338,7 +338,7 @@ public class AndroidBluetoothService(IErrorService errorService) : IBluetoothSer
         _adapter.DeviceDiscovered -= OnDeviceDiscovered; 
         _adapter.DeviceDiscovered += OnDeviceDiscovered; 
 
-        await _adapter.StartScanningForDevicesAsync();
+        await _adapter.StartScanningForDevicesAsync(serviceUuids: new []{ChatUuids.ChatService});
         return true;
     }
 
