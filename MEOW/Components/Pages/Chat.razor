@@ -1,4 +1,5 @@
 @page "/Chat"
+@using System.Collections.Specialized
 @using MEOW.Components.Models
 @using MEOW.Components.Services
 @inject IChatService ChatService
@@ -18,11 +19,13 @@
     <div class="messages">
         @foreach (var m in _messages)
         {
-            <div><strong>@m.Sender:</strong> @m.Message</div>
+            <div>
+                <strong>@m.Sender:</strong> @m.Message
+            </div>
         }
     </div>
 
-    <MatTextField @bind-Value="_outgoing" Label="Send a message" />
+    <MatTextField @bind-Value="_outgoing" Label="Send a message"/>
     <MatButton @onclick="SendAsync">Send</MatButton>
     <MatButton @onclick="GoBack">Back</MatButton>
 </div>
@@ -36,15 +39,7 @@
         try
         {
             _messages = ChatService.GetChatMessages();
-            
-            void OnMessageReceived(MeowMessageText message)
-            {
-                _messages.Add(message);
-                InvokeAsync(StateHasChanged);
-            }
-            
-            ChatService.SetupChatMessageReceivedAction(OnMessageReceived);
-
+            ChatService.SetupChatMessageReceivedAction(OnNewMessage);
             return base.OnInitializedAsync();
         }
         catch (Exception e)
@@ -54,16 +49,23 @@
         }
     }
 
+    private void OnNewMessage(object? _, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.Action != NotifyCollectionChangedAction.Add || e.NewItems == null) return;
+        _messages.AddRange(e.NewItems.Cast<MeowMessageText>());
+        InvokeAsync(StateHasChanged);
+    }
+
     private async Task SendAsync()
     {
         try
         {
             if (string.IsNullOrWhiteSpace(_outgoing))
                 return;
-            
+
             var result = await ChatService.SendMessage(_outgoing);
             _messages.Add(new MeowMessageText(_outgoing, "You"));
-        
+
             if (!result.Item1)
             {
                 var exceptions = !result.Item2.Any()
@@ -87,4 +89,5 @@
     {
         Navigation.NavigateTo("/");
     }
+
 }
