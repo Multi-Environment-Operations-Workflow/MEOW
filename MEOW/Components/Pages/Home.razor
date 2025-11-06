@@ -28,7 +28,7 @@
     <p>Scanning...</p>
 }
 
-@if(!_devices.Any() && !_isScanning)
+@if (!_devices.Any() && !_isScanning)
 {
     <p>No devices found.</p>
 }
@@ -38,9 +38,9 @@ else
         @foreach (var d in _devices)
         {
             <li>
-                <button class="device-button" @onclick="() => ConnectAsync(d)">
+                <MatButton class="device-button" @onclick="() => ConnectAsync(d)">
                     @GetDeviceDisplay(d)
-                </button>
+                </MatButton>
             </li>
         }
     </ul>
@@ -59,14 +59,14 @@ else
             Navigation.NavigateTo("/login");
             return;
         }
-        
+
         _name = UserStateService.GetName();
-        
+
         _devices = Bluetooth.Devices;
         Bluetooth.AdvertisingStateChanged += OnAdvertisingStateChanged;
         Bluetooth.PeerConnected += OnPeerConnected;
     }
-    
+
     private void OnPeerConnected()
     {
         // both central and peripheral will hit this and navigate to chat
@@ -78,7 +78,7 @@ else
         _advertisingMessage = message ?? string.Empty;
         InvokeAsync(StateHasChanged);
     }
-    
+
     private async Task ScanAsync()
     {
         if (_isScanning) return;
@@ -91,6 +91,7 @@ else
         {
             ErrorService.Add(e);
         }
+
         _isScanning = false;
     }
 
@@ -106,7 +107,7 @@ else
             ErrorService.Add(e);
         }
     }
-    
+
     private async Task StartAdvertisingAsync()
     {
         try
@@ -128,4 +129,5 @@ else
     {
         return $"{device.Name} ({device.Id})";
     }
+
 }
