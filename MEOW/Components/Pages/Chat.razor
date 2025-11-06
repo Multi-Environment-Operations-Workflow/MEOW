@@ -3,6 +3,7 @@
 @using MEOW.Components.Services
 @inject IChatService ChatService
 @inject NavigationManager Navigation
+@inject IErrorService ErrorService
 
 <h3>Chat</h3>
 
@@ -29,6 +30,13 @@
         try
         {
             _messages = ChatService.GetChatMessages();
+            
+            void OnMessageReceived(MeowMessageText message)
+            {
+                _messages.Add(message);
+                InvokeAsync(StateHasChanged);
+            }
+            
             ChatService.SetupChatMessageReceivedAction(OnMessageReceived);
 
             return base.OnInitializedAsync();
@@ -38,12 +46,6 @@
             _messages.Add(new MeowMessageText("Error initializing chat: " + e.Message, "error"));
             return base.OnInitializedAsync();
         }
-    }
-    
-    private void OnMessageReceived(MeowMessageText message)
-    {
-        _messages.Add(message);
-        InvokeAsync(StateHasChanged);
     }
 
     private async Task SendAsync()
@@ -58,10 +60,11 @@
         
             if (!result.Item1)
             {
-                var errorText = !result.Item2.Any() ? "unknown error"
-                    : string.Join("; ", result.Item2.Select(ex => ex.Message ?? ex.ToString()));
+                var exceptions = !result.Item2.Any()
+                    ? [new Exception("unknown error")]
+                    : result.Item2;
 
-                _messages.Add(new MeowMessageText("Failed to send message. " + errorText, "error"));
+                ErrorService.Add(exceptions);
             }
 
             _outgoing = string.Empty;

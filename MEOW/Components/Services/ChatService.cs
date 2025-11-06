@@ -5,15 +5,11 @@ namespace MEOW.Components.Services;
 public class ChatService(
     IMessageService messageService,
     IUserStateService userStateService,
-    INotificationManagerService notificationManagerService)
+    INotificationManagerService notificationManagerService,
+    IErrorService errorService)
     : IChatService
 {
     List<MeowMessageText> MeowMessageTexts { get; set; } = new();
-
-    public void Initialize()
-    {
-        messageService.SetupMessageReceivedAction<MeowMessageText>(ChatMessageReceivedAction);
-    }
     
     public Task<(bool, List<Exception>)> SendMessage(string message)
     {
@@ -21,10 +17,20 @@ public class ChatService(
         return messageService.SendMessage(meowMessage);
     }
     
-    private void ChatMessageReceivedAction(MeowMessageText msg)
+    public void SetupNotificationsAndChatService()
     {
-        MeowMessageTexts.Add(msg);
-        notificationManagerService.SendNotification("New Chat Message", $"{msg.Sender}: {msg.Message}", DateTime.Now.AddSeconds(1));
+        messageService.SetupMessageReceivedAction<MeowMessageText>((msg) =>
+        {
+            try
+            {
+                MeowMessageTexts.Add(msg);
+                notificationManagerService.SendNotification("New Chat Message", $"{msg.Sender}: {msg.Message}",
+                    DateTime.Now.AddSeconds(1));
+            }catch (Exception ex)
+            {
+                errorService.Add(ex);
+            }
+        });
     }
 
     public void SetupChatMessageReceivedAction(Action<MeowMessageText> onMessage)
