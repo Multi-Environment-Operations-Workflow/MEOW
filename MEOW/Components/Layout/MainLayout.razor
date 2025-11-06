@@ -78,7 +78,6 @@ else
     protected override void OnInitialized()
     {
         ErrorService.OnError += HandleError;
-        ChatService.SetupNotificationsAndChatService();
     }
 
     void HandleError(IEnumerable<Exception> ex)

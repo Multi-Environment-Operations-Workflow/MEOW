@@ -1,3 +1,5 @@
+using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using MEOW.Components.Models;
 
 namespace MEOW.Components.Services;
@@ -9,14 +11,14 @@ public class ChatService(
     IErrorService errorService)
     : IChatService
 {
-    List<MeowMessageText> MeowMessageTexts { get; set; } = new();
-    
+    private ObservableCollection<MeowMessageText> MeowMessageTexts { get; set; } = new();
+
     public Task<(bool, List<Exception>)> SendMessage(string message)
     {
         var meowMessage = new MeowMessageText(message, userStateService.GetName());
         return messageService.SendMessage(meowMessage);
     }
-    
+
     public void SetupNotificationsAndChatService()
     {
         messageService.SetupMessageReceivedAction<MeowMessageText>((msg) =>
@@ -26,21 +28,29 @@ public class ChatService(
                 MeowMessageTexts.Add(msg);
                 notificationManagerService.SendNotification("New Chat Message", $"{msg.Sender}: {msg.Message}",
                     DateTime.Now.AddSeconds(1));
-            }catch (Exception ex)
+            }
+            catch (Exception ex)
             {
                 errorService.Add(ex);
             }
         });
     }
 
-    public void SetupChatMessageReceivedAction(Action<MeowMessageText> onMessage)
+    public void SetupChatMessageReceivedAction(NotifyCollectionChangedEventHandler onMessage)
     {
-        messageService.SetupMessageReceivedAction(onMessage);
+        try
+        {
+            MeowMessageTexts.CollectionChanged -= onMessage;
+        }
+        finally
+        {
+            MeowMessageTexts.CollectionChanged += onMessage;
+        }
     }
-    
+
     public List<MeowMessageText> GetChatMessages()
     {
-        return MeowMessageTexts;
+        return MeowMessageTexts.ToList();
     }
 
     public int GetChatParticipantsCount()

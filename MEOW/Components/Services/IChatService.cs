@@ -1,3 +1,4 @@
+using System.Collections.Specialized;
 using MEOW.Components.Models;
 
 namespace MEOW.Components.Services;
@@ -8,7 +9,7 @@ public interface IChatService
 
     void SetupNotificationsAndChatService();
 
-    void SetupChatMessageReceivedAction(Action<MeowMessageText> onMessage);
+    void SetupChatMessageReceivedAction(NotifyCollectionChangedEventHandler onMessage);
 
     List<MeowMessageText> GetChatMessages();
 

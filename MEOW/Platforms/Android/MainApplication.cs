@@ -1,5 +1,10 @@
 ﻿using Android.App;
 using Android.Runtime;
+using MEOW.Components.Models;
+using MEOW.Components.Services;
+using Microsoft.Maui.LifecycleEvents;
+using Microsoft.Extensions.DependencyInjection;
+using Exception = Java.Lang.Exception;
 
 namespace MEOW;
 
@@ -12,4 +17,12 @@ public class MainApplication : MauiApplication
     }
 
     protected override MauiApp CreateMauiApp() => MauiProgram.CreateMauiApp();
+
+    public override void OnCreate() //Changes here should be reflected in Platforms/iOS/AppDelegate.cs
+    {
+        base.OnCreate();
+        var chatService =  IPlatformApplication.Current?.Services.GetService<IChatService>();
+        
+        chatService?.SetupNotificationsAndChatService();
+    }
 }
