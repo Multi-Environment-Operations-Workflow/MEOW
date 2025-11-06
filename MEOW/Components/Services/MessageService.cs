@@ -26,6 +26,7 @@ public class MessageService(IBluetoothService bluetooth, IErrorService errorServ
 
     public void SetupMessageReceivedAction<T>(Action<T> onMessage) where T : MeowMessage
     {
+       
         bluetooth.DeviceDataReceived += (receivedData) =>
         {
             try
