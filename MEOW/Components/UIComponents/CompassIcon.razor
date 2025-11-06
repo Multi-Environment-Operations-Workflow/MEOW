@@ -1,0 +1,39 @@
+﻿@using MEOW.Components.Enums
+@namespace MEOW.Components.UIComponents
+
+<div class="compass-icon-outer"
+     style="left: @(ScreenPosition.Item1)%; bottom: @(ScreenPosition.Item2)%; transform: translate(-50%, 50%) rotate(-@((int)Rotation)deg);">
+    <MatIcon Icon="@NavTypeToIcon(Type)" Class="mat-icon" Style="@NavTypeToColor(Type)"/>
+</div>
+
+
+@code {
+    [Parameter] public NavPointType Type { get; set; }
+    [Parameter] public double Rotation { get; set; }
+    [Parameter] public (int, int) ScreenPosition { get; set; }
+
+    private static string NavTypeToIcon(NavPointType type)
+    {
+        switch (type)
+        {
+            case NavPointType.Danger:
+                return MatIconNames.Error_outline;
+            case NavPointType.OtherDevice:
+            default:
+                return MatIconNames.Settings_input_antenna;
+        }
+    }
+
+    private static string NavTypeToColor(NavPointType type)
+    {
+        switch (type)
+        {
+            case NavPointType.Danger:
+                return "color: red";
+            case NavPointType.OtherDevice:
+            default:
+                return "color: cornflowerblue";
+        }
+    }
+
+}
