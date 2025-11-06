@@ -1,0 +1,18 @@
+﻿.compass-icon-outer {
+    position: absolute;
+    width: 8vw;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0;
+    margin: 0;
+}
+
+.mat-icon {
+    height: 100%;
+    width: 100%;
+    text-align: center;
+    border: solid 1px hotpink;
+}
+
