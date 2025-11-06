@@ -38,14 +38,8 @@ public class ChatService(
 
     public void SetupChatMessageReceivedAction(NotifyCollectionChangedEventHandler onMessage)
     {
-        try
-        {
             MeowMessageTexts.CollectionChanged -= onMessage;
-        }
-        finally
-        {
             MeowMessageTexts.CollectionChanged += onMessage;
-        }
     }
 
     public List<MeowMessageText> GetChatMessages()

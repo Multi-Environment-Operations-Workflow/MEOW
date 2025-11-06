@@ -13,7 +13,9 @@
     <div class="messages">
         @foreach (var m in _messages)
         {
-            <div><strong>@m.Sender:</strong> @m.Message</div>
+            <div>
+                <strong>@m.Sender:</strong> @m.Message
+            </div>
         }
     </div>
 
@@ -44,8 +46,8 @@
     private void OnNewMessage(object? _, NotifyCollectionChangedEventArgs e)
     {
         if (e.Action != NotifyCollectionChangedAction.Add || e.NewItems == null) return;
-        var newMessages = e.NewItems.Cast<MeowMessageText>();
-        _messages.AddRange(newMessages);
+        _messages.AddRange(e.NewItems.Cast<MeowMessageText>());
+        InvokeAsync(StateHasChanged);
     }
 
     private async Task SendAsync()
