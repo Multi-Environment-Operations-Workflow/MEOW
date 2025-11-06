@@ -66,11 +66,11 @@ namespace MEOW.Components.Services
 
         // Lokal GATT-server så Android kan modtage beskeder. Er "client" i forhold til peripheral server forholdet. 
         private MeowAndroidGattServer? _gattServer;
-        
+
         private readonly HashSet<string> _receivedMessageIds = new(); // Vi skal holde styr på id´er vi har modtaget fra (controlled flod)
         private static long _msgCounter = 0;
         private readonly object _lock = new(); // Flere id´er må ikke blive tilføjet samtidig samtidig. Kunne ske vis flere noder er konnectet samtidig. 
-        
+
         // For at ungå dupes
         private bool _isAdvertising = false;
         private bool _isScanning = false;
@@ -80,12 +80,12 @@ namespace MEOW.Components.Services
             return _adapter.ConnectedDevices?.Count ?? 0;
         }
 
-        
+
         public async Task<(bool, List<Exception>)> SendToAllAsync(byte[] data)
         {
             var anySuccess = false;
             var exceptions = new List<Exception>();
-        
+
             // laver beskeden til string, så vi kan tjekke om den har id
             var msg = System.Text.Encoding.UTF8.GetString(data);
             // Vis det er os der sender beskeden så kommer vi herind. Da det betyder vores besked ikke har nogen header.
@@ -318,7 +318,7 @@ namespace MEOW.Components.Services
             await CheckPermissions();
 
             Devices.Clear(); // Når vi scanner ønsker vi at fjerne dem som allerede er på listen.
-        
+
             if (_bluetooth == null || _adapter == null)
                 throw new InvalidOperationException("Bluetooth not initialized");
 
@@ -326,25 +326,25 @@ namespace MEOW.Components.Services
                 throw new Exception("Bluetooth is off");
 
             // Vi fjerner ældre event og tilføjer vores nye. 
-            _adapter.DeviceDiscovered -= OnDeviceDiscovered; 
-            _adapter.DeviceDiscovered += OnDeviceDiscovered; 
+            _adapter.DeviceDiscovered -= OnDeviceDiscovered;
+            _adapter.DeviceDiscovered += OnDeviceDiscovered;
 
             await _adapter.StartScanningForDevicesAsync();
             return true;
         }
 
-        private void OnDeviceDiscovered(object? s, Plugin.BLE.Abstractions.EventArgs.DeviceEventArgs a) 
+        private void OnDeviceDiscovered(object? s, Plugin.BLE.Abstractions.EventArgs.DeviceEventArgs a)
         { // Tjekker om vi allerede har den. Vis vi har gør vi ikke noget. Ellers tilføjer vi den til vores liste.
-            if (Devices.Any(d => d.Id == a.Device.Id)) 
-                return; 
-                                                        
-            if (a.Device.Name != null) 
-            { 
-                var device = new MeowDevice(a.Device.Name, a.Device.Id, a.Device); 
-                device.Name = device.Name.Replace("(MEOW) ", "").Trim(); 
-                Devices.Add(device); 
-            } 
-        } 
+            if (Devices.Any(d => d.Id == a.Device.Id))
+                return;
+
+            if (a.Device.Name != null)
+            {
+                var device = new MeowDevice(a.Device.Name, a.Device.Id, a.Device);
+                device.Name = device.Name.Replace("(MEOW) ", "").Trim();
+                Devices.Add(device);
+            }
+        }
 
 
         async public Task ConnectAsync(MeowDevice device)
@@ -375,28 +375,28 @@ namespace MEOW.Components.Services
             try
             {
                 //  Stop aktiv scanning, hvis en kører. Virker delvist
-                if (_isScanning) 
-                { 
+                if (_isScanning)
+                {
                     try
-                    { 
-                        if (_adapter.IsScanning) 
-                            _adapter.StopScanningForDevicesAsync(); 
-                    } 
-                    catch (Exception ex) 
                     {
-                        System.Diagnostics.Debug.WriteLine($"StopScanning error: {ex.Message}"); 
-                    } 
-                    finally 
-                    { 
-                        _isScanning = false; 
+                        if (_adapter.IsScanning)
+                            _adapter.StopScanningForDevicesAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"StopScanning error: {ex.Message}");
+                    }
+                    finally
+                    {
+                        _isScanning = false;
                         _adapter.DeviceDiscovered -= OnDeviceDiscovered; // Fjerner handles fordi vi også stopper scanning.  
-                    } 
-                } 
+                    }
+                }
 
                 // Vis ikke vi cleare den risikere vi den går med over. Måske. Skal jeg lige teste !TODO
-                Devices.Clear(); 
+                Devices.Clear();
 
-                if (_bleAdvertiser != null && _advertisingCallback != null) 
+                if (_bleAdvertiser != null && _advertisingCallback != null)
                 {
                     try { _bleAdvertiser.StopAdvertising(_advertisingCallback); }
                     catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"StopAdvertising error: {ex.Message}"); }
@@ -416,7 +416,7 @@ namespace MEOW.Components.Services
                 _isAdvertising = false;
                 _advertisingCallback = null;
                 _adapter.DeviceDiscovered -= OnDeviceDiscovered;
-                _isScanning = false; 
+                _isScanning = false;
             }
 
             return Task.CompletedTask;
@@ -434,21 +434,21 @@ namespace MEOW.Components.Services
                 case PermissionStatus.Granted:
                     return true;
                 case PermissionStatus.Denied:
-                {
-                    if (Permissions.ShouldShowRationale<Permissions.Bluetooth>())
                     {
-                        var page = Application.Current?.Windows[0]?.Page;
-                        if (page != null)
+                        if (Permissions.ShouldShowRationale<Permissions.Bluetooth>())
                         {
-                            await page.DisplayAlert(
-                                "Bluetooth Access Required",
-                                "This app needs access to bluetooth to function",
-                                "OK"
-                            );
+                            var page = Application.Current?.Windows[0]?.Page;
+                            if (page != null)
+                            {
+                                await page.DisplayAlert(
+                                    "Bluetooth Access Required",
+                                    "This app needs access to bluetooth to function",
+                                    "OK"
+                                );
+                            }
                         }
+                        break;
                     }
-                    break;
-                }
             }
 
             status = await Permissions.RequestAsync<Permissions.Bluetooth>();
@@ -506,18 +506,18 @@ namespace MEOW.Components.Services
         {
             _btManager = (BluetoothManager)ctx.GetSystemService(Context.BluetoothService)!;
             _chatServiceUuid = UUID.FromString(ChatUuids.ChatService.ToString())!;
-            _msgSendUuid     = UUID.FromString(ChatUuids.MessageSendCharacteristic.ToString())!;
-            _msgRecvUuid     = UUID.FromString(ChatUuids.MessageReceiveCharacteristic.ToString())!;
+            _msgSendUuid = UUID.FromString(ChatUuids.MessageSendCharacteristic.ToString())!;
+            _msgRecvUuid = UUID.FromString(ChatUuids.MessageReceiveCharacteristic.ToString())!;
         }
 
         // Overload hvis du vil hoste med custom serviceUuid
-        
+
         public MeowAndroidGattServer(Context ctx, Guid serviceUuid)
         {
             _btManager = (BluetoothManager)ctx.GetSystemService(Context.BluetoothService)!;
             _chatServiceUuid = UUID.FromString(serviceUuid.ToString())!;
-            _msgSendUuid     = UUID.FromString(ChatUuids.MessageSendCharacteristic.ToString())!;
-            _msgRecvUuid     = UUID.FromString(ChatUuids.MessageReceiveCharacteristic.ToString())!;
+            _msgSendUuid = UUID.FromString(ChatUuids.MessageSendCharacteristic.ToString())!;
+            _msgRecvUuid = UUID.FromString(ChatUuids.MessageReceiveCharacteristic.ToString())!;
         }
 
         public void Start()

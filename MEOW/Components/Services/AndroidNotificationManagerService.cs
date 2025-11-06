@@ -21,17 +21,24 @@ public class AndroidNotificationManagerService : INotificationManagerService
         _context = Android.App.Application.Context;
 
         // Check if we have notification permission
-        _hasNotificationsPermission = CheckNotificationPermission();
+        _hasNotificationsPermission = false;
 
         // Create notification channel (required for Android 8.0+)
         CreateNotificationChannel();
     }
 
-    public void SendNotification(string title, string message, DateTime? notifyTime = null)
+    public async void SendNotification(string title, string message, DateTime? notifyTime = null)
     {
         if (!_hasNotificationsPermission)
         {
-            throw new PermissionException("App doesn't have permissions to send notifications.");
+            if (!await CheckPermissions())
+            {
+                throw new PermissionException("App doesn't have permissions to send notifications.");
+            }
+            else
+            {
+                _hasNotificationsPermission = true;
+            }
         }
 
         _messageId++;
@@ -103,6 +110,36 @@ public class AndroidNotificationManagerService : INotificationManagerService
 
         // For versions below Android 13, notifications are granted by default
         return true;
+    }
+
+    async Task<bool> CheckPermissions()
+    {
+        PermissionStatus status = await Permissions.CheckStatusAsync<Permissions.PostNotifications>();
+
+        switch (status)
+        {
+            case PermissionStatus.Granted:
+                return true;
+            case PermissionStatus.Denied:
+                {
+                    if (Permissions.ShouldShowRationale<Permissions.PostNotifications>())
+                    {
+                        var page = Microsoft.Maui.Controls.Application.Current?.Windows[0]?.Page;
+                        if (page != null)
+                        {
+                            await page.DisplayAlert(
+                                "Notification Access Required",
+                                "This app needs access to notifications to function",
+                                "OK"
+                            );
+                        }
+                    }
+                    break;
+                }
+        }
+
+        status = await Permissions.RequestAsync<Permissions.PostNotifications>();
+        return status == PermissionStatus.Granted;
     }
 
     private int GetNotificationIcon()
