@@ -227,7 +227,7 @@
         }
         catch (NotImplementedException)
         {
-            // ⚠️ Ignorer AndroidNotificationManagerService som ikke er implementeret
+            
             Console.WriteLine("NotImplementedException ignoreret – AndroidNotificationManagerService ikke aktiv.");
         }
     }
@@ -251,7 +251,7 @@
         InvokeAsync(StateHasChanged);
     }
 
-    // ==== AFSENDELSE ====
+
     private async Task StartSending()
     {
         if (IsRunning) return;
