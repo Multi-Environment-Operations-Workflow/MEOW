@@ -39,7 +39,7 @@
             return base.OnInitializedAsync();
         }
     }
-    
+
     private void OnMessageReceived(MeowMessageText message)
     {
         _messages.Add(message);
@@ -52,14 +52,14 @@
         {
             if (string.IsNullOrWhiteSpace(_outgoing))
                 return;
-            
+
             var result = await ChatService.SendMessage(_outgoing);
             _messages.Add(new MeowMessageText(_outgoing, "You"));
-        
+
             if (!result.Item1)
             {
                 var errorText = !result.Item2.Any() ? "unknown error"
-                    : string.Join("; ", result.Item2.Select(ex => ex.Message ?? ex.ToString()));
+                : string.Join("; ", result.Item2.Select(ex => ex.Message ?? ex.ToString()));
 
                 _messages.Add(new MeowMessageText("Failed to send message. " + errorText, "error"));
             }

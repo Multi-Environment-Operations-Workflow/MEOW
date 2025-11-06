@@ -14,11 +14,14 @@ public class MessageService(IBluetoothService bluetooth, IUserStateService userS
             return (false, [new Exception("No message")]);
         }
 
+        //throw new Exception($"Sending {message}");
+
         _messages.Add(message);
 
         var bytes = message.Serialize();
 
         var (anySuccess, allErrors) = await bluetooth.SendToAllAsync(bytes).ConfigureAwait(false);
+
         return (anySuccess, allErrors);
     }
 
@@ -26,22 +29,14 @@ public class MessageService(IBluetoothService bluetooth, IUserStateService userS
     {
         bluetooth.DeviceDataReceived += (receivedData) =>
         {
-            try
-            {
-                var message = new ByteDeserializer(receivedData).Deserialize();
-                _messages.Add(message);
+            var message = new ByteDeserializer(receivedData).Deserialize();
+            _messages.Add(message);
 
-                // Only send messages of type T to actions that wants that type
-                // e.g if a service wants MeowMessageText, it will only receive those
-                if (message is T typedMessage)
-                {
-                    onMessage((T)message);
-                }
-            }
-            catch (Exception ex)
+            // Only send messages of type T to actions that wants that type
+            // e.g if a service wants MeowMessageText, it will only receive those
+            if (message is T typedMessage)
             {
-                System.Diagnostics.Debug.WriteLine($"Failed to deserialize message: {ex.Message}");
-                throw new Exception($"Failed to deserialize message: {ex.Message}");
+                onMessage((T)message);
             }
         };
 

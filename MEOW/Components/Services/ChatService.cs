@@ -14,24 +14,24 @@ public class ChatService(
     {
         messageService.SetupMessageReceivedAction<MeowMessageText>(ChatMessageReceivedAction);
     }
-    
+
     public Task<(bool, List<Exception>)> SendMessage(string message)
     {
         var meowMessage = new MeowMessageText(message, userStateService.GetName());
         return messageService.SendMessage(meowMessage);
     }
-    
+
     private void ChatMessageReceivedAction(MeowMessageText msg)
     {
         MeowMessageTexts.Add(msg);
-        notificationManagerService.SendNotification("New Chat Message", $"{msg.Sender}: {msg.Message}", DateTime.Now.AddSeconds(1));
+        //notificationManagerService.SendNotification("New Chat Message", $"{msg.Sender}: {msg.Message}", DateTime.Now.AddSeconds(1));
     }
 
     public void SetupChatMessageReceivedAction(Action<MeowMessageText> onMessage)
     {
         messageService.SetupMessageReceivedAction(onMessage);
     }
-    
+
     public List<MeowMessageText> GetChatMessages()
     {
         return MeowMessageTexts;
