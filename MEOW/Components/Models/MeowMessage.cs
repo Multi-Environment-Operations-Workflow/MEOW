@@ -65,7 +65,7 @@ namespace MEOW.Components.Models
             writer.Write(Latitude);
         }
     }
-    
+
 
     public class MeowMessageTask(string sender, string title, string textContext, string fileData) : MeowMessage(sender)
     {
@@ -78,8 +78,9 @@ namespace MEOW.Components.Models
         protected override void SerializeCore(BinaryWriter writer)
         {
             base.SerializeCore(writer);
-            writer.Write(Title);
-            writer.Write(TextContext ??= "");
-            writer.Write(FileData ??= "");
+            WriteString(writer, Title);
+            WriteString(writer, TextContext ??= "");
+            WriteString(writer, FileData ??= "");
         }
-    }}
+    }
+}
