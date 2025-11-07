@@ -10,9 +10,9 @@
 <h3>Chat</h3>
 
 <div class="chat-window">
-    <span>Connected devices: @ChatService.GetChatParticipantsCount()</span>
+    <span>Connected devices: @_chatParticipantCount</span>
     <div>
-        @foreach (var name in @ChatService.GetConnectedDeviceName())
+        @foreach (var name in _connectedDeviceNames)
         {
             <li>@name</li>
         }
@@ -34,6 +34,8 @@
 @code {
     private string _outgoing = string.Empty;
     private List<MeowMessageText> _messages = new();
+    private int _chatParticipantCount = 0;
+    private List<string> _connectedDeviceNames = new();
 
     protected override Task OnInitializedAsync()
     {
@@ -41,20 +43,28 @@
         {
             _messages = ChatService.GetChatMessages();
             ChatService.SetupChatMessageReceivedAction(OnNewMessage);
-            return base.OnInitializedAsync();
+            _chatParticipantCount = ChatService.GetChatParticipantsCount();
+            _connectedDeviceNames = ChatService.GetConnectedDeviceName();
         }
         catch (Exception e)
         {
             ErrorService.Add(e);
-            return base.OnInitializedAsync();
         }
+
+        return base.OnInitializedAsync();
     }
 
     private void OnNewMessage(object? _, NotifyCollectionChangedEventArgs e)
     {
-        if (e.Action != NotifyCollectionChangedAction.Add || e.NewItems == null) return;
-        _messages.AddRange(e.NewItems.Cast<MeowMessageText>());
-        InvokeAsync(StateHasChanged);
+        try {
+            if (e.Action != NotifyCollectionChangedAction.Add || e.NewItems == null) return;
+            _messages.AddRange(e.NewItems.Cast<MeowMessageText>());
+            InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            ErrorService.Add(ex);
+        }
     }
 
     private async Task SendAsync()

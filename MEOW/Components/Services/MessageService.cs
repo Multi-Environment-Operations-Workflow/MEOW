@@ -39,18 +39,20 @@ public class MessageService(IBluetoothService bluetooth, IErrorService errorServ
             try
             {
                 var message = new ByteDeserializer(receivedData, errorService).Deserialize();
-                _messages.Add(message);
                 
                 if (message is T typedMessage)
                 {
                     onMessage(typedMessage);
                 }
-                
-                if (_messages.FirstOrDefault(m => m.MessageNumber == message.MessageNumber 
-                                                  && m.UserId == message.UserId) == null)
-                    return; // vi har allerede haft denne besked, så gør vi kke noget.
+
+                if (_messages.Any(m => m.MessageNumber == message.MessageNumber
+                                       && m.UserId == message.UserId))
+                {
+                    return;
+                }
+
+                _messages.Add(message);
                 RedistributeMessageToAllNodes(message);
-                
 
             }
             catch (Exception ex)
@@ -63,7 +65,7 @@ public class MessageService(IBluetoothService bluetooth, IErrorService errorServ
     
     private void RedistributeMessageToAllNodes(MeowMessage message)
     {
-        _ = bluetooth.SendToAllAsync(message.Serialize());
+        bluetooth.SendToAllAsync(message.Serialize());
     }
 
     public int GetParticipantsCount()
