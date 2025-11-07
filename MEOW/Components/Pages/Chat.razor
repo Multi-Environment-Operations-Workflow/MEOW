@@ -5,6 +5,7 @@
 @inject IChatService ChatService
 @inject NavigationManager Navigation
 @inject IErrorService ErrorService
+@inject IUserStateService UserStateService
 
 <h3>Chat</h3>
 
@@ -44,7 +45,7 @@
         }
         catch (Exception e)
         {
-            _messages.Add(new MeowMessageText("Error initializing chat: " + e.Message, "error"));
+            ErrorService.Add(e);
             return base.OnInitializedAsync();
         }
     }
@@ -64,7 +65,7 @@
                 return;
 
             var result = await ChatService.SendMessage(_outgoing);
-            _messages.Add(new MeowMessageText(_outgoing, "You"));
+            _messages.Add(new MeowMessageText(UserStateService.GetId(), MessageService.GetMessageCount(), _outgoing, "You"));
 
             if (!result.Item1)
             {
@@ -80,7 +81,7 @@
         }
         catch (Exception e)
         {
-            _messages.Add(new MeowMessageText(e.Message, "error"));
+            ErrorService.Add(e);
             await InvokeAsync(StateHasChanged);
         }
     }
