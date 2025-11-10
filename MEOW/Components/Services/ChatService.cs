@@ -15,7 +15,7 @@ public class ChatService(
 
     public Task<(bool, List<Exception>)> SendMessage(string message)
     {
-        var meowMessage = new MeowMessageText(message, userStateService.GetName());
+        var meowMessage = new MeowMessageText(userStateService.GetId(), MessageService.GetMessageCount(), message, userStateService.GetName());
         return messageService.SendMessage(meowMessage);
     }
 

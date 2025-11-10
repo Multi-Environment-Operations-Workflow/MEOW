@@ -1,4 +1,6 @@
 ﻿using Foundation;
+using MEOW.Components.Services;
+using UIKit;
 
 namespace MEOW;
 
@@ -7,10 +9,10 @@ public class AppDelegate : MauiUIApplicationDelegate
 { 
     protected override MauiApp CreateMauiApp() => MauiProgram.CreateMauiApp();
 
-    public override void OnCreate() //Changes here should be reflected in Platforms/iOS/AppDelegate.cs
+    public override void OnActivated(UIApplication application)
     {
-        base.OnCreate();
-        var chatService =  IPlatformApplication.Current?.Services.GetService<IChatService>();
+        base.OnActivated(application);
+        var chatService = IPlatformApplication.Current?.Services.GetService<IChatService>();
         
         chatService?.SetupNotificationsAndChatService();
     }
