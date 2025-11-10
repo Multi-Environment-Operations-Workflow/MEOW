@@ -26,53 +26,29 @@ namespace MEOW.Components.Services;
 ///     - Spørger om tilladelser (CheckPermissions)
 /// 
 /// </summary>
-public class AndroidBluetoothService(IErrorService errorService) : IBluetoothService // Implementering af IBluetoothService til Android
+public class AndroidBluetoothService(IErrorService errorService) : IBluetoothService
 {
-
-    // Plugin abstraktion til Bluetooth local enhed. Giver os adgang til fx _bluetooth.IsOn
-    // Tjekker, om Bluetooth er slået til, tilladelser, tilgængelighed osv.
+    private static readonly BluetoothManager BluetoothManager = (BluetoothManager)Android.App.Application.Context.GetSystemService(Context.BluetoothService)!;
+    private static readonly BluetoothGattServer GattServer = BluetoothManager.OpenGattServer(Android.App.Application.Context, new ServerCb(this));
+        
     private readonly IBluetoothLE _bluetooth = CrossBluetoothLE.Current;
-
-    // instance af Bluetooth-adapteren, som håndterer scanning, forbindelser osv.
-    private readonly IAdapter _adapter = CrossBluetoothLE.Current.Adapter;
     
-    // Enum vi bruger til at holde styr på advertising state. 
-    // AdvertisingStateChanged eventet bruges til at informere UI'et om ændringer i advertising status.
-    // Så vi fx på "front enden" kan sætte funktioner til at kører via dette event. Man kan se det som en tom funktion.
-    // Hvor man kan tilføje funktioner der skal kører når eventet bliver "udløst".
-    // Action<AdvertisingState, string?> betyder at funktionerne der tilføjes til eventet skal tage to parametre: kan ikke tilføjes vis ikke vi har dem.
+    private readonly IAdapter _adapter = CrossBluetoothLE.Current.Adapter;
     public event Action<AdvertisingState, string?>? AdvertisingStateChanged;
-
-    //Til at informere UI'et om, at en peer er forbundet, uden information på
     public event Action? PeerConnected;
-
-    // Udløst når vi modtager data fra en forbundet enhed.
     public event Action<byte[]>? DeviceDataReceived;
-
-
-    // Liste vi bruger til at holde styr på fundne enheder under scanning.
-    // Devices.Add(device);  også til ui (var d in _devices) <div> d.Name</div>
     public ObservableCollection<MeowDevice> Devices { get; } = new();
-
-
-    //Styre advertising (Bluetooth peripheral) “Server” Gør sig synlig, venter på at nogen forbinder
-    //En funktion du tænder og slukker for (som “gør mig synlig for andre”) Android specific, plugin gør det ikke
+    
     private BluetoothLeAdvertiser? _bleAdvertiser;
 
-    // Android specific callback til at håndtere advertising resultater
-    // Som vi så sender videre via AdvertisingStateChanged eventet
     private AdvertisingCallback? _advertisingCallback;
-
-    // Lokal GATT-server så Android kan modtage beskeder. Er "client" i forhold til peripheral server forholdet. 
-    private MeowAndroidGattServer? _gattServer;
     
-    private readonly HashSet<string> _receivedMessageIds = new(); // Vi skal holde styr på id´er vi har modtaget fra (controlled flod)
-    private static long _msgCounter = 0;
-    private readonly object _lock = new(); // Flere id´er må ikke blive tilføjet samtidig samtidig. Kunne ske vis flere noder er konnectet samtidig. 
-    
-    // For at ungå dupes
     private bool _isAdvertising = false;
     private bool _isScanning = false;
+    
+    private readonly UUID? _chatServiceUuid = UUID.FromString(ChatUuids.ChatService.ToString());
+    private readonly UUID? _msgSendUuid = UUID.FromString(ChatUuids.MessageSendCharacteristic.ToString());
+    private readonly UUID? _msgReceiveUuid = UUID.FromString(ChatUuids.MessageReceiveCharacteristic.ToString());
 
     public int GetConnectedDevicesCount()
     {
@@ -163,6 +139,24 @@ public class AndroidBluetoothService(IErrorService errorService) : IBluetoothSer
     // IBluetoothService.StartAdvertisingAsync
     public async Task StartAdvertisingAsync(string name)
     {
+        
+        var service = new BluetoothGattService(_chatServiceUuid, GattServiceType.Primary);
+
+        var sendChar = new BluetoothGattCharacteristic(
+            _msgSendUuid,
+            GattProperty.Read | GattProperty.Notify,
+            GattPermission.Read);
+
+        var receiveChar = new BluetoothGattCharacteristic(
+            _msgReceiveUuid,
+            GattProperty.Write | GattProperty.WriteNoResponse,
+            GattPermission.Write);
+
+        service.AddCharacteristic(sendChar);
+        service.AddCharacteristic(receiveChar);
+
+        GattServer.AddService(service);
+        
         if (_isAdvertising)
         {
             AdvertisingStateChanged?.Invoke(AdvertisingState.Failed, "Already advertising");
@@ -178,7 +172,7 @@ public class AndroidBluetoothService(IErrorService errorService) : IBluetoothSer
 
         // Start GATT-server først (så write-requests kan modtages)
         // 1) GATT-server (peripheral) – samme service/char UUIDs som iOS
-        _gattServer = new MeowAndroidGattServer(Android.App.Application.Context);
+        _gattServer = new MeowAndroidGattServer();
 
         // Når vi skal modtage beskeder skal vi så igen gemme id. også sende beskden videre vis ikke vi har den.
         _gattServer.MessageReceived += bytes =>
@@ -368,8 +362,8 @@ public class AndroidBluetoothService(IErrorService errorService) : IBluetoothSer
                 }
             }
 
-            _gattServer?.Stop();
-            _gattServer = null;
+            GattServer?.Stop();
+            GattServer = null;
 
             _advertisingCallback = null;
             _isAdvertising = false;
@@ -446,42 +440,14 @@ class AdvertisingCallback(Action onSuccess, Action<string> onFailure) : Advertis
 // ============================================================
 // LILLE INTERN GATT-SERVER
 // ============================================================
-internal sealed class MeowAndroidGattServer(Context ctx)
+internal sealed class MeowAndroidGattServer()
 {
-    private readonly BluetoothManager _btManager = (BluetoothManager)ctx.GetSystemService(Context.BluetoothService)!;
-    private BluetoothGattServer? _gattServer;
     private readonly HashSet<BluetoothDevice> _subscribers = new();
-
-    private readonly UUID _chatServiceUuid = UUID.FromString(ChatUuids.ChatService.ToString())!;
-    private readonly UUID _msgSendUuid = UUID.FromString(ChatUuids.MessageSendCharacteristic.ToString())!;
-    private readonly UUID _msgRecvUuid = UUID.FromString(ChatUuids.MessageReceiveCharacteristic.ToString())!;
 
     public event Action<byte[]>? MessageReceived;
 
     // Brug denne ctor til standard ChatUuids
-
-    public void Start()
-    {
-        _gattServer = _btManager.OpenGattServer(Android.App.Application.Context, new ServerCb(this));
-
-        var service = new BluetoothGattService(_chatServiceUuid, GattServiceType.Primary);
-
-        var sendChar = new BluetoothGattCharacteristic(
-            _msgSendUuid,
-            GattProperty.Read | GattProperty.Notify,
-            GattPermission.Read);
-
-        var recvChar = new BluetoothGattCharacteristic(
-            _msgRecvUuid,
-            GattProperty.Write | GattProperty.WriteNoResponse,
-            GattPermission.Write);
-
-        service.AddCharacteristic(sendChar);
-        service.AddCharacteristic(recvChar);
-
-        _gattServer.AddService(service);
-    }
-
+    
     public void Stop()
     {
         try { _gattServer?.Close(); } finally { _subscribers.Clear(); }

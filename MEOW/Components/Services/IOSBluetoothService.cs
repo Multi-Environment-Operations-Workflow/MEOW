@@ -31,7 +31,7 @@ public class IOSBluetoothService : NSObject, IBluetoothService, ICBPeripheralMan
 
     public event Action? PeerConnected;
 
-    private readonly CBUUID chatServiceUuid = CBUUID.FromString(ChatUuids.ChatService.ToString());
+    private readonly CBUUID _chatServiceUuid = CBUUID.FromString(ChatUuids.ChatService.ToString());
 
     public IOSBluetoothService(IUserStateService userStateService)
     {
@@ -234,7 +234,7 @@ public class IOSBluetoothService : NSObject, IBluetoothService, ICBPeripheralMan
         }
 
         // Create service and characteristics
-        var chatService = new CBMutableService(chatServiceUuid, true);
+        var chatService = new CBMutableService(_chatServiceUuid, true);
 
         CBCharacteristicProperties allProps = CBCharacteristicProperties.Read
                                               | CBCharacteristicProperties.Write
