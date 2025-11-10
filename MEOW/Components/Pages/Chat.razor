@@ -21,7 +21,7 @@
         @foreach (var m in _messages)
         {
             <div>
-                <strong>@m.Sender:</strong> @m.Message
+                <strong>@(m.Sender == UserStateService.GetName() ? "You" : m.Sender):</strong> @m.Message
             </div>
         }
     </div>
@@ -75,7 +75,6 @@
                 return;
 
             var result = await ChatService.SendMessage(_outgoing);
-            _messages.Add(new MeowMessageText(UserStateService.GetId(), MessageService.GetMessageCount(), _outgoing, "You"));
 
             if (!result.Item1)
             {
