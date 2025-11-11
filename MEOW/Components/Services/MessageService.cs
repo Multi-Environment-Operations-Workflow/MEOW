@@ -4,8 +4,15 @@ namespace MEOW.Components.Services;
 
 public class MessageService(IBluetoothService bluetooth, IErrorService errorService) : IMessageService
 {
+    static int MessageCount { get; set; }
+    
     private readonly List<MeowMessage> _messages = new();
-
+    
+    public static int GetMessageCount()
+    {
+        return MessageCount++;
+    }
+    
     // Sends a message using the bluetooth service
     public async Task<(bool, List<Exception>)> SendMessage(MeowMessage message)
     {
@@ -41,6 +48,16 @@ public class MessageService(IBluetoothService bluetooth, IErrorService errorServ
                 {
                     onMessage(typedMessage);
                 }
+
+                if (_messages.Any(m => m.MessageNumber == message.MessageNumber
+                                       && m.UserId == message.UserId))
+                {
+                    return;
+                }
+
+                _messages.Add(message);
+                RedistributeMessageToAllNodes(message);
+
             }
             catch (Exception ex)
             {
@@ -48,6 +65,11 @@ public class MessageService(IBluetoothService bluetooth, IErrorService errorServ
             }
         };
 
+    }
+    
+    private void RedistributeMessageToAllNodes(MeowMessage message)
+    {
+        bluetooth.SendToAllAsync(message.Serialize());
     }
 
     public int GetParticipantsCount()

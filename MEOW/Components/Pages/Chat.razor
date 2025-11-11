@@ -5,13 +5,14 @@
 @inject IChatService ChatService
 @inject NavigationManager Navigation
 @inject IErrorService ErrorService
+@inject IUserStateService UserStateService
 
 <h3>Chat</h3>
 
 <div class="chat-window">
-    <span>Connected devices: @ChatService.GetChatParticipantsCount()</span>
+    <span>Connected devices: @_chatParticipantCount</span>
     <div>
-        @foreach (var name in @ChatService.GetConnectedDeviceName())
+        @foreach (var name in _connectedDeviceNames)
         {
             <li>@name</li>
         }
@@ -20,7 +21,7 @@
         @foreach (var m in _messages)
         {
             <div>
-                <strong>@m.Sender:</strong> @m.Message
+                <strong>@(m.Sender == UserStateService.GetName() ? "You" : m.Sender):</strong> @m.Message
             </div>
         }
     </div>
@@ -33,6 +34,8 @@
 @code {
     private string _outgoing = string.Empty;
     private List<MeowMessageText> _messages = new();
+    private int _chatParticipantCount = 0;
+    private List<string> _connectedDeviceNames = new();
 
     protected override Task OnInitializedAsync()
     {
@@ -40,20 +43,28 @@
         {
             _messages = ChatService.GetChatMessages();
             ChatService.SetupChatMessageReceivedAction(OnNewMessage);
-            return base.OnInitializedAsync();
+            _chatParticipantCount = ChatService.GetChatParticipantsCount();
+            _connectedDeviceNames = ChatService.GetConnectedDeviceName();
         }
         catch (Exception e)
         {
-            _messages.Add(new MeowMessageText("Error initializing chat: " + e.Message, "error"));
-            return base.OnInitializedAsync();
+            ErrorService.Add(e);
         }
+
+        return base.OnInitializedAsync();
     }
 
     private void OnNewMessage(object? _, NotifyCollectionChangedEventArgs e)
     {
-        if (e.Action != NotifyCollectionChangedAction.Add || e.NewItems == null) return;
-        _messages.AddRange(e.NewItems.Cast<MeowMessageText>());
-        InvokeAsync(StateHasChanged);
+        try {
+            if (e.Action != NotifyCollectionChangedAction.Add || e.NewItems == null) return;
+            _messages.AddRange(e.NewItems.Cast<MeowMessageText>());
+            InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            ErrorService.Add(ex);
+        }
     }
 
     private async Task SendAsync()
@@ -64,7 +75,6 @@
                 return;
 
             var result = await ChatService.SendMessage(_outgoing);
-            _messages.Add(new MeowMessageText(_outgoing, "You"));
 
             if (!result.Item1)
             {
@@ -80,7 +90,7 @@
         }
         catch (Exception e)
         {
-            _messages.Add(new MeowMessageText(e.Message, "error"));
+            ErrorService.Add(e);
             await InvokeAsync(StateHasChanged);
         }
     }

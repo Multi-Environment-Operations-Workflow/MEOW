@@ -6,19 +6,20 @@ using MEOW.Components.Models;
 public class ByteDeserializer(byte[] payload, IErrorService errorService)
 {
     private int _offset = 0;
-    private readonly byte[] _payload = payload;
 
     public MeowMessage Deserialize()
     {
+        byte senderUserId = ReadByte();
+        int messageNumber = ReadInt32();
         MessageType type = (MessageType)ReadByte();
         byte senderLength = ReadByte();
         string sender = ReadString(senderLength);
 
         return type switch
         {
-            MessageType.TEXT => DeserializeTextMessage(sender),
-            MessageType.TASK => DeserializeTaskMessage(sender),
-            MessageType.GPS => DeserializeGpsMessage(sender),
+            MessageType.TEXT => DeserializeTextMessage(senderUserId, messageNumber, sender),
+            MessageType.TASK => DeserializeTaskMessage(senderUserId, messageNumber, sender),
+            MessageType.GPS => DeserializeGpsMessage(senderUserId, messageNumber, sender),
             _ => DeserializeUnsupportedMessage(type)
         };
     }
@@ -29,50 +30,62 @@ public class ByteDeserializer(byte[] payload, IErrorService errorService)
         throw exception;
     }
     
-    private MeowMessageText DeserializeTextMessage(string sender)
+    private MeowMessageText DeserializeTextMessage(byte senderUserId, int messageNumber, string sender)
     {
         string message = ReadLenghtPrefixedString();
-        return new MeowMessageText(message, sender);
+        return new MeowMessageText(senderUserId, messageNumber, message, sender);
     }
 
-    private MeowMessageTask DeserializeTaskMessage(string sender)
+    private MeowMessageTask DeserializeTaskMessage(byte senderUserId, int messageNumber, string sender)
     {
         string title = ReadLenghtPrefixedString();
         string textContext = ReadLenghtPrefixedString();
         string fileData = ReadLenghtPrefixedString();
-        return new MeowMessageTask(sender, title, textContext, fileData);
+        return new MeowMessageTask(senderUserId, messageNumber, sender, title, textContext, fileData);
     }
 
-    private MeowMessageGps DeserializeGpsMessage(string sender)
+    private MeowMessageGps DeserializeGpsMessage(byte senderUserId, int messageNumber, string sender)
     {
         float longitude = ReadSingle();
         float latitude = ReadSingle();
-        return new MeowMessageGps(sender, longitude, latitude);
+        return new MeowMessageGps(senderUserId, messageNumber, sender, longitude, latitude);
     }
 
-    private byte ReadByte() => _payload[_offset++];
+    private byte ReadByte() => payload[_offset++];
 
+    /// <summary>
+    /// Reads a 32-bit integer (4 bytes) from the payload.
+    /// </summary>
+    /// <returns>The integer read from the payload.</returns>
     private int ReadInt32()
     {
-        int value = BitConverter.ToInt32(_payload, _offset);
+        int value = BitConverter.ToInt32(payload, _offset);
         _offset += 4;
         return value;
     }
 
+    /// <summary>
+    /// Reads a single-precision floating point number (4 bytes) from the payload.
+    /// </summary>
+    /// <returns>The float read from the payload.</returns>
     private float ReadSingle()
     {
-        float value = BitConverter.ToSingle(_payload, _offset);
+        float value = BitConverter.ToSingle(payload, _offset);
         _offset += 4;
         return value;
     }
 
     private string ReadString(int length)
     {
-        string value = Encoding.UTF8.GetString(_payload, _offset, length);
+        string value = Encoding.UTF8.GetString(payload, _offset, length);
         _offset += length;
         return value;
     }
 
+    /// <summary>
+    /// Reads a string given the length of the string as a prefix Int32.
+    /// </summary>
+    /// <returns>The string read from the payload.</returns>
     private string ReadLenghtPrefixedString()
     {
         int length = ReadInt32();

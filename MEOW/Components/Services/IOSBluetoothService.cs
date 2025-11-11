@@ -70,6 +70,11 @@ public class IOSBluetoothService : NSObject, IBluetoothService, ICBPeripheralMan
         return _connectedDevices.Count;
     }
 
+    public List<string> GetConnectedDeviceName()
+    {
+        throw new NotImplementedException();
+    }
+
     public async Task<bool> ScanAsync()
     {
         Devices.Clear();
@@ -102,6 +107,16 @@ public class IOSBluetoothService : NSObject, IBluetoothService, ICBPeripheralMan
         }
         
         return true;
+    }
+
+    public Task<bool> ScanAsyncAutomatically()
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task RunInBackground(TimeSpan timeSpan, Func<Task> func)
+    {
+        throw new NotImplementedException();
     }
 
     public bool CheckConnection()

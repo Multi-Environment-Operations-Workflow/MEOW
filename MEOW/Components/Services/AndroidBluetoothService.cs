@@ -94,30 +94,7 @@ public class AndroidBluetoothService(IErrorService errorService) : IBluetoothSer
     {
         var anySuccess = false;
         var exceptions = new List<Exception>();
-    
-        // laver beskeden til string, så vi kan tjekke om den har id
-        var msg = System.Text.Encoding.UTF8.GetString(data);
-        // Vis det er os der sender beskeden så kommer vi herind. Da det betyder vores besked ikke har nogen header.
-        if (!msg.Contains('\n'))
-        {
-            // til at hente vores navn. Fx Carl så vi kan sætte det foran i vores header
-            var btManager = (BluetoothManager)Android.App.Application.Context.GetSystemService(Context.BluetoothService)!;
-            var btAdapter = btManager.Adapter;
-            var nodeName = btAdapter?.Name ?? "UnknownNode";
-
-            // Lav et unikt ID for denne besked.  Lægger vores id sammen med resten af vores besked.
-            var time = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            var id = $"{nodeName}_{time}_{System.Threading.Interlocked.Increment(ref _msgCounter)}";
-            msg = id + "\n" + msg;
-            data = System.Text.Encoding.UTF8.GetBytes(msg);
-
-            // Husk at markere som set, så vi ikke får den tilbage. Du kan jo modtage fra flere devices på en gang. 
-            // Så vi skal sørger for at der ikke er 2 der prøver at skrive samme id 2 gange. Samtidigt. 
-            lock (_lock)
-            {
-                _receivedMessageIds.Add(id);
-            }
-        }
+        
         // Send som CENTRAL/server/host til allerede forbundne enheder (Plugin.BLE)
         foreach (var device in _adapter.ConnectedDevices.ToList())
         {
@@ -186,7 +163,6 @@ public class AndroidBluetoothService(IErrorService errorService) : IBluetoothSer
     // IBluetoothService.StartAdvertisingAsync
     public async Task StartAdvertisingAsync(string name)
     {
-        // Giver jo ikke mening at starte flere scannere op.
         if (_isAdvertising)
         {
             AdvertisingStateChanged?.Invoke(AdvertisingState.Failed, "Already advertising");
@@ -194,13 +170,13 @@ public class AndroidBluetoothService(IErrorService errorService) : IBluetoothSer
         }
         _isAdvertising = true;
 
-        // Start GATT-server først (så write-requests kan modtages)
         if (!await CheckPermissions())
         {
             AdvertisingStateChanged?.Invoke(AdvertisingState.Failed, "Bluetooth permissions not granted.");
             return;
         }
 
+        // Start GATT-server først (så write-requests kan modtages)
         // 1) GATT-server (peripheral) – samme service/char UUIDs som iOS
         _gattServer = new MeowAndroidGattServer(Android.App.Application.Context);
 
@@ -209,26 +185,7 @@ public class AndroidBluetoothService(IErrorService errorService) : IBluetoothSer
         {
             try
             {
-                // Vi fjerner headeren fra beskeden. Altså id. 
-                var msg = System.Text.Encoding.UTF8.GetString(bytes);
-                var split = msg.IndexOf('\n');
-                if (split <= 0) return;
-
-                var msgId = msg.Substring(0, split);
-                var payload = msg.Substring(split + 1);
-
-                lock (_lock)
-                {
-                    if (_receivedMessageIds.Contains(msgId))
-                        return; // vi har allerede haft denne besked, så gør vi kke noget.
-                    _receivedMessageIds.Add(msgId); // ellers tilføjer vi id fra beskeden
-                }
-
-                // laver det tilbagde til bytes, for ikke at ændre på hvad vi sender op til front end.
-                DeviceDataReceived?.Invoke(System.Text.Encoding.UTF8.GetBytes(payload));
-
-                // Send den videre ud i netværket
-                _ = SendToAllAsync(bytes);
+                DeviceDataReceived?.Invoke(bytes);
             }
             catch (Exception ex)
             {
@@ -274,54 +231,7 @@ public class AndroidBluetoothService(IErrorService errorService) : IBluetoothSer
         advertiser.StartAdvertising(settings, data, callback);
         await Task.CompletedTask;
     }
-
-    // Overload med custom serviceUuid — samme logik, bare bruger den UUID
-    public async Task StartAdvertisingAsync(string name, Guid serviceUuid)
-    {
-        if (!await CheckPermissions())
-            return;
-
-        // 1) GATT-server (serviceUuid bruges her)
-        //Gemmer UUID’er for: selve chat-servicen, “send besked”-characteristikken, “modtag besked”-characteristikken.
-        _gattServer = new MeowAndroidGattServer(Android.App.Application.Context, serviceUuid);
-        _gattServer.MessageReceived += bytes => DeviceDataReceived?.Invoke(bytes);
-        _gattServer.Start();
-
-        // 2) Advertising
-        var _bluetoothManager = (BluetoothManager?)Android.App.Application.Context.GetSystemService(Context.BluetoothService);
-        _bleAdvertiser = _bluetoothManager?.Adapter?.BluetoothLeAdvertiser;
-        var adapter = _bluetoothManager?.Adapter;
-
-        adapter?.SetName($"{name}");
-
-        if (_bleAdvertiser == null)
-        {
-            AdvertisingStateChanged?.Invoke(AdvertisingState.Started, "Bluetooth not powered on or not supported.");
-            return;
-        }
-
-        var settings = new AdvertiseSettings.Builder()
-            .SetAdvertiseMode(AdvertiseMode.Balanced)
-            .SetConnectable(true)
-            .SetTimeout(0)
-            .SetTxPowerLevel(AdvertiseTx.PowerMedium)
-            .Build();
-
-        var data = new AdvertiseData.Builder()
-            .AddServiceUuid(Android.OS.ParcelUuid.FromString(serviceUuid.ToString()))
-            .Build();
-
-        var scanResponse = new AdvertiseData.Builder()
-            .SetIncludeDeviceName(true)
-            .Build();
-
-        _advertisingCallback = new AdvertisingCallback(
-            onSuccess: () => AdvertisingStateChanged?.Invoke(AdvertisingState.Started, $"Advertising as {name}"),
-            onFailure: (errorMessage) => AdvertisingStateChanged?.Invoke(AdvertisingState.Failed, errorMessage));
-
-        _bleAdvertiser.StartAdvertising(settings, data, scanResponse, _advertisingCallback);
-    }
-
+    
     public async Task<bool> ScanAsync()
     {
         await CheckPermissions();
@@ -512,18 +422,9 @@ public class AndroidBluetoothService(IErrorService errorService) : IBluetoothSer
     }
 }
 
-class AdvertisingCallback : AdvertiseCallback
+class AdvertisingCallback(Action onSuccess, Action<string> onFailure) : AdvertiseCallback
 {
-    private readonly Action _onSuccess;
-    private readonly Action<string> _onFailure;
-
-    public AdvertisingCallback(Action onSuccess, Action<string> onFailure)
-    {
-        _onSuccess = onSuccess;
-        _onFailure = onFailure;
-    }
-
-    public override void OnStartSuccess(AdvertiseSettings? settingsInEffect) => _onSuccess();
+    public override void OnStartSuccess(AdvertiseSettings? settingsInEffect) => onSuccess();
     public override void OnStartFailure(AdvertiseFailure errorCode)
     {
         base.OnStartFailure(errorCode);
@@ -538,43 +439,26 @@ class AdvertisingCallback : AdvertiseCallback
             _ => $"Advertising failed with code: {errorCode}"
         };
 
-        _onFailure?.Invoke(errorMessage);
+        onFailure?.Invoke(errorMessage);
     }
 }
 
 // ============================================================
 // LILLE INTERN GATT-SERVER
 // ============================================================
-internal sealed class MeowAndroidGattServer
+internal sealed class MeowAndroidGattServer(Context ctx)
 {
-    private readonly BluetoothManager _btManager;
+    private readonly BluetoothManager _btManager = (BluetoothManager)ctx.GetSystemService(Context.BluetoothService)!;
     private BluetoothGattServer? _gattServer;
     private readonly HashSet<BluetoothDevice> _subscribers = new();
 
-    private readonly UUID _chatServiceUuid;
-    private readonly UUID _msgSendUuid;
-    private readonly UUID _msgRecvUuid;
+    private readonly UUID _chatServiceUuid = UUID.FromString(ChatUuids.ChatService.ToString())!;
+    private readonly UUID _msgSendUuid = UUID.FromString(ChatUuids.MessageSendCharacteristic.ToString())!;
+    private readonly UUID _msgRecvUuid = UUID.FromString(ChatUuids.MessageReceiveCharacteristic.ToString())!;
 
     public event Action<byte[]>? MessageReceived;
 
     // Brug denne ctor til standard ChatUuids
-    public MeowAndroidGattServer(Context ctx)
-    {
-        _btManager = (BluetoothManager)ctx.GetSystemService(Context.BluetoothService)!;
-        _chatServiceUuid = UUID.FromString(ChatUuids.ChatService.ToString())!;
-        _msgSendUuid     = UUID.FromString(ChatUuids.MessageSendCharacteristic.ToString())!;
-        _msgRecvUuid     = UUID.FromString(ChatUuids.MessageReceiveCharacteristic.ToString())!;
-    }
-
-    // Overload hvis du vil hoste med custom serviceUuid
-    
-    public MeowAndroidGattServer(Context ctx, Guid serviceUuid)
-    {
-        _btManager = (BluetoothManager)ctx.GetSystemService(Context.BluetoothService)!;
-        _chatServiceUuid = UUID.FromString(serviceUuid.ToString())!;
-        _msgSendUuid     = UUID.FromString(ChatUuids.MessageSendCharacteristic.ToString())!;
-        _msgRecvUuid     = UUID.FromString(ChatUuids.MessageReceiveCharacteristic.ToString())!;
-    }
 
     public void Start()
     {
