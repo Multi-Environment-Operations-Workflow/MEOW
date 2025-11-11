@@ -121,8 +121,14 @@
     {
         if (_isScanning) return;
         _isScanning = true;
-        try { await Bluetooth.ScanAsync(); }
-        catch (Exception e) { ErrorService.Add(e); }
+        try
+        {
+            await Bluetooth.ScanAsync();
+        }
+        catch (Exception e)
+        {
+            ErrorService.Add(e);
+        }
         _isScanning = false;
     }
 
