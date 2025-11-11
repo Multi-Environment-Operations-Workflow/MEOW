@@ -1,3 +1,4 @@
+#if ANDROID
 using Android.App;
 using Android.Content;
 using AndroidX.Core.App;
@@ -200,3 +201,4 @@ public class NotificationReceiver : BroadcastReceiver
         }
     }
 }
+#endif

@@ -1,85 +1,92 @@
 using System.Text;
 
-namespace MEOW.Components.Models
+namespace MEOW.Components.Models;
+
+public enum MessageType
 {
-    public enum MessageType
+    CONNECTED,
+    DISCONNECTED,
+    GPS,
+    TASK,
+    TEXT,
+}
+
+public abstract class MeowMessage(byte userId, int messageNumber, string sender)
+{
+    public byte UserId { get; set; } = userId;
+    public int MessageNumber { get; set; } = messageNumber;
+    public abstract MessageType Type { get; }
+    public string Sender { get; set; } = sender;
+
+    public byte[] Serialize()
     {
-        CONNECTED,
-        DISCONNECTED,
-        GPS,
-        TASK,
-        TEXT,
+        using var stream = new MemoryStream();
+        using var writer = new BinaryWriter(stream);
+
+        SerializeCore(writer);
+        return stream.ToArray();
     }
 
-    public abstract class MeowMessage(string sender)
+    /// <summary>
+    /// Serializes the core properties of a MeowMessage.
+    /// </summary>
+    /// <param name="writer">The BinaryWriter to write the data to.</param>
+    protected virtual void SerializeCore(BinaryWriter writer)
     {
-        public abstract MessageType Type { get; }
-        public string Sender { get; set; } = sender;
-
-        public byte[] Serialize()
-        {
-            using var stream = new MemoryStream();
-            using var writer = new BinaryWriter(stream);
-
-            SerializeCore(writer);
-            return stream.ToArray();
-        }
-
-        protected virtual void SerializeCore(BinaryWriter writer)
-        {
-            writer.Write((byte)Type);
-
-            writer.Write(Sender);
-        }
-
-        protected static void WriteString(BinaryWriter writer, string value)
-        {
-            byte[] bytes = Encoding.UTF8.GetBytes(value);
-            writer.Write(bytes.Length);
-            writer.Write(bytes);
-        }
+        writer.Write(UserId);
+        writer.Write(MessageNumber);
+        writer.Write((byte)Type);
+        writer.Write(Sender);
     }
 
-    public class MeowMessageText(string message, string sender) : MeowMessage(sender)
+    protected static void WriteString(BinaryWriter writer, string value)
     {
-        public override MessageType Type => MessageType.TEXT;
-        public string Message { get; set; } = message;
-
-        protected override void SerializeCore(BinaryWriter writer)
-        {
-            base.SerializeCore(writer);
-            WriteString(writer, Message);
-        }
+        byte[] bytes = Encoding.UTF8.GetBytes(value);
+        writer.Write(bytes.Length);
+        writer.Write(bytes);
     }
+}
 
-    public class MeowMessageGps(string sender, float longitude, float latitude) : MeowMessage(sender)
+public class MeowMessageText(byte userId, int messageNumber, string message, string sender) : MeowMessage(userId, messageNumber, sender)
+{
+    public override MessageType Type => MessageType.TEXT;
+    public string Message { get; set; } = message;
+
+    protected override void SerializeCore(BinaryWriter writer)
     {
-        public override MessageType Type => MessageType.GPS;
-        public float Longitude { get; set; } = longitude;
-        public float Latitude { get; set; } = latitude;
-
-        protected override void SerializeCore(BinaryWriter writer)
-        {
-            base.SerializeCore(writer);
-            writer.Write(Longitude);
-            writer.Write(Latitude);
-        }
+        base.SerializeCore(writer);
+        WriteString(writer, Message);
     }
-    
+}
 
-    public class MeowMessageTask(string sender, string title, string textContext, string fileData) : MeowMessage(sender)
+public class MeowMessageGps(byte userId, int messageNumber, string sender, float longitude, float latitude) : MeowMessage(userId, messageNumber, sender)
+{
+    public override MessageType Type => MessageType.GPS;
+    public float Longitude { get; set; } = longitude;
+    public float Latitude { get; set; } = latitude;
+
+    protected override void SerializeCore(BinaryWriter writer)
     {
-        public override MessageType Type => MessageType.TASK;
+        base.SerializeCore(writer);
+        writer.Write(Longitude);
+        writer.Write(Latitude);
+    }
+}
 
-        public string Title { get; private set; } = title;
-        public string? TextContext { get; private set; } = textContext;
-        public string? FileData { get; private set; } = fileData;
 
-        protected override void SerializeCore(BinaryWriter writer)
-        {
-            base.SerializeCore(writer);
-            writer.Write(Title);
-            writer.Write(TextContext ??= "");
-            writer.Write(FileData ??= "");
-        }
-    }}
+public class MeowMessageTask(byte userId, int messageNumber, string sender, string title, string textContext, string fileData) : MeowMessage(userId, messageNumber, sender)
+{
+    public override MessageType Type => MessageType.TASK;
+
+    public string Title { get; private set; } = title;
+    public string? TextContext { get; private set; } = textContext;
+    public string? FileData { get; private set; } = fileData;
+
+    protected override void SerializeCore(BinaryWriter writer)
+    {
+        base.SerializeCore(writer);
+        writer.Write(Title);
+        writer.Write(TextContext ??= "");
+        writer.Write(FileData ??= "");
+    }
+}
