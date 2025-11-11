@@ -19,14 +19,32 @@
 .pinboard-title {
     font-size: 28px;
     font-weight: 700;
+    /* Fallback color for accessibility */
     color: #2d3748;
     margin: 0;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
 }
 
+/* Only apply gradient text if supported */
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+    .pinboard-title {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        /* Remove color property here to allow gradient text */
+    }
+}
+
+/* High contrast mode: force solid color for accessibility */
+@media (forced-colors: active) {
+    .pinboard-title {
+        background: none !important;
+        -webkit-background-clip: initial !important;
+        -webkit-text-fill-color: ButtonText !important;
+        background-clip: initial !important;
+        color: ButtonText !important;
+    }
+}
 .add-pin-btn {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
     color: white !important;
