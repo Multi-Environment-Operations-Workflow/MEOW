@@ -32,16 +32,14 @@
 
                 <div class="form-section">
                     <label class="form-label">Title *</label>
-                    <InputText class="custom-input" 
-                               @bind-Value="_currentPin.Title" 
+                    <MatTextField @bind-Value="_currentPin.Title" 
                                placeholder="Enter a catchy title..." />
                     <ValidationMessage For="@(() => _currentPin.Title)" class="validation-message" />
                 </div>
 
                 <div class="form-section">
                     <label class="form-label">Description</label>
-                    <InputTextArea class="custom-textarea" 
-                                   @bind-Value="_currentPin.TextContext"
+                    <MatTextField @bind-Value="_currentPin.TextContext"
                                    placeholder="Add details about this pin..." />
                     <ValidationMessage For="@(() => _currentPin.TextContext)" class="validation-message" />
                 </div>

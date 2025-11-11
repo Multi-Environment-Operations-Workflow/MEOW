@@ -75,46 +75,6 @@
     margin-bottom: 8px;
 }
 
-.custom-input {
-    width: 100%;
-    padding: 14px 16px;
-    border: 2px solid #e2e8f0;
-    border-radius: 16px;
-    font-size: 15px;
-    font-family: inherit;
-    transition: all 0.2s ease;
-    background: #f7fafc;
-}
-
-.custom-input:focus {
-    outline: none;
-    border-color: #667eea;
-    background: white;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-.custom-textarea {
-    width: 100% !important;
-    max-width: 100% !important;
-    padding: 16px 18px;
-    border: 2px solid #e2e8f0;
-    border-radius: 16px;
-    font-size: 15px;
-    font-family: inherit;
-    transition: all 0.2s ease;
-    background: #f7fafc;
-    resize: vertical;
-    min-height: 180px;
-    box-sizing: border-box;
-}
-
-.custom-textarea:focus {
-    outline: none;
-    border-color: #667eea;
-    background: white;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
 .upload-section {
     margin: 28px 0;
     padding: 24px;
@@ -314,7 +274,6 @@
     font-weight: 500;
 }
 
-/* Responsive design */
 @media (max-width: 768px) {
     .pinboard-container {
         padding: 16px;
