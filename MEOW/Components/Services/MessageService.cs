@@ -2,7 +2,7 @@ using MEOW.Components.Models;
 
 namespace MEOW.Components.Services;
 
-public class MessageService(IBluetoothService bluetooth, IUserStateService userStateService) : IMessageService
+public class MessageService(IBluetoothService bluetooth, IErrorService errorService) : IMessageService
 {
     private readonly List<MeowMessage> _messages = new();
 
@@ -11,7 +11,9 @@ public class MessageService(IBluetoothService bluetooth, IUserStateService userS
     {
         if (message is null)
         {
-            return (false, [new Exception("No message")]);
+            var exception = new ArgumentNullException(nameof(message), "Message cannot be null");
+            errorService.Add(exception);
+            return (false, [exception]);
         }
 
         //throw new Exception($"Sending {message}");
@@ -27,16 +29,22 @@ public class MessageService(IBluetoothService bluetooth, IUserStateService userS
 
     public void SetupMessageReceivedAction<T>(Action<T> onMessage) where T : MeowMessage
     {
+
         bluetooth.DeviceDataReceived += (receivedData) =>
         {
-            var message = new ByteDeserializer(receivedData).Deserialize();
-            _messages.Add(message);
-
-            // Only send messages of type T to actions that wants that type
-            // e.g if a service wants MeowMessageText, it will only receive those
-            if (message is T typedMessage)
+            try
             {
-                onMessage((T)message);
+                var message = new ByteDeserializer(receivedData, errorService).Deserialize();
+                _messages.Add(message);
+
+                if (message is T typedMessage)
+                {
+                    onMessage(typedMessage);
+                }
+            }
+            catch (Exception ex)
+            {
+                errorService.Add(ex);
             }
         };
 
@@ -45,6 +53,11 @@ public class MessageService(IBluetoothService bluetooth, IUserStateService userS
     public int GetParticipantsCount()
     {
         return bluetooth.GetConnectedDevicesCount() + 1;
+    }
+
+    public List<string> GetConnectedDeviceName()
+    {
+        return bluetooth.GetConnectedDeviceName();
     }
 
     public List<T> GetMessages<T>() where T : MeowMessage

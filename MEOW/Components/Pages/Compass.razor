@@ -1,0 +1,88 @@
+﻿@page "/Compass"
+@using MEOW.Components.Enums
+@using MEOW.Components.Models
+@using MEOW.Components.Services
+@using MEOW.Components.UIComponents
+@implements IAsyncDisposable
+@inject INavService Nav
+<h3>Compass</h3>
+@if (_location is not null)
+{
+    <div>Location: @_location.ToString()</div>
+}
+
+<div class="compass-outer" style="transform: rotate(@((int)_north)deg);">
+    <p class="north-indicator">N</p>
+    <div class="compass-inner">
+        @if (_location is not null)
+        {
+            foreach (var nPoint in _navPoints)
+            {
+                <CompassIcon Type="@nPoint.Type" Rotation="@_north"
+                             ScreenPosition="@nPoint.ToScreenPositionFromOrigin(_location)"/>
+            }
+        }
+    </div>
+    <div class="compass-inner-cover">
+    </div>
+</div>
+
+@code {
+    NavPoint? _location;
+    double _north; // Magnetic North in Degrees from where the phone is heading
+    bool _started;
+    List<NavPoint> _navPoints = [];
+
+    public async ValueTask DisposeAsync()
+    {
+        Nav.CompassChanged -= OnHeading;
+        Nav.LocationChanged -= OnLocation;
+        Nav.NavPointsChanged -= OnNavPoints;
+
+        await Nav.StopCompass();
+    }
+
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _started) return;
+        _started = true;
+
+        Nav.CompassChanged += OnHeading;
+        Nav.LocationChanged += OnLocation;
+        Nav.NavPointsChanged += OnNavPoints;
+
+        _navPoints = Nav.GetNavPoints();
+
+        await Nav.StartCompass();
+        _ = Nav.TryStartGps();
+    }
+
+    private void OnHeading(object? _, CompassData cData)
+    {
+        _north = 360 - cData.HeadingMagneticNorth;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnLocation(object? _, NavPoint location)
+    {
+        _location = location;
+        _navPoints = Nav.GetNavPoints();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnNavPoints(object? _, List<NavPoint> points)
+    {
+        _navPoints = points;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void AddDebugPoints()
+    {
+        Nav.AddNavPoint(new NavPoint(_location.Longitude + 1f, _location.Latitude, NavPointType.Danger));
+        Nav.AddNavPoint(new NavPoint(_location.Longitude - 1f, _location.Latitude, NavPointType.OtherDevice));
+        Nav.AddNavPoint(new NavPoint(_location.Longitude, _location.Latitude + 1f, NavPointType.Danger));
+        Nav.AddNavPoint(new NavPoint(_location.Longitude, _location.Latitude - 1f, NavPointType.OtherDevice));
+    }
+
+}

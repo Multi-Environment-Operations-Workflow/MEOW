@@ -5,7 +5,7 @@ namespace MEOW.Components.Services;
 
 public interface IPinService
 {
-    void Initialize();
+    void SetupReceiveMessages();
 
     void SetupPinReceivedAction(NotifyCollectionChangedEventHandler onMessage);
 

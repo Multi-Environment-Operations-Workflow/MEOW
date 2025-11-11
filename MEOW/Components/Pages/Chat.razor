@@ -1,21 +1,31 @@
 @page "/Chat"
+@using System.Collections.Specialized
 @using MEOW.Components.Models
 @using MEOW.Components.Services
 @inject IChatService ChatService
 @inject NavigationManager Navigation
+@inject IErrorService ErrorService
 
 <h3>Chat</h3>
 
 <div class="chat-window">
     <span>Connected devices: @ChatService.GetChatParticipantsCount()</span>
+    <div>
+        @foreach (var name in @ChatService.GetConnectedDeviceName())
+        {
+            <li>@name</li>
+        }
+    </div>
     <div class="messages">
         @foreach (var m in _messages)
         {
-            <div><strong>@m.Sender:</strong> @m.Message</div>
+            <div>
+                <strong>@m.Sender:</strong> @m.Message
+            </div>
         }
     </div>
 
-    <MatTextField @bind-Value="_outgoing" Label="Send a message" />
+    <MatTextField @bind-Value="_outgoing" Label="Send a message"/>
     <MatButton @onclick="SendAsync">Send</MatButton>
     <MatButton @onclick="GoBack">Back</MatButton>
 </div>
@@ -29,8 +39,7 @@
         try
         {
             _messages = ChatService.GetChatMessages();
-            ChatService.SetupChatMessageReceivedAction(OnMessageReceived);
-
+            ChatService.SetupChatMessageReceivedAction(OnNewMessage);
             return base.OnInitializedAsync();
         }
         catch (Exception e)
@@ -40,9 +49,10 @@
         }
     }
 
-    private void OnMessageReceived(MeowMessageText message)
+    private void OnNewMessage(object? _, NotifyCollectionChangedEventArgs e)
     {
-        _messages.Add(message);
+        if (e.Action != NotifyCollectionChangedAction.Add || e.NewItems == null) return;
+        _messages.AddRange(e.NewItems.Cast<MeowMessageText>());
         InvokeAsync(StateHasChanged);
     }
 
@@ -58,10 +68,11 @@
 
             if (!result.Item1)
             {
-                var errorText = !result.Item2.Any() ? "unknown error"
-                : string.Join("; ", result.Item2.Select(ex => ex.Message ?? ex.ToString()));
+                var exceptions = !result.Item2.Any()
+                    ? [new Exception("unknown error")]
+                    : result.Item2;
 
-                _messages.Add(new MeowMessageText("Failed to send message. " + errorText, "error"));
+                ErrorService.Add(exceptions);
             }
 
             _outgoing = string.Empty;
@@ -78,4 +89,5 @@
     {
         Navigation.NavigateTo("/");
     }
+
 }

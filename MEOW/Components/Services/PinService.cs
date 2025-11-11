@@ -8,7 +8,7 @@ public class PinService(IMessageService messageService, IUserStateService userSt
 {
     private readonly ObservableCollection<PinItem> _pins = new();
 
-    public void Initialize()
+    public void SetupReceiveMessages()
     {
         messageService.SetupMessageReceivedAction<MeowMessageTask>(PinMessageReceivedAction);
     }
@@ -52,7 +52,7 @@ public class PinService(IMessageService messageService, IUserStateService userSt
 
     public List<PinItem> GetPins()
     {
-        return _pins;
+        return _pins.ToList();
     }
 
     public Task<bool> SendPinMetadataAsync(PinItem pin) => throw new NotImplementedException();

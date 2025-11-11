@@ -7,6 +7,7 @@
 @inject IUserStateService UserStateService
 @inject NavigationManager Navigation
 @inject INotificationManagerService NotificationManagerService
+@inject IErrorService ErrorService
 
 <h1>Bluetooth Devices</h1>
 <p>Welcome, @_name!</p>
@@ -20,6 +21,7 @@
     <MatButton class="action-button" @onclick="ScanAsync">🔍 Scan for Devices</MatButton>
     <MatButton class="advertise-button" @onclick="StartAdvertisingAsync">📡 Start Advertising</MatButton>
     <MatButton class="stop-button" @onclick="StopAdvertisingAsync">🛑 Stop Advertising</MatButton>
+    <MatButton class="sync-automatically" @onclick="RunAsyncScan">🔍 Scan and Connect Devices</MatButton>
 </div>
 
 @if (_isScanning)
@@ -27,11 +29,7 @@
     <p>Scanning...</p>
 }
 
-@if (!string.IsNullOrEmpty(_errorMessage))
-{
-    <p class="error-text">@_errorMessage</p>
-}
-@if(!_devices.Any() && !_isScanning && string.IsNullOrEmpty(_errorMessage))
+@if (!_devices.Any() && !_isScanning)
 {
     <p>No devices found.</p>
 }
@@ -51,7 +49,6 @@ else
 
 @code {
     private string _name = string.Empty;
-    private string _errorMessage = string.Empty;
     private bool _isScanning;
     private ObservableCollection<MeowDevice> _devices = new();
     private string _advertisingMessage = string.Empty;
@@ -63,22 +60,23 @@ else
             Navigation.NavigateTo("/login");
             return;
         }
-        
+
         _name = UserStateService.GetName();
-        
+
         _devices = Bluetooth.Devices;
         Bluetooth.AdvertisingStateChanged += OnAdvertisingStateChanged;
         Bluetooth.PeerConnected += OnPeerConnected;
+
         try
         {
             //NotificationManagerService.SendNotification("Welcome to MEOW!", "You are now ready to connect with others.", DateTime.Now + TimeSpan.FromSeconds(30));
         }
         catch (PermissionException exception)
         {
-            _errorMessage = exception.Message;
+            ErrorService.Add(exception); 
         }
     }
-    
+
     private void OnPeerConnected()
     {
         // both central and peripheral will hit this and navigate to chat
@@ -90,21 +88,20 @@ else
         _advertisingMessage = message ?? string.Empty;
         InvokeAsync(StateHasChanged);
     }
-    
+
     private async Task ScanAsync()
     {
         if (_isScanning) return;
         _isScanning = true;
-        _errorMessage = string.Empty;
         try
         {
             await Bluetooth.ScanAsync();
         }
         catch (Exception e)
         {
-            Console.WriteLine(e);
-            _errorMessage = e.Message;
+            ErrorService.Add(e);
         }
+
         _isScanning = false;
     }
 
@@ -117,10 +114,10 @@ else
         }
         catch (Exception e)
         {
-            _errorMessage = e.Message;
+            ErrorService.Add(e);
         }
     }
-    
+
     private async Task StartAdvertisingAsync()
     {
         try
@@ -129,7 +126,7 @@ else
         }
         catch (Exception ex)
         {
-            _errorMessage = ex.Message;
+            ErrorService.Add(ex);
         }
     }
 
@@ -141,5 +138,25 @@ else
     private string GetDeviceDisplay(MeowDevice device)
     {
         return $"{device.Name} ({device.Id})";
+    }
+
+    private async Task ScanAsyncAutomatically()
+    {
+        if (_isScanning) return;
+        _isScanning = true;
+        try
+        {
+            await Bluetooth.ScanAsyncAutomatically();
+        }
+        catch (Exception ex)
+        {
+            ErrorService.Add(ex);
+        }
+        _isScanning = false;
+    }
+
+    private async void RunAsyncScan()
+    {
+        await Bluetooth.RunInBackground(TimeSpan.FromSeconds(10), ScanAsyncAutomatically);
     }
 }

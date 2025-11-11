@@ -168,6 +168,7 @@
     protected override Task OnInitializedAsync()
     {
         _pinList = PinService.GetPins();
+        PinService.SetupPinReceivedAction(onNewMessage);
         return base.OnInitializedAsync();
     }
 }
