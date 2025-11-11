@@ -1,6 +1,9 @@
 @page "/test-page"
 @using MEOW.Components.Services
 @using MEOW.Components.Models
+@using System.Timers
+@using System.Collections.Specialized
+
 @inject IChatService ChatService
 @inject IErrorService ErrorService
 
@@ -54,7 +57,6 @@
                             }
                         </button>
                     </div>
-
 
                     @if (IsRunning)
                     {
@@ -190,18 +192,35 @@
         ReceiveStartTime = null;
         ReceiveEndTime = null;
 
-        // hent evt. eksisterende beskeder
         var messages = ChatService.GetChatMessages();
         foreach (var msg in messages)
         {
-            OnMessageReceived(msg);
+            HandleIncomingMessage(msg);
         }
 
-        ChatService.SetupChatMessageReceivedAction(OnMessageReceived);
+        // Subscribe using correct event handler type
+        ChatService.SetupChatMessageReceivedAction(OnCollectionChanged);
+
         StateHasChanged();
     }
 
-    private void OnMessageReceived(MeowMessageText msg)
+    // The correct signature for NotifyCollectionChangedEventHandler
+    private void OnCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.NewItems != null)
+        {
+            foreach (var item in e.NewItems)
+            {
+                if (item is MeowMessageText msg)
+                {
+                    HandleIncomingMessage(msg);
+                }
+            }
+        }
+    }
+
+    // Your existing message handling logic, unchanged
+    private void HandleIncomingMessage(MeowMessageText msg)
     {
         if (ReceiveStartTime is null)
             ReceiveStartTime = DateTime.Now;
@@ -209,12 +228,10 @@
         ReceiveCount++;
         ReceiveEndTime = DateTime.Now;
 
-
         _timeoutTimer?.Stop();
         _timeoutTimer ??= new System.Timers.Timer(ReceiveTimeoutSeconds * 1000);
-
-        _timeoutTimer.Elapsed -= TimeoutElapsed;
-        _timeoutTimer.Elapsed += TimeoutElapsed;
+        _timeoutTimer.Elapsed -= new System.Timers.ElapsedEventHandler(TimeoutElapsed);
+        _timeoutTimer.Elapsed += new System.Timers.ElapsedEventHandler(TimeoutElapsed);
         _timeoutTimer.AutoReset = false;
         _timeoutTimer.Start();
 
@@ -224,15 +241,11 @@
         }
         catch (NotImplementedException)
         {
-            
             Console.WriteLine("NotImplementedException ignoreret – AndroidNotificationManagerService ikke aktiv.");
         }
     }
 
-    private void TimeoutElapsed(object? sender, System.Timers.ElapsedEventArgs e)
-    {
-        StopReceiving();
-    }
+    private void TimeoutElapsed(object? sender, ElapsedEventArgs e) => StopReceiving();
 
     private void StopReceiving()
     {
@@ -248,7 +261,7 @@
         InvokeAsync(StateHasChanged);
     }
 
-
+    // --- Sending logic unchanged ---
     private async Task StartSending()
     {
         if (IsRunning) return;
@@ -267,7 +280,6 @@
         try
         {
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-
             double totalMs = DurationSeconds * 1000.0;
             double intervalMs = MessageCount > 1 ? totalMs / (MessageCount - 1) : 0;
 
@@ -279,7 +291,6 @@
                 try
                 {
                     var result = await ChatService.SendMessage(msg);
-
                     if (!result.Item1)
                     {
                         var exceptions = result.Item2?.Any() == true
@@ -340,13 +351,13 @@
         }
         catch (Exception ex)
         {
-                // Ignorer "NotImplementedException" fra AndroidNotificationManagerService
             if (ex is NotImplementedException)
             {
                 StatusMessage = "⚠️ Notifikationer er ikke implementeret (ignoreres i test).";
                 StateHasChanged();
                 return;
             }
+
             foreach (var inner in UnwrapExceptions(ex))
             {
                 ErrorDetails.Add(new ErrorInfo
