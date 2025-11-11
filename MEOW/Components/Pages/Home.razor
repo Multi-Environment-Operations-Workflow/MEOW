@@ -121,8 +121,14 @@
     {
         if (_isScanning) return;
         _isScanning = true;
-        try { await Bluetooth.ScanAsync(); }
-        catch (Exception e) { ErrorService.Add(e); }
+        try
+        {
+            await Bluetooth.ScanAsync();
+        }
+        catch (Exception e)
+        {
+            ErrorService.Add(e);
+        }
         _isScanning = false;
     }
 
@@ -142,7 +148,10 @@
     private async Task StartAdvertisingAsync()
     {
         try { await Bluetooth.StartAdvertisingAsync("(MEOW) " + UserStateService.GetName()); }
-        catch (Exception ex) { ErrorService.Add(ex); }
+        catch (Exception ex)
+        {
+            ErrorService.Add(ex);
+        }
     }
 
     private async Task StopAdvertisingAsync() => await Bluetooth.StopAdvertisingAsync();
@@ -152,7 +161,10 @@
         if (_isScanning) return;
         _isScanning = true;
         try { await Bluetooth.ScanAsyncAutomatically(); }
-        catch (Exception ex) { ErrorService.Add(ex); }
+        catch (Exception ex)
+        {
+            ErrorService.Add(ex);
+        }
         _isScanning = false;
     }
 
