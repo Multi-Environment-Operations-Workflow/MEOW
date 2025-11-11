@@ -155,7 +155,10 @@
         if (_isScanning) return;
         _isScanning = true;
         try { await Bluetooth.ScanAsyncAutomatically(); }
-        catch (Exception ex) { ErrorService.Add(ex); }
+        catch (Exception ex)
+        {
+            ErrorService.Add(ex);
+        }
         _isScanning = false;
     }
 
