@@ -8,10 +8,11 @@
     <div class="pinboard-header">
         <h2 class="pinboard-title">Pinboard</h2>
 
-        <MatButton Raised="true" Icon="@(_isPinFormVisible ? "expand_less" : "add_circle_outline")" 
+        <MatButton Raised="true" 
+                   Icon="@(_isPinFormVisible ? "expand_less" : "add_circle_outline")" 
                    OnClick="TogglePinVisibility"
                    Class="add-pin-btn">
-            @(_isPinFormVisible ? "Hide Pin Module" : "Add Pin")
+            @(_isPinFormVisible ? "Hide Form" : "Add Pin")
         </MatButton>
     </div>
 
@@ -25,70 +26,92 @@
 
     @if (_isPinFormVisible)
     {
-        <MatCard Class="pin-form-card animate-fadeIn">
+        <div class="pin-form-card animate-fadeIn">
             <EditForm Model="@_currentPin" OnValidSubmit="AddPin">
                 <DataAnnotationsValidator />
 
-                <MatTextField Label="Title" @bind-Value="_currentPin.Title" Required="true" FullWidth="true" />
-                <ValidationMessage For="@(() => _currentPin.Title)" />
+                <div class="form-section">
+                    <label class="form-label">Title *</label>
+                    <InputText class="custom-input" 
+                               @bind-Value="_currentPin.Title" 
+                               placeholder="Enter a catchy title..." />
+                    <ValidationMessage For="@(() => _currentPin.Title)" class="validation-message" />
+                </div>
 
-                <MatTextField Label="Context" @bind-Value="_currentPin.TextContext"
-                              TextArea="true" Rows="5" FullWidth="true" Class="mt-3" />
-                <ValidationMessage For="@(() => _currentPin.TextContext)" />
+                <div class="form-section">
+                    <label class="form-label">Description</label>
+                    <InputTextArea class="custom-textarea" 
+                                   @bind-Value="_currentPin.TextContext"
+                                   placeholder="Add details about this pin..." />
+                    <ValidationMessage For="@(() => _currentPin.TextContext)" class="validation-message" />
+                </div>
 
-                <MatDivider Class="my-4" />
-
-                <MatFileUpload OnChange="@FilesReady"
-                               Label="Drop an image or browse"
-                               Icon="cloud_upload"
-                               Accept="image/*" />
+                <div class="upload-section">
+                    <MatIcon Class="upload-icon">cloud_upload</MatIcon>
+                    <div class="upload-label">
+                        <MatFileUpload OnChange="@FilesReady"
+                                       Label="Drop an image here or click to browse"
+                                       Accept="image/*" />
+                    </div>
+                </div>
 
                 @if (_currentPin.FileData != null)
                 {
-                    <div class="preview-image">
-                        <img src="data:image/png;base64,@_currentPin.FileData" />
+                    <div class="preview-image animate-fadeIn">
+                        <img src="data:image/png;base64,@_currentPin.FileData" alt="Preview" />
                     </div>
                 }
 
-                <MatDivider Class="my-4" />
-
-                <MatButton Raised="true" Icon="add_task" Type="submit" Color="MatThemeColor.Primary">
-                    Create Pin
-                </MatButton>
+                <div class="form-actions">
+                    <MatButton Raised="true" 
+                               Icon="add_task" 
+                               Type="submit" 
+                               Class="create-pin-btn">
+                        Create Pin
+                    </MatButton>
+                </div>
             </EditForm>
-        </MatCard>
+        </div>
     }
 
     <div class="pins-list">
         @if (!_pinList.Any())
         {
             <div class="empty-state animate-fadeIn">
-                <MatIcon>info</MatIcon>
-                <p>No pins yet — add one above!</p>
+                <MatIcon>push_pin</MatIcon>
+                <p>No pins yet — click "Add Pin" to get started!</p>
             </div>
         }
         else
         {
             @foreach (var pin in _pinList)
             {
-                <MatCard Class="pin-card animate-fadeIn">
+                <div class="pin-card animate-fadeIn">
                     <div class="pin-content">
                         <h3>@pin.Title</h3>
-                        <p>@pin.TextContext</p>
+                        
+                        @if (!string.IsNullOrEmpty(pin.TextContext))
+                        {
+                            <p>@pin.TextContext</p>
+                        }
 
                         @if (pin.FileData != null)
                         {
-                            <img src="data:image/png;base64,@pin.FileData" class="pin-image" />
+                            <img src="data:image/png;base64,@pin.FileData" 
+                                 alt="@pin.Title" 
+                                 class="pin-image" />
                         }
                     </div>
 
                     <div class="pin-actions">
-                        <MatIconButton Icon="delete_forever"
-                                       OnClick="@(() => RemovePin(pin))"
-                                       Color="MatThemeColor.Secondary"
-                                       Title="Delete pin" />
+                        <MatButton Outlined="true"
+                                   Icon="delete_forever"
+                                   OnClick="@(() => RemovePin(pin))"
+                                   Class="delete-btn">
+                            Delete
+                        </MatButton>
                     </div>
-                </MatCard>
+                </div>
             }
         }
     </div>
@@ -107,6 +130,7 @@
     {
         try
         {
+            _errorMessage = string.Empty;
             var file = files.FirstOrDefault();
             if (file == null) return;
 
@@ -116,7 +140,7 @@
         }
         catch (Exception e)
         {
-            _errorMessage = $"Error: {e.Message}";
+            _errorMessage = $"Failed to upload image: {e.Message}";
         }
         finally
         {
@@ -128,6 +152,7 @@
     {
         try
         {
+            _errorMessage = string.Empty;
             var createPin = new PinItem(_currentPin.Title, _currentPin.TextContext, _currentPin.FileData);
             PinService.AddPin(createPin);
             _pinList = PinService.GetPins();
@@ -136,14 +161,22 @@
         }
         catch (Exception e)
         {
-            _errorMessage = $"Error: {e.Message}";
+            _errorMessage = $"Failed to create pin: {e.Message}";
         }
     }
 
     private void RemovePin(PinItem pin)
     {
-        PinService.RemovePin(pin);
-        _pinList = PinService.GetPins();
+        try
+        {
+            _errorMessage = string.Empty;
+            PinService.RemovePin(pin);
+            _pinList = PinService.GetPins();
+        }
+        catch (Exception e)
+        {
+            _errorMessage = $"Failed to delete pin: {e.Message}";
+        }
     }
 
     protected override Task OnInitializedAsync()
