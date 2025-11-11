@@ -26,7 +26,7 @@ public class PinService(IMessageService messageService, IUserStateService userSt
 
     public Task<(bool, List<Exception>)> SendMessage(PinItem pin)
     {
-        var meowMessage = new MeowMessageTask(userStateService.GetName(), pin.Title, pin.TextContext, pin.FileData);
+        var meowMessage = new MeowMessageTask(userStateService.GetId(), MessageService.GetMessageCount(), userStateService.GetName(), pin.Title, pin.TextContext, pin.FileData);
 
         return messageService.SendMessage(meowMessage);
     }

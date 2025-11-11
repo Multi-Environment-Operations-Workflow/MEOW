@@ -1,5 +1,6 @@
 namespace MEOW.Components.Services;
 
+using System.ComponentModel;
 using System.Text;
 using MEOW.Components.Models;
 
@@ -25,11 +26,11 @@ public class ByteDeserializer(byte[] payload, IErrorService errorService)
     }
     private MeowMessage DeserializeUnsupportedMessage(MessageType type)
     {
-        var exception = new NotSupportedException($"Message type {type} is not supported");
+        var exception = new NotSupportedException($"Message type {type} is not supported \n {BitConverter.ToString(payload)}");
         errorService.Add(exception);
         throw exception;
     }
-    
+
     private MeowMessageText DeserializeTextMessage(byte senderUserId, int messageNumber, string sender)
     {
         string message = ReadLenghtPrefixedString();
