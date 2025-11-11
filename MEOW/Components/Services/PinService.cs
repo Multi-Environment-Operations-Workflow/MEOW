@@ -1,10 +1,12 @@
+using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using MEOW.Components.Models;
 
 namespace MEOW.Components.Services;
 
 public class PinService(IMessageService messageService, IUserStateService userStateService) : IPinService
 {
-    private readonly List<PinItem> _pins = new();
+    private readonly ObservableCollection<PinItem> _pins = new();
 
     public void Initialize()
     {
@@ -16,10 +18,15 @@ public class PinService(IMessageService messageService, IUserStateService userSt
         _pins.Add(new PinItem(pin.Title, pin.TextContext, pin.FileData));
     }
 
+    public void SetupPinReceivedAction(NotifyCollectionChangedEventHandler onMessage)
+    {
+        _pins.CollectionChanged -= onMessage;
+        _pins.CollectionChanged += onMessage;
+    }
+
     public Task<(bool, List<Exception>)> SendMessage(PinItem pin)
     {
         var meowMessage = new MeowMessageTask(userStateService.GetName(), pin.Title, pin.TextContext, pin.FileData);
-
 
         return messageService.SendMessage(meowMessage);
     }

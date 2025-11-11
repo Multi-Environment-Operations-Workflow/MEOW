@@ -3,6 +3,7 @@
 @using MEOW.Components.DTO_s
 @using MEOW.Components.Models
 @using MEOW.Components.Services
+@using System.Collections.Specialized
 @inject IPinService PinService
 
 <MatCard Class="p-6 m-4">
@@ -148,6 +149,20 @@
     private void ResetForm()
     {
         _currentPin = new PinItemDto();
+    }
+
+    private void onNewMessage(object? _, NotifyCollectionChangedEventArgs e)
+    {
+        try
+        {
+            if (e.Action != NotifyCollectionChangedAction.Add || e.NewItems == null) return;
+            _pinList.AddRange(e.NewItems.Cast<PinItem>());
+            InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+    
+        }
     }
 
     protected override Task OnInitializedAsync()

@@ -1,3 +1,4 @@
+using System.Collections.Specialized;
 using MEOW.Components.Models;
 
 namespace MEOW.Components.Services;
@@ -5,6 +6,8 @@ namespace MEOW.Components.Services;
 public interface IPinService
 {
     void Initialize();
+
+    void SetupPinReceivedAction(NotifyCollectionChangedEventHandler onMessage);
 
     Task<(bool, List<Exception>)> SendMessage(PinItem pin);
 
