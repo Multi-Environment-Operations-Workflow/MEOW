@@ -7,28 +7,63 @@
 @inject IErrorService ErrorService
 @inject IUserStateService UserStateService
 
-<h3>Chat</h3>
-
-<div class="chat-window">
-    <span>Connected devices: @_chatParticipantCount</span>
-    <div>
-        @foreach (var name in _connectedDeviceNames)
-        {
-            <li>@name</li>
-        }
+<div class="chat-container">
+    <!-- Header -->
+    <div class="chat-header">
+        <div class="header-left">
+            <h3 class="chat-title">Chat</h3>
+        </div>
+        <div class="participants-badge">
+            <span class="online-dot"></span>
+            @_chatParticipantCount online
+            <div class="participants-dropdown">
+                @foreach (var name in _connectedDeviceNames)
+                {
+                    <div class="participant-item">
+                        <span class="online-dot"></span>
+                        @name
+                    </div>
+                }
+            </div>
+        </div>
     </div>
-    <div class="messages">
+
+    <div class="messages-container">
         @foreach (var m in _messages)
         {
-            <div>
-                <strong>@(m.Sender == UserStateService.GetName() ? "You" : m.Sender):</strong> @m.Message
-            </div>
+            @if (m.Sender.ToLower() == "error")
+            {
+                <div class="message-bubble message-error">
+                    <div class="message-text">⚠️ @m.Message</div>
+                </div>
+            }
+            else if (m.Sender == "You" || m.Sender == UserStateService.GetName())
+            {
+                <div class="message-bubble message-sent">
+                    <div class="message-text">@m.Message</div>
+                </div>
+            }
+            else
+            {
+                <div class="message-bubble message-received">
+                    <div class="message-sender">@m.Sender</div>
+                    <div class="message-text">@m.Message</div>
+                </div>
+            }
         }
     </div>
 
-    <MatTextField @bind-Value="_outgoing" Label="Send a message"/>
-    <MatButton @onclick="SendAsync">Send</MatButton>
-    <MatButton @onclick="GoBack">Back</MatButton>
+    <div class="input-container">
+        <MatTextField @bind-Value="_outgoing" 
+                      Label="Type a message..." 
+                      Class="message-input"
+                      Immediate="true" />
+        <div class="button-group">
+            <button class="send-btn" @onclick="SendAsync" disabled="@string.IsNullOrWhiteSpace(_outgoing)">
+                Send
+            </button>
+        </div>
+    </div>
 </div>
 
 @code {
@@ -99,5 +134,4 @@
     {
         Navigation.NavigateTo("/");
     }
-
 }
