@@ -2,10 +2,12 @@
 @using System.Diagnostics
 @using MEOW.Components.DTO_s
 @using MEOW.Components.Models
-@inject Services.IPinService PinService
+@using MEOW.Components.Services
+@using System.Collections.Specialized
+@inject IPinService PinService
 
 <MatCard Class="p-6 m-4">
-    
+
     @if (!string.IsNullOrEmpty(_errorMessage))
     {
         <MatCard Class="mb-4 p-4 bg-red-100 text-red-800">
@@ -23,38 +25,27 @@
         <MatCard Class="mt-4 p-4">
 
             <EditForm Model="@_currentPin" OnValidSubmit="AddPin">
-                <DataAnnotationsValidator/>
+                <DataAnnotationsValidator />
 
-                <MatTextField Label="Title"
-                              @bind-Value="_currentPin.Title"
-                              Required="true"
-                              FullWidth="true"
-                              Class="mb-4"/>
-                <ValidationMessage For="@(() => _currentPin.Title)"/>
+                <MatTextField Label="Title" @bind-Value="_currentPin.Title" Required="true" FullWidth="true" Class="mb-4" />
+                <ValidationMessage For="@(() => _currentPin.Title)" />
 
-                <MatTextField Label="Context"
-                              @bind-Value="_currentPin.TextContext"
-                              TextArea="true"
-                              Rows="5"
-                              FullWidth="true"
-                              Class="mb-4"/>
-                <ValidationMessage For="@(() => _currentPin.TextContext)"/>
+                <MatTextField Label="Context" @bind-Value="_currentPin.TextContext" TextArea="true" Rows="5"
+                    FullWidth="true" Class="mb-4" />
+                <ValidationMessage For="@(() => _currentPin.TextContext)" />
 
-                <MatDivider Class="my-3"/>
+                <MatDivider Class="my-3" />
 
-                <MatFileUpload OnChange="@FilesReady"
-                               Label="Drop a file or browse"
-                               Icon="cloud_upload"
-                               Accept="image/*"/>
+                <MatFileUpload OnChange="@FilesReady" Label="Drop a file or browse" Icon="cloud_upload" Accept="image/*" />
 
                 @if (_currentPin.FileData != null)
                 {
                     <div class="mt-3 flex justify-center">
-                        <img src="data:image/png;base64,@_currentPin.FileData" style="max-width:150px;border-radius:8px;"/>
+                        <img src="data:image/png;base64,@_currentPin.FileData" style="max-width:150px;border-radius:8px;" />
                     </div>
                 }
 
-                <MatDivider Class="my-4"/>
+                <MatDivider Class="my-4" />
 
                 <MatButton Raised="true" Icon="add_task" Type="submit" Color="MatThemeColor.Primary">
                     Create Pin
@@ -63,7 +54,7 @@
         </MatCard>
     }
 
-    <MatDivider Class="my-6"/>
+    <MatDivider Class="my-6" />
 
     @if (!_pinList.Any())
     {
@@ -83,15 +74,13 @@
 
                         @if (pin.FileData != null)
                         {
-                            <img src="data:image/png;base64,@pin.FileData" style="max-width:120px;border-radius:8px;"/>
+                            <img src="data:image/png;base64,@pin.FileData" style="max-width:120px;border-radius:8px;" />
                         }
                     </div>
 
                     <div class="flex items-start">
-                        <MatIconButton Icon="delete_forever"
-                                       OnClick="@(() => RemovePin(pin))"
-                                       Color="MatThemeColor.Secondary"
-                                       Title="Delete pin"/>
+                        <MatIconButton Icon="delete_forever" OnClick="@(() => RemovePin(pin))" Color="MatThemeColor.Secondary"
+                            Title="Delete pin" />
                     </div>
                 </MatCard>
             }
@@ -109,7 +98,7 @@
 
     public void TogglePinVisibility() => _isPinFormVisible = !_isPinFormVisible;
 
-    
+
     async Task FilesReady(IMatFileUploadEntry[] files)
     {
         try
@@ -162,9 +151,24 @@
         _currentPin = new PinItemDto();
     }
 
+    private void onNewMessage(object? _, NotifyCollectionChangedEventArgs e)
+    {
+        try
+        {
+            if (e.Action != NotifyCollectionChangedAction.Add || e.NewItems == null) return;
+            _pinList.AddRange(e.NewItems.Cast<PinItem>());
+            InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+    
+        }
+    }
+
     protected override Task OnInitializedAsync()
     {
         _pinList = PinService.GetPins();
+        PinService.SetupPinReceivedAction(onNewMessage);
         return base.OnInitializedAsync();
     }
 }

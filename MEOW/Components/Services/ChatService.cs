@@ -12,11 +12,15 @@ public class ChatService(
     : IChatService
 {
     private ObservableCollection<MeowMessageText> MeowMessageTexts { get; set; } = new();
-
     public Task<(bool, List<Exception>)> SendMessage(string message)
     {
         var meowMessage = new MeowMessageText(userStateService.GetId(), MessageService.GetMessageCount(), message, userStateService.GetName());
         return messageService.SendMessage(meowMessage);
+    }
+
+    private void ChatMessageReceivedAction(MeowMessageText msg)
+    {
+        MeowMessageTexts.Add(msg);
     }
 
     public void SetupNotificationsAndChatService()
@@ -38,8 +42,8 @@ public class ChatService(
 
     public void SetupChatMessageReceivedAction(NotifyCollectionChangedEventHandler onMessage)
     {
-            MeowMessageTexts.CollectionChanged -= onMessage;
-            MeowMessageTexts.CollectionChanged += onMessage;
+        MeowMessageTexts.CollectionChanged -= onMessage;
+        MeowMessageTexts.CollectionChanged += onMessage;
     }
 
     public List<MeowMessageText> GetChatMessages()

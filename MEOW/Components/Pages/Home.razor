@@ -66,6 +66,15 @@ else
         _devices = Bluetooth.Devices;
         Bluetooth.AdvertisingStateChanged += OnAdvertisingStateChanged;
         Bluetooth.PeerConnected += OnPeerConnected;
+
+        try
+        {
+            NotificationManagerService.SendNotification("Welcome to MEOW!", "You are now ready to connect with others.", DateTime.Now + TimeSpan.FromSeconds(30));
+        }
+        catch (PermissionException exception)
+        {
+            ErrorService.Add(exception); 
+        }
     }
 
     private void OnPeerConnected()
