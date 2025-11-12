@@ -79,7 +79,6 @@
                             </div>
                             <div class="device-name">@d.Name</div>
                             <div class="device-id">@d.Id</div>
-                            <div class="device-action">Tap to connect →</div>
                         </div>
                     }
                 </div>
@@ -106,7 +105,7 @@
         _devices = Bluetooth.Devices;
 
         Bluetooth.AdvertisingStateChanged += OnAdvertisingStateChanged;
-        Bluetooth.PeerConnected += OnPeerConnected;
+        Bluetooth.PeerConnected += OnPeerConnected;     
 
         try
         {

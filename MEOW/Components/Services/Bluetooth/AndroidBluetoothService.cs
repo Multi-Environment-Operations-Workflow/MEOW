@@ -10,6 +10,7 @@ using Android.Content;
 using Plugin.BLE.Abstractions.Exceptions;
 using Plugin.BLE.Abstractions;
 using Java.Util;
+using Random = System.Random;
 
 namespace MEOW.Components.Services;
 
@@ -190,6 +191,7 @@ public class AndroidBluetoothService(IErrorService errorService) : IBluetoothSer
         var bluetoothManager = (BluetoothManager?)Android.App.Application.Context.GetSystemService(Context.BluetoothService);
         var adapter = bluetoothManager?.Adapter;
         var advertiser = adapter?.BluetoothLeAdvertiser;
+        var serviceData = new byte [] {_gattServer.LocalNodeId};
 
         if (advertiser == null)
         {
@@ -209,6 +211,7 @@ public class AndroidBluetoothService(IErrorService errorService) : IBluetoothSer
 
         var data = new AdvertiseData.Builder()
             .AddServiceUuid(Android.OS.ParcelUuid.FromString(ChatUuids.ChatService.ToString()))
+            .AddServiceData(Android.OS.ParcelUuid.FromString(ChatUuids.ChatService.ToString()), serviceData)
             .SetIncludeDeviceName(true)
             .Build();
 
@@ -445,6 +448,7 @@ internal sealed class MeowAndroidGattServer(Context ctx)
     private readonly UUID _msgSendUuid = UUID.FromString(ChatUuids.MessageSendCharacteristic.ToString())!;
     private readonly UUID _msgRecvUuid = UUID.FromString(ChatUuids.MessageReceiveCharacteristic.ToString())!;
 
+    public readonly byte LocalNodeId = (byte)new Random().Next(0, 256);
     public event Action<byte[]>? MessageReceived;
 
     // Brug denne ctor til standard ChatUuids
