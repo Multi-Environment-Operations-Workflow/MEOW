@@ -13,5 +13,5 @@ public interface IChatService
     void SetupChatMessageReceivedAction(NotifyCollectionChangedEventHandler onMessage);
 
     int GetChatParticipantsCount();
-    List<string> GetConnectedDeviceName();
+    List<string> GetChatParticipantsNames();
 }

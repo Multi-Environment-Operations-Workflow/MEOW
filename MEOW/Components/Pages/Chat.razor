@@ -44,7 +44,7 @@
             _messages = ChatService.GetChatMessages();
             ChatService.SetupChatMessageReceivedAction(OnNewMessage);
             _chatParticipantCount = ChatService.GetChatParticipantsCount();
-            _connectedDeviceNames = ChatService.GetConnectedDeviceName();
+            _connectedDeviceNames = ChatService.GetChatParticipantsNames();
         }
         catch (Exception e)
         {

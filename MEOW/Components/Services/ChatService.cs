@@ -46,14 +46,23 @@ public class ChatService(
     {
         return MeowMessageTexts.ToList();
     }
-
+    
+    /// <summary>
+    /// Gets the count of chat participants, including the local device.
+    /// </summary>
+    /// <returns>Count of connected devices +1 for yourself</returns>
     public int GetChatParticipantsCount()
     {
-        return messageService.GetParticipantsCount();
+        return messageService.GetConnectedDevices().Count + 1;
     }
 
-    public List<string> GetConnectedDeviceName()
+    /// <summary>
+    /// Gets a list chat participant names.
+    /// </summary>
+    /// <returns>A list of connected device names.</returns>
+    public List<string> GetChatParticipantsNames()
     {
-        return messageService.GetConnectedDeviceName();
+        return messageService.GetConnectedDevices().Select(d => d.Name).ToList();
     }
+
 }

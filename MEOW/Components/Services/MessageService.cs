@@ -67,17 +67,17 @@ public class MessageService(IBluetoothService bluetooth, IErrorService errorServ
     {
         bluetooth.SendToAllAsync(message.Serialize());
     }
-
-    public int GetParticipantsCount()
+    
+    /// <summary>
+    /// Gets the list of connected devices.
+    /// </summary>
+    /// <returns>>A list of connected MeowDevice instances.</returns>
+    public List<MeowDevice> GetConnectedDevices()
     {
-        return bluetooth.GetConnectedDevicesCount() + 1;
+        return bluetooth.GetConnectedDevices();
     }
-
-    public List<string> GetConnectedDeviceName()
-    {
-        return bluetooth.GetConnectedDeviceName();
-    }
-
+ 
+    
     public List<T> GetMessages<T>() where T : MeowMessage
     {
         return _messages.FindAll(m => m is T).Cast<T>().ToList();
