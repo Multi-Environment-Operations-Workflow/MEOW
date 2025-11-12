@@ -10,6 +10,7 @@ using Android.Content;
 using Plugin.BLE.Abstractions.Exceptions;
 using Plugin.BLE.Abstractions;
 using Java.Util;
+using Timer = System.Threading.Timer;
 
 namespace MEOW.Components.Services;
 
@@ -26,16 +27,16 @@ namespace MEOW.Components.Services;
 ///     - Spørger om tilladelser (CheckPermissions)
 /// 
 /// </summary>
-public class AndroidBluetoothService(IErrorService errorService) : IBluetoothService // Implementering af IBluetoothService til Android
+public class AndroidBluetoothService(IErrorService errorService)
+    : IBluetoothService // Implementering af IBluetoothService til Android
 {
-
     // Plugin abstraktion til Bluetooth local enhed. Giver os adgang til fx _bluetooth.IsOn
     // Tjekker, om Bluetooth er slået til, tilladelser, tilgængelighed osv.
     private readonly IBluetoothLE _bluetooth = CrossBluetoothLE.Current;
 
     // instance af Bluetooth-adapteren, som håndterer scanning, forbindelser osv.
     private readonly IAdapter _adapter = CrossBluetoothLE.Current.Adapter;
-    
+
     // Enum vi bruger til at holde styr på advertising state. 
     // AdvertisingStateChanged eventet bruges til at informere UI'et om ændringer i advertising status.
     // Så vi fx på "front enden" kan sætte funktioner til at kører via dette event. Man kan se det som en tom funktion.
@@ -65,14 +66,20 @@ public class AndroidBluetoothService(IErrorService errorService) : IBluetoothSer
 
     // Lokal GATT-server så Android kan modtage beskeder. Er "client" i forhold til peripheral server forholdet. 
     private MeowAndroidGattServer? _gattServer;
-    
-    private readonly HashSet<string> _receivedMessageIds = new(); // Vi skal holde styr på id´er vi har modtaget fra (controlled flod)
+
+    private readonly HashSet<string>
+        _receivedMessageIds = new(); // Vi skal holde styr på id´er vi har modtaget fra (controlled flod)
+
     private static long _msgCounter = 0;
-    private readonly object _lock = new(); // Flere id´er må ikke blive tilføjet samtidig samtidig. Kunne ske vis flere noder er konnectet samtidig. 
-    
+
+    private readonly object
+        _lock = new(); // Flere id´er må ikke blive tilføjet samtidig samtidig. Kunne ske vis flere noder er konnectet samtidig. 
+
     // For at ungå dupes
     private bool _isAdvertising = false;
     private bool _isScanning = false;
+    private CancellationTokenSource? _cts;
+
 
     public int GetConnectedDevicesCount()
     {
@@ -86,15 +93,16 @@ public class AndroidBluetoothService(IErrorService errorService) : IBluetoothSer
         {
             deviceNames.Add(deviceName.Name);
         }
+
         return deviceNames;
     }
 
-    
+
     public async Task<(bool, List<Exception>)> SendToAllAsync(byte[] data)
     {
         var anySuccess = false;
         var exceptions = new List<Exception>();
-        
+
         // Send som CENTRAL/server/host til allerede forbundne enheder (Plugin.BLE)
         foreach (var device in _adapter.ConnectedDevices.ToList())
         {
@@ -103,7 +111,14 @@ public class AndroidBluetoothService(IErrorService errorService) : IBluetoothSer
                 // Standard måde at sende pakker er en størelse af 20 bytes pr pakke. Men det er ikke effektivt. 
                 // Så vi forspørger om vi kan få lov til at sende en større MTU pakke (max 185 bytes)
                 // Gør det hurtigere. Aner ikke hvor meget hurtige dog....
-                try { await device.RequestMtuAsync(185).ConfigureAwait(false); } catch { /* best effort */ }
+                try
+                {
+                    await device.RequestMtuAsync(185).ConfigureAwait(false);
+                }
+                catch
+                {
+                    /* best effort */
+                }
 
 
                 // Services -> Chatservervice -> Characteristics -> messagereciveChar.
@@ -115,9 +130,11 @@ public class AndroidBluetoothService(IErrorService errorService) : IBluetoothSer
                 if (chatService == null)
                     throw new Exception($"Service {ChatUuids.ChatService} not found on {device.Name}");
                 var characteristics = await chatService.GetCharacteristicsAsync().ConfigureAwait(false);
-                var messageReceiveChar = characteristics.FirstOrDefault(c => c.Id == ChatUuids.MessageReceiveCharacteristic);
+                var messageReceiveChar =
+                    characteristics.FirstOrDefault(c => c.Id == ChatUuids.MessageReceiveCharacteristic);
                 if (messageReceiveChar == null)
-                    throw new Exception($"Characteristic {ChatUuids.MessageReceiveCharacteristic} not found on {device.Name}");
+                    throw new Exception(
+                        $"Characteristic {ChatUuids.MessageReceiveCharacteristic} not found on {device.Name}");
 
                 // Plugin.BLE: brug WriteType + WriteAsync(data)
                 // Her er det så at vi faktisk sender data mellem enhederne. WithResponse = bekræftelse på modtagelse.
@@ -168,6 +185,7 @@ public class AndroidBluetoothService(IErrorService errorService) : IBluetoothSer
             AdvertisingStateChanged?.Invoke(AdvertisingState.Failed, "Already advertising");
             return;
         }
+
         _isAdvertising = true;
 
         if (!await CheckPermissions())
@@ -198,7 +216,8 @@ public class AndroidBluetoothService(IErrorService errorService) : IBluetoothSer
 
         // 2) Advertising med service UUID = ChatUuids.ChatService
         // Mere opsætning til advertising
-        var bluetoothManager = (BluetoothManager?)Android.App.Application.Context.GetSystemService(Context.BluetoothService);
+        var bluetoothManager =
+            (BluetoothManager?)Android.App.Application.Context.GetSystemService(Context.BluetoothService);
         var adapter = bluetoothManager?.Adapter;
         var advertiser = adapter?.BluetoothLeAdvertiser;
 
@@ -215,7 +234,7 @@ public class AndroidBluetoothService(IErrorService errorService) : IBluetoothSer
             .SetAdvertiseMode(AdvertiseMode.Balanced)
             .SetConnectable(true)
             .SetTimeout(0)
-            .SetTxPowerLevel(AdvertiseTx.PowerMedium)// måske burde vi sætte til high, giver bedre rækkevidde
+            .SetTxPowerLevel(AdvertiseTx.PowerMedium) // måske burde vi sætte til high, giver bedre rækkevidde
             .Build();
 
         var data = new AdvertiseData.Builder()
@@ -231,13 +250,13 @@ public class AndroidBluetoothService(IErrorService errorService) : IBluetoothSer
         advertiser.StartAdvertising(settings, data, callback);
         await Task.CompletedTask;
     }
-    
+
     public async Task<bool> ScanAsync()
     {
         await CheckPermissions();
 
         Devices.Clear(); // Når vi scanner ønsker vi at fjerne dem som allerede er på listen.
-    
+
         if (_bluetooth == null || _adapter == null)
             throw new InvalidOperationException("Bluetooth not initialized");
 
@@ -245,66 +264,61 @@ public class AndroidBluetoothService(IErrorService errorService) : IBluetoothSer
             throw new Exception("Bluetooth is off");
 
         // Vi fjerner ældre event og tilføjer vores nye. 
-        _adapter.DeviceDiscovered -= OnDeviceDiscovered; 
-        _adapter.DeviceDiscovered += OnDeviceDiscovered; 
+        _adapter.DeviceDiscovered -= OnDeviceDiscovered;
+        _adapter.DeviceDiscovered += OnDeviceDiscovered;
 
-        await _adapter.StartScanningForDevicesAsync(serviceUuids: new []{ChatUuids.ChatService});
+        await _adapter.StartScanningForDevicesAsync(serviceUuids: new[] { ChatUuids.ChatService });
         return true;
     }
 
-    public async Task<bool> ScanAsyncAutomatically()
+    public async Task KeepScanning(TimeSpan timeSpan)
+    {
+        if (_cts is not null) return;
+        _cts = new CancellationTokenSource();
+        var periodicTimer = new PeriodicTimer(timeSpan);
+        try
         {
-            try{
-                await CheckPermissions();
-
-                Devices.Clear(); // Når vi scanner ønsker vi at fjerne dem som allerede er på listen.
-
-                if (_bluetooth == null || _adapter == null)
-                    throw new InvalidOperationException("Bluetooth not initialized");
-
-                if (!_bluetooth.IsOn)
-                    throw new Exception("Bluetooth is off");
-
-                // Vi fjerner ældre event og tilføjer vores nye. 
-                _adapter.DeviceDiscovered -= OnDeviceDiscovered; 
-                _adapter.DeviceDiscovered += OnDeviceDiscovered;
-
-                await _adapter.StartScanningForDevicesAsync(serviceUuids: new []{ChatUuids.ChatService});
-
-                foreach (var discoveredDevice in _adapter.DiscoveredDevices)
-                {
-                    Console.WriteLine($"trying to connect to device {discoveredDevice}");
-                    await _adapter.ConnectToDeviceAsync(discoveredDevice);
-                    PeerConnected?.Invoke();
-                }
-
-                return true;
-            } catch (DeviceConnectionException ex){
-                throw new Exception($"Failed to automatically connect to device: {ex.Message}");
-            }
-        }
-
-        public async Task RunInBackground(TimeSpan timeSpan, Func<Task> func)
-        {
-            var periodicTimer = new PeriodicTimer(timeSpan);
-            while (await periodicTimer.WaitForNextTickAsync())
+            while (!_cts.IsCancellationRequested && await periodicTimer.WaitForNextTickAsync(_cts.Token))
             {
-                await func();
+                try
+                {
+                    await ScanAsync();
+                    foreach (var discoveredDevice in _adapter.DiscoveredDevices)
+                    {
+                        await _adapter.ConnectToDeviceAsync(discoveredDevice);
+                        PeerConnected?.Invoke();
+                    }
+                }
+                catch (DeviceConnectionException ex)
+                {
+                    errorService.Add(ex);
+                    throw new Exception($"Failed to automatically connect to device: {ex.Message}");
+                }
             }
         }
+        catch (OperationCanceledException e)
+        {
+            errorService.Add(e);
+        }
+        finally
+        {
+            periodicTimer.Dispose();
+        }
+    }
 
-    private void OnDeviceDiscovered(object? s, Plugin.BLE.Abstractions.EventArgs.DeviceEventArgs a) 
-    { // Tjekker om vi allerede har den. Vis vi har gør vi ikke noget. Ellers tilføjer vi den til vores liste.
-        if (Devices.Any(d => d.Id == a.Device.Id)) 
-            return; 
-                                                    
-        if (a.Device.Name != null) 
-        { 
-            var device = new MeowDevice(a.Device.Name, a.Device.Id, a.Device); 
-            device.Name = device.Name.Replace("(MEOW) ", "").Trim(); 
-            Devices.Add(device); 
-        } 
-    } 
+    private void OnDeviceDiscovered(object? s, Plugin.BLE.Abstractions.EventArgs.DeviceEventArgs a)
+    {
+        // Tjekker om vi allerede har den. Vis vi har gør vi ikke noget. Ellers tilføjer vi den til vores liste.
+        if (Devices.Any(d => d.Id == a.Device.Id))
+            return;
+
+        if (a.Device.Name != null)
+        {
+            var device = new MeowDevice(a.Device.Name, a.Device.Id, a.Device);
+            device.Name = device.Name.Replace("(MEOW) ", "").Trim();
+            Devices.Add(device);
+        }
+    }
 
 
     async public Task ConnectAsync(MeowDevice device)
@@ -315,7 +329,14 @@ public class AndroidBluetoothService(IErrorService errorService) : IBluetoothSer
             if (device?.NativeDevice is IDevice native)
             {
                 await _adapter.ConnectToDeviceAsync(native);
-                try { await native.RequestMtuAsync(185); } catch { /* best effort */ }
+                try
+                {
+                    await native.RequestMtuAsync(185);
+                }
+                catch
+                {
+                    /* best effort */
+                }
             }
             else
             {
@@ -330,33 +351,54 @@ public class AndroidBluetoothService(IErrorService errorService) : IBluetoothSer
         }
     }
 
+    public void StopConnection()
+    {
+        try
+        {
+            _cts?.CancelAsync();
+            _cts?.Dispose();
+            StopAdvertisingAsync();
+            foreach (var device in _adapter.DiscoveredDevices)
+            {
+                _adapter.DisconnectDeviceAsync(device);
+            }
+
+            _isScanning = false;
+        }
+        catch (Exception e)
+        {
+            errorService.Add(e);
+        }
+    }
+
     public Task StopAdvertisingAsync()
     {
         try
         {
             //  Stop aktiv scanning, hvis en kører. Virker delvist
-            if (_isScanning) 
-            { 
+            if (_isScanning)
+            {
                 try
-                { 
-                    if (_adapter.IsScanning) 
-                        _adapter.StopScanningForDevicesAsync(); 
-                } 
-                catch (Exception ex) 
+                {
+                    if (_adapter.IsScanning)
+                        _adapter.StopScanningForDevicesAsync();
+                }
+                catch (Exception ex)
                 {
                     errorService.Add(ex);
-                } 
-                finally 
-                { 
-                    _isScanning = false; 
-                    _adapter.DeviceDiscovered -= OnDeviceDiscovered; // Fjerner handles fordi vi også stopper scanning.  
-                } 
-            } 
+                }
+                finally
+                {
+                    _isScanning = false;
+                    _adapter.DeviceDiscovered -=
+                        OnDeviceDiscovered; // Fjerner handles fordi vi også stopper scanning.  
+                }
+            }
 
             // Vis ikke vi cleare den risikere vi den går med over. Måske. Skal jeg lige teste !TODO
-            Devices.Clear(); 
+            Devices.Clear();
 
-            if (_bleAdvertiser != null && _advertisingCallback != null) 
+            if (_bleAdvertiser != null && _advertisingCallback != null)
             {
                 try
                 {
@@ -378,11 +420,12 @@ public class AndroidBluetoothService(IErrorService errorService) : IBluetoothSer
         }
         catch (Exception ex)
         {
-            AdvertisingStateChanged?.Invoke(AdvertisingState.Failed, $"Failed to stop advertising: {ex.Message}"); // kan fx ske vis den ikke advetizer til at starte med.
+            AdvertisingStateChanged?.Invoke(AdvertisingState.Failed,
+                $"Failed to stop advertising: {ex.Message}"); // kan fx ske vis den ikke advetizer til at starte med.
             _isAdvertising = false;
             _advertisingCallback = null;
             _adapter.DeviceDiscovered -= OnDeviceDiscovered;
-            _isScanning = false; 
+            _isScanning = false;
         }
 
         return Task.CompletedTask;
@@ -413,6 +456,7 @@ public class AndroidBluetoothService(IErrorService errorService) : IBluetoothSer
                         );
                     }
                 }
+
                 break;
             }
         }
@@ -425,6 +469,7 @@ public class AndroidBluetoothService(IErrorService errorService) : IBluetoothSer
 class AdvertisingCallback(Action onSuccess, Action<string> onFailure) : AdvertiseCallback
 {
     public override void OnStartSuccess(AdvertiseSettings? settingsInEffect) => onSuccess();
+
     public override void OnStartFailure(AdvertiseFailure errorCode)
     {
         base.OnStartFailure(errorCode);
@@ -484,7 +529,14 @@ internal sealed class MeowAndroidGattServer(Context ctx)
 
     public void Stop()
     {
-        try { _gattServer?.Close(); } finally { _subscribers.Clear(); }
+        try
+        {
+            _gattServer?.Close();
+        }
+        finally
+        {
+            _subscribers.Clear();
+        }
     }
 
     public bool NotifyAll(byte[] data)
@@ -500,6 +552,7 @@ internal sealed class MeowAndroidGattServer(Context ctx)
         {
             ok |= _gattServer.NotifyCharacteristicChanged(dev, ch, false);
         }
+
         return ok;
     }
 
@@ -514,7 +567,8 @@ internal sealed class MeowAndroidGattServer(Context ctx)
             else _o._subscribers.Remove(device);
         }
 
-        public override void OnCharacteristicReadRequest(BluetoothDevice device, int requestId, int offset, BluetoothGattCharacteristic characteristic)
+        public override void OnCharacteristicReadRequest(BluetoothDevice device, int requestId, int offset,
+            BluetoothGattCharacteristic characteristic)
         {
             var bytes = characteristic.GetValue() ?? Array.Empty<byte>();
             _o._gattServer?.SendResponse(device, requestId, GattStatus.Success, offset, bytes);

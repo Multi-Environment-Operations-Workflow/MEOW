@@ -22,6 +22,7 @@
     <MatButton class="advertise-button" @onclick="StartAdvertisingAsync">📡 Start Advertising</MatButton>
     <MatButton class="stop-button" @onclick="StopAdvertisingAsync">🛑 Stop Advertising</MatButton>
     <MatButton class="sync-automatically" @onclick="RunAsyncScan">🔍 Scan and Connect Devices</MatButton>
+    <MatButton class="sync-automatically" @onclick="Bluetooth.StopConnection">🔍 Disconnect Devices</MatButton>
 </div>
 
 @if (_isScanning)
@@ -131,23 +132,15 @@ else
         return $"{device.Name} ({device.Id})";
     }
 
-    private async Task ScanAsyncAutomatically()
+    private async Task RunAsyncScan()
     {
-        if (_isScanning) return;
-        _isScanning = true;
         try
         {
-            await Bluetooth.ScanAsyncAutomatically();
+            await Bluetooth.KeepScanning(TimeSpan.FromSeconds(10));
         }
-        catch (Exception ex)
+        catch (OperationCanceledException e)
         {
-            ErrorService.Add(ex);
+            ErrorService.Add(e);
         }
-        _isScanning = false;
-    }
-
-    private async void RunAsyncScan()
-    {
-        await Bluetooth.RunInBackground(TimeSpan.FromSeconds(10), ScanAsyncAutomatically);
     }
 }

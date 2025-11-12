@@ -1,0 +1,49 @@
+@page "/quickChat"
+@inject INavService Nav
+@using MEOW.Components.Services
+@using MEOW.Components.Models
+@inject IChatService ChatService
+@inject IErrorService ErrorService
+
+<div>
+    <MatButton OnClick="@(() => SendQuickMessage("Found The Person!"))">Text</MatButton>
+    <MatButton OnClick="@(() => SendQuickMessage("Need Help Quick!"))">Text</MatButton>
+</div>
+
+@code
+{
+    NavPoint? _location;
+
+    protected override Task OnInitializedAsync()
+    {
+        Nav.TryStartGps();
+        Nav.LocationChanged += OnLocation;
+        return base.OnInitializedAsync();
+    }
+
+    private async Task SendQuickMessage(string outgoing)
+    {
+        if (string.IsNullOrWhiteSpace(outgoing))
+            return;
+        try
+        {
+            var locationInfo = _location != null ? $"Lat: {_location.Latitude} Lon: {_location.Longitude}" : "Location could not be found.";
+            outgoing = $"{outgoing} {locationInfo}";
+            var (success, errors) = await ChatService.SendMessage(outgoing);
+            if (!success)
+            {
+                ErrorService.Add(errors.Any() ? errors : new[] { new Exception("Unknown error") });
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorService.Add(ex);
+        }
+    }
+
+    private void OnLocation(object? _, NavPoint location)
+    {
+        _location = location;
+        InvokeAsync(StateHasChanged);
+    }
+}

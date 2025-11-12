@@ -15,12 +15,12 @@ public interface IBluetoothService
 
     ObservableCollection<MeowDevice> Devices { get; }
     Task<bool> ScanAsync();
-    Task<bool> ScanAsyncAutomatically();
-    Task RunInBackground(TimeSpan timeSpan, Func<Task> func);
+    Task KeepScanning(TimeSpan timeSpan);
     Task ConnectAsync(MeowDevice device);
 
     int GetConnectedDevicesCount();
     List<string> GetConnectedDeviceName();
+    void StopConnection();
     
     Task<(bool anySuccess, List<Exception> allErrors)> SendToAllAsync(byte[] data);
 
