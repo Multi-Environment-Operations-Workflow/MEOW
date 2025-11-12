@@ -15,6 +15,7 @@ public class ChatService(
     public Task<(bool, List<Exception>)> SendMessage(string message)
     {
         var meowMessage = new MeowMessageText(userStateService.GetId(), MessageService.GetMessageCount(), message, userStateService.GetName());
+        MeowMessageTexts.Add(meowMessage);
         return messageService.SendMessage(meowMessage);
     }
 
@@ -50,7 +51,7 @@ public class ChatService(
     {
         return MeowMessageTexts.ToList();
     }
-    
+
     /// <summary>
     /// Gets the count of chat participants, including the local device.
     /// </summary>
