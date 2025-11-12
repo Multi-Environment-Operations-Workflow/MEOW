@@ -23,23 +23,27 @@ public class MessageService(IBluetoothService bluetooth, IErrorService errorServ
             return (false, [exception]);
         }
 
+        //throw new Exception($"Sending {message}");
+
         _messages.Add(message);
 
         var bytes = message.Serialize();
 
         var (anySuccess, allErrors) = await bluetooth.SendToAllAsync(bytes).ConfigureAwait(false);
+
         return (anySuccess, allErrors);
     }
 
     public void SetupMessageReceivedAction<T>(Action<T> onMessage) where T : MeowMessage
     {
-       
+
         bluetooth.DeviceDataReceived += (receivedData) =>
         {
             try
             {
                 var message = new ByteDeserializer(receivedData, errorService).Deserialize();
-                
+                _messages.Add(message);
+
                 if (message is T typedMessage)
                 {
                     onMessage(typedMessage);

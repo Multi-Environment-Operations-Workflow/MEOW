@@ -3,6 +3,8 @@
 @inherits LayoutComponentBase
 @inject NavigationManager Navigation
 @inject IUserStateService UserStateService
+@inject IChatService ChatService
+@inject IPinService PinService
 @inject IErrorService ErrorService
 
 @if (!UserStateService.IsLoggedIn())
@@ -49,7 +51,8 @@ else
             </div>
             @Body
         </MatAppBarContent>
-        <MatAppBar Fixed="true" Style="bottom: 0; width: 100%; height: 10vh; position: sticky; z-index: 1000;  padding-bottom: 1rem;">
+        <MatAppBar Fixed="true"
+            Style="bottom: 0; width: 100%; height: 10vh; position: sticky; z-index: 1000;  padding-bottom: 1rem;">
             <MatAppBarRow>
                 <MatAppBarSection class="app-bar-sec" Style="align-items: center; justify-content: space-around;">
                     <MatIconButton Icon="home" @onclick='() => Navigation.NavigateTo("/")'></MatIconButton>
@@ -66,7 +69,6 @@ else
 
 @code {
     List<Exception> errors = new();
-
 
     public void Logout()
     {
