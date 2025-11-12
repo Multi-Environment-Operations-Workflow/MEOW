@@ -23,23 +23,27 @@ public class MessageService(IBluetoothService bluetooth, IErrorService errorServ
             return (false, [exception]);
         }
 
+        //throw new Exception($"Sending {message}");
+
         _messages.Add(message);
 
         var bytes = message.Serialize();
 
         var (anySuccess, allErrors) = await bluetooth.SendToAllAsync(bytes).ConfigureAwait(false);
+
         return (anySuccess, allErrors);
     }
 
     public void SetupMessageReceivedAction<T>(Action<T> onMessage) where T : MeowMessage
     {
-       
+
         bluetooth.DeviceDataReceived += (receivedData) =>
         {
             try
             {
                 var message = new ByteDeserializer(receivedData, errorService).Deserialize();
-                
+                _messages.Add(message);
+
                 if (message is T typedMessage)
                 {
                     onMessage(typedMessage);
@@ -67,17 +71,16 @@ public class MessageService(IBluetoothService bluetooth, IErrorService errorServ
     {
         bluetooth.SendToAllAsync(message.Serialize());
     }
-
-    public int GetParticipantsCount()
+    
+    /// <summary>
+    /// Gets the list of connected devices.
+    /// </summary>
+    /// <returns>>A list of connected MeowDevice instances.</returns>
+    public List<MeowDevice> GetConnectedDevices()
     {
-        return bluetooth.GetConnectedDevicesCount() + 1;
+        return bluetooth.GetConnectedDevices();
     }
-
-    public List<string> GetConnectedDeviceName()
-    {
-        return bluetooth.GetConnectedDeviceName();
-    }
-
+    
     public List<T> GetMessages<T>() where T : MeowMessage
     {
         return _messages.FindAll(m => m is T).Cast<T>().ToList();

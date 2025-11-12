@@ -19,8 +19,7 @@ public interface IBluetoothService
     Task RunInBackground(TimeSpan timeSpan, Func<Task> func);
     Task ConnectAsync(MeowDevice device);
 
-    int GetConnectedDevicesCount();
-    List<string> GetConnectedDeviceName();
+    List<MeowDevice> GetConnectedDevices();
     
     Task<(bool anySuccess, List<Exception> allErrors)> SendToAllAsync(byte[] data);
 
