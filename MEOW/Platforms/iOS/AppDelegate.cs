@@ -11,12 +11,11 @@ public class AppDelegate : MauiUIApplicationDelegate
 
     public override void OnActivated(UIApplication application)
     {
-        base.OnCreate();
+        base.OnActivated(application);
         var chatService = IPlatformApplication.Current?.Services.GetService<IChatService>();
-        // I think this should work for IOS - Theis
-        //var pinService = IPlatformApplication.Current?.Services.GetService<IPinService>();
+        var pinService = IPlatformApplication.Current?.Services.GetService<IPinService>();
 
         chatService?.SetupNotificationsAndChatService();
-        //pinService?.SetupReceiveMessages();
+        pinService?.SetupReceiveMessages();
     }
 }
