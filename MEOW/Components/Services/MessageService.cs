@@ -80,7 +80,6 @@ public class MessageService(IBluetoothService bluetooth, IErrorService errorServ
     {
         return bluetooth.GetConnectedDevices();
     }
- 
     
     public List<T> GetMessages<T>() where T : MeowMessage
     {
