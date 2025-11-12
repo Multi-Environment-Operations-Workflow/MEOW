@@ -3,6 +3,8 @@
 @inherits LayoutComponentBase
 @inject NavigationManager Navigation
 @inject IUserStateService UserStateService
+@inject IChatService ChatService
+@inject IPinService PinService
 @inject IErrorService ErrorService
 
 @if (!UserStateService.IsLoggedIn())
@@ -66,7 +68,6 @@ else
 
 @code {
     List<Exception> errors = new();
-
 
     public void Logout()
     {

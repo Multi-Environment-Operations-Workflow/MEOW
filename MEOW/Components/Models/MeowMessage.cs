@@ -73,7 +73,6 @@ public class MeowMessageGps(byte userId, int messageNumber, string sender, float
     }
 }
 
-
 public class MeowMessageTask(byte userId, int messageNumber, string sender, string title, string textContext, string fileData) : MeowMessage(userId, messageNumber, sender)
 {
     public override MessageType Type => MessageType.TASK;
@@ -85,8 +84,8 @@ public class MeowMessageTask(byte userId, int messageNumber, string sender, stri
     protected override void SerializeCore(BinaryWriter writer)
     {
         base.SerializeCore(writer);
-        writer.Write(Title);
-        writer.Write(TextContext ??= "");
-        writer.Write(FileData ??= "");
+        WriteString(writer, Title);
+        WriteString(writer, TextContext ??= "");
+        WriteString(writer, FileData ??= "");
     }
 }

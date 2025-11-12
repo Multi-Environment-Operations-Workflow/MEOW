@@ -21,8 +21,10 @@ public class MainApplication : MauiApplication
     public override void OnCreate() //Changes here should be reflected in Platforms/iOS/AppDelegate.cs
     {
         base.OnCreate();
-        var chatService =  IPlatformApplication.Current?.Services.GetService<IChatService>();
-        
+        var chatService = IPlatformApplication.Current?.Services.GetService<IChatService>();
+        var pinService = IPlatformApplication.Current?.Services.GetService<IPinService>();
+
         chatService?.SetupNotificationsAndChatService();
+        pinService?.SetupReceiveMessages();
     }
 }

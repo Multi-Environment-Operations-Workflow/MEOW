@@ -2,7 +2,9 @@
 @using System.Diagnostics
 @using MEOW.Components.DTO_s
 @using MEOW.Components.Models
-@inject Services.IPinService PinService
+@using MEOW.Components.Services
+@using System.Collections.Specialized
+@inject IPinService PinService
 
 <div class="pinboard-container">
     <div class="pinboard-header">
@@ -124,6 +126,7 @@
 
     public void TogglePinVisibility() => _isPinFormVisible = !_isPinFormVisible;
 
+
     async Task FilesReady(IMatFileUploadEntry[] files)
     {
         try
@@ -177,9 +180,24 @@
         }
     }
 
+    private void onNewMessage(object? _, NotifyCollectionChangedEventArgs e)
+    {
+        try
+        {
+            if (e.Action != NotifyCollectionChangedAction.Add || e.NewItems == null) return;
+            _pinList.AddRange(e.NewItems.Cast<PinItem>());
+            InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+    
+        }
+    }
+
     protected override Task OnInitializedAsync()
     {
         _pinList = PinService.GetPins();
-        return Task.CompletedTask;
+        PinService.SetupPinReceivedAction(onNewMessage);
+        return base.OnInitializedAsync();
     }
 }
