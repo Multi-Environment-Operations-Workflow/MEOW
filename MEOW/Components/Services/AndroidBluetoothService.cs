@@ -66,37 +66,21 @@ public class AndroidBluetoothService(IErrorService errorService)
 
     // Lokal GATT-server så Android kan modtage beskeder. Er "client" i forhold til peripheral server forholdet. 
     private MeowAndroidGattServer? _gattServer;
-
-    private readonly HashSet<string>
-        _receivedMessageIds = new(); // Vi skal holde styr på id´er vi har modtaget fra (controlled flod)
-
-    private static long _msgCounter = 0;
-
-    private readonly object
-        _lock = new(); // Flere id´er må ikke blive tilføjet samtidig samtidig. Kunne ske vis flere noder er konnectet samtidig. 
-
+    
     // For at ungå dupes
     private bool _isAdvertising = false;
     private bool _isScanning = false;
     private CancellationTokenSource? _cts;
 
 
-    public int GetConnectedDevicesCount()
+    /// <summary>
+    /// Get a list of currently connected devices.
+    /// </summary>
+    /// <returns>List of connected MeowDevice instances.</returns>
+    public List<MeowDevice> GetConnectedDevices()
     {
-        return _adapter.ConnectedDevices?.Count ?? 0;
+        return Devices.ToList();
     }
-
-    public List<string> GetConnectedDeviceName()
-    {
-        List<string> deviceNames = new();
-        foreach (var deviceName in _adapter.ConnectedDevices.ToList())
-        {
-            deviceNames.Add(deviceName.Name);
-        }
-
-        return deviceNames;
-    }
-
 
     public async Task<(bool, List<Exception>)> SendToAllAsync(byte[] data)
     {

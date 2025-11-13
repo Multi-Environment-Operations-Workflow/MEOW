@@ -3,10 +3,116 @@
 @inject NavigationManager Navigation
 @inject IUserStateService UserStateService
 
-<h3>Login</h3>
+<style>
+    .login-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 20px;
+    }
 
-<MatTextField @bind-Value="_name" Label="Your name" />
-<MatButton @onclick="Continue">Continue</MatButton>
+    .login-card {
+        width: 100%;
+        max-width: 420px;
+        padding: 40px 35px;
+        border-radius: 16px;
+        background: white;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    .login-header {
+        text-align: center;
+        margin-bottom: 35px;
+    }
+
+    .login-icon {
+        width: 64px;
+        height: 64px;
+        margin: 0 auto 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 32px;
+        font-weight: bold;
+    }
+
+    .login-title {
+        font-size: 28px;
+        font-weight: 600;
+        color: #2d3748;
+        margin: 0 0 8px 0;
+    }
+
+    .login-subtitle {
+        font-size: 14px;
+        color: #718096;
+        margin: 0;
+    }
+
+    .mat-text-field {
+        width: 100%;
+        margin-bottom: 0;
+    }
+    
+    .login-card .mat-card-content {
+        padding-bottom: 0 !important;
+    }
+
+    .button-wrapper {
+        display: flex;
+        justify-content: center;
+        margin-top: 35px;
+    }
+
+    .login-btn {
+        width: 100%;
+        padding: 12px 24px;
+        font-size: 16px;
+        font-weight: 600;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        border-radius: 8px;
+        color: white;
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .login-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .login-btn:active {
+        transform: translateY(0);
+    }
+</style>
+
+<div class="login-container">
+    <MatCard Class="login-card">
+        <div class="login-header">
+            <div class="login-icon">👋</div>
+            <h3 class="login-title">Welcome Back</h3>
+            <p class="login-subtitle">Enter your name to continue</p>
+        </div>
+        <MatCardContent>
+            <MatTextField @bind-Value="_name" 
+                          Label="Your Name" 
+                          Placeholder="John Doe"
+                          Immediate="true" 
+                          Class="mat-text-field" />
+            <div class="button-wrapper">
+                <MatButton @onclick="Continue" Class="login-btn" Raised="true">
+                    Continue
+                </MatButton>
+            </div>
+        </MatCardContent>
+    </MatCard>
+</div>
 
 @code {
     private string _name = String.Empty;
@@ -23,7 +129,8 @@
 
     private void Continue()
     {
-        if (string.IsNullOrWhiteSpace(_name)) return;
+        if (string.IsNullOrWhiteSpace(_name))
+            return;
 
         UserStateService.SetName(_name.Trim());
         Navigation.NavigateTo("/");

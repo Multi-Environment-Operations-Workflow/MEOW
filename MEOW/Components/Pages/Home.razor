@@ -9,44 +9,84 @@
 @inject INotificationManagerService NotificationManagerService
 @inject IErrorService ErrorService
 
-<h1>Bluetooth Devices</h1>
-<p>Welcome, @_name!</p>
+<div class="bt-container">
+    <div class="bt-content">
+        <p class="welcome-text">👋 Welcome back, <span class="username">@_name</span>!</p>
 
-@if (!string.IsNullOrEmpty(_advertisingMessage))
-{
-    <p class="advertising-status">@_advertisingMessage</p>
-}
-
-<div class="button-bar">
-    <MatButton class="action-button" @onclick="ScanAsync">🔍 Scan for Devices</MatButton>
-    <MatButton class="advertise-button" @onclick="StartAdvertisingAsync">📡 Start Advertising</MatButton>
-    <MatButton class="stop-button" @onclick="StopAdvertisingAsync">🛑 Stop Advertising</MatButton>
-    <MatButton class="sync-automatically" @onclick="RunAsyncScan">🔍 Scan and Connect Devices</MatButton>
-    <MatButton class="sync-automatically" @onclick="Bluetooth.StopConnection">🔍 Disconnect Devices</MatButton>
-</div>
-
-@if (_isScanning)
-{
-    <p>Scanning...</p>
-}
-
-@if (!_devices.Any() && !_isScanning)
-{
-    <p>No devices found.</p>
-}
-else
-{
-    <ul class="device-list">
-        @foreach (var d in _devices)
+        @if (!string.IsNullOrEmpty(_advertisingMessage))
         {
-            <li>
-                <MatButton class="device-button" @onclick="() => ConnectAsync(d)">
-                    @GetDeviceDisplay(d)
-                </MatButton>
-            </li>
+            <div class="status-banner">
+                <span class="status-icon">📡</span>
+                <span class="status-text">@_advertisingMessage</span>
+            </div>
         }
-    </ul>
-}
+
+        <div class="action-section">
+            <h3 class="section-title">Quick Actions</h3>
+            <div class="button-bar">
+                <button class="action-btn scan-btn" @onclick="ScanAsync" disabled="@_isScanning">
+                    <span class="btn-icon">🔍</span>
+                    <span>Scan</span>
+                </button>
+                <button class="action-btn advertise-btn" @onclick="StartAdvertisingAsync">
+                    <span class="btn-icon">📡</span>
+                    <span>Advertise</span>
+                </button>
+                <button class="action-btn auto-btn" @onclick="RunAsyncScan">
+                    <span class="btn-icon">⚙️</span>
+                    <span>Auto Connect</span>
+                </button>
+                <button class="action-btn stop-btn" @onclick="StopAdvertisingAsync">
+                    <span class="btn-icon">🛑</span>
+                    <span>Stop</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="devices-section">
+            <h3 class="section-title">
+                Available Devices
+                @if (_devices.Any())
+                {
+                    <span class="device-count">@_devices.Count</span>
+                }
+            </h3>
+
+            @if (_isScanning)
+            {
+                <div class="scanning-state">
+                    <div class="spinner"></div>
+                    <p>Scanning for nearby devices...</p>
+                </div>
+            }
+            else if (!_devices.Any())
+            {
+                <div class="empty-state">
+                    <p class="empty-icon">📭</p>
+                    <p class="empty-text">No Bluetooth devices found nearby.</p>
+                    <p class="empty-subtext">Try scanning again or asking someone to advertise</p>
+                </div>
+            }
+            else
+            {
+                <div class="device-grid">
+                    @foreach (var d in _devices)
+                    {
+                        <div class="device-card" @onclick="() => ConnectAsync(d)">
+                            <div class="device-header">
+                                <span class="device-icon">📱</span>
+                                <span class="device-status-dot"></span>
+                            </div>
+                            <div class="device-name">@d.Name</div>
+                            <div class="device-id">@d.Id</div>
+                            <div class="device-action">Tap to connect →</div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</div>
 
 @code {
     private string _name = string.Empty;
@@ -56,24 +96,29 @@ else
 
     protected override void OnInitialized()
     {
-        if (String.IsNullOrEmpty(UserStateService.GetName()))
+        if (string.IsNullOrEmpty(UserStateService.GetName()))
         {
             Navigation.NavigateTo("/login");
             return;
         }
 
         _name = UserStateService.GetName();
-
         _devices = Bluetooth.Devices;
+
         Bluetooth.AdvertisingStateChanged += OnAdvertisingStateChanged;
         Bluetooth.PeerConnected += OnPeerConnected;
+
+        try
+        {
+            NotificationManagerService.SendNotification("Welcome to MEOW!", "You are now ready to connect with others.", DateTime.Now + TimeSpan.FromSeconds(30));
+        }
+        catch (PermissionException exception)
+        {
+            ErrorService.Add(exception); 
+        }
     }
 
-    private void OnPeerConnected()
-    {
-        // both central and peripheral will hit this and navigate to chat
-        Navigation.NavigateTo("/Chat");
-    }
+    private void OnPeerConnected() => Navigation.NavigateTo("/Chat");
 
     private void OnAdvertisingStateChanged(AdvertisingState state, string? message)
     {
@@ -93,7 +138,6 @@ else
         {
             ErrorService.Add(e);
         }
-
         _isScanning = false;
     }
 
@@ -112,28 +156,19 @@ else
 
     private async Task StartAdvertisingAsync()
     {
-        try
-        {
-            await Bluetooth.StartAdvertisingAsync("(MEOW) " + UserStateService.GetName());
-        }
+        try { await Bluetooth.StartAdvertisingAsync("(MEOW) " + UserStateService.GetName()); }
         catch (Exception ex)
         {
             ErrorService.Add(ex);
         }
     }
 
-    private async Task StopAdvertisingAsync()
-    {
-        await Bluetooth.StopAdvertisingAsync();
-    }
-
-    private string GetDeviceDisplay(MeowDevice device)
-    {
-        return $"{device.Name} ({device.Id})";
-    }
+    private async Task StopAdvertisingAsync() => await Bluetooth.StopAdvertisingAsync();
 
     private async Task RunAsyncScan()
     {
+        if (_isScanning) return;
+        _isScanning = true;
         try
         {
             await Bluetooth.KeepScanning(TimeSpan.FromSeconds(10));
@@ -142,5 +177,12 @@ else
         {
             ErrorService.Add(e);
         }
+        _isScanning = false;
+    }
+    
+    private void Logout()
+    {
+        UserStateService.ResetState();
+        Navigation.NavigateTo("/login");
     }
 }

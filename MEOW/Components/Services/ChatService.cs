@@ -12,11 +12,16 @@ public class ChatService(
     : IChatService
 {
     private ObservableCollection<MeowMessageText> MeowMessageTexts { get; set; } = new();
-
     public Task<(bool, List<Exception>)> SendMessage(string message)
     {
         var meowMessage = new MeowMessageText(userStateService.GetId(), MessageService.GetMessageCount(), message, userStateService.GetName());
+        MeowMessageTexts.Add(meowMessage);
         return messageService.SendMessage(meowMessage);
+    }
+
+    private void ChatMessageReceivedAction(MeowMessageText msg)
+    {
+        MeowMessageTexts.Add(msg);
     }
 
     public void SetupNotificationsAndChatService()
@@ -38,8 +43,8 @@ public class ChatService(
 
     public void SetupChatMessageReceivedAction(NotifyCollectionChangedEventHandler onMessage)
     {
-            MeowMessageTexts.CollectionChanged -= onMessage;
-            MeowMessageTexts.CollectionChanged += onMessage;
+        MeowMessageTexts.CollectionChanged -= onMessage;
+        MeowMessageTexts.CollectionChanged += onMessage;
     }
 
     public List<MeowMessageText> GetChatMessages()
@@ -47,13 +52,21 @@ public class ChatService(
         return MeowMessageTexts.ToList();
     }
 
+    /// <summary>
+    /// Gets the count of chat participants, including the local device.
+    /// </summary>
+    /// <returns>Count of connected devices +1 for yourself</returns>
     public int GetChatParticipantsCount()
     {
-        return messageService.GetParticipantsCount();
+        return messageService.GetConnectedDevices().Count + 1;
     }
 
-    public List<string> GetConnectedDeviceName()
+    /// <summary>
+    /// Gets a list chat participant names.
+    /// </summary>
+    /// <returns>A list of connected device names.</returns>
+    public List<string> GetChatParticipantsNames()
     {
-        return messageService.GetConnectedDeviceName();
+        return messageService.GetConnectedDevices().Select(d => d.Name).ToList();
     }
 }

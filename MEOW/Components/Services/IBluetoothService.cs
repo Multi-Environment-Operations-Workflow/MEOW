@@ -18,9 +18,7 @@ public interface IBluetoothService
     Task KeepScanning(TimeSpan timeSpan);
     Task ConnectAsync(MeowDevice device);
 
-    int GetConnectedDevicesCount();
-    List<string> GetConnectedDeviceName();
-    void StopConnection();
+    List<MeowDevice> GetConnectedDevices();
     
     Task<(bool anySuccess, List<Exception> allErrors)> SendToAllAsync(byte[] data);
 
