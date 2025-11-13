@@ -1,3 +1,5 @@
+using MEOW.Components.Enums;
+
 namespace MEOW.Components.Services;
 
 using System.ComponentModel;
@@ -24,6 +26,7 @@ public class ByteDeserializer(byte[] payload, IErrorService errorService)
             _ => DeserializeUnsupportedMessage(type)
         };
     }
+
     private MeowMessage DeserializeUnsupportedMessage(MessageType type)
     {
         var exception = new NotSupportedException($"Message type {type} is not supported \n {BitConverter.ToString(payload)}");
@@ -49,7 +52,8 @@ public class ByteDeserializer(byte[] payload, IErrorService errorService)
     {
         float longitude = ReadSingle();
         float latitude = ReadSingle();
-        return new MeowMessageGps(senderUserId, messageNumber, sender, longitude, latitude);
+        byte type = ReadByte();
+        return new MeowMessageGps(senderUserId, messageNumber, sender, longitude, latitude, (NavPointType)type);
     }
 
     private byte ReadByte() => payload[_offset++];

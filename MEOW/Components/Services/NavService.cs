@@ -10,13 +10,19 @@ public class NavService : INavService
     public event EventHandler<List<NavPoint>>? NavPointsChanged;
 
     private readonly object _navLock = new();
-    private readonly List<NavPoint> _navPoints = []; // ~Latitude:57.0155703 Longitude: 9.9777961
+    private readonly List<NavPoint> _navPoints = new(); // ~Latitude:57.0155703 Longitude: 9.9777961
+    private readonly Dictionary<string, NavPoint> _userPoints = new();
     private CancellationTokenSource? _cts;
-
 
     private void CompassChangedFnc(object? s, CompassChangedEventArgs e)
     {
         CompassChanged?.Invoke(this, e.Reading);
+    }
+
+    public void OnUserPoint(MeowMessageGps msg)
+    {
+        _userPoints[msg.Sender] = new NavPoint(msg.Longitude, msg.Latitude, NavPointType.OtherDevice);
+        NavPointsChanged?.Invoke(this, GetNavPoints());
     }
 
     public async Task StartCompass()
@@ -31,6 +37,12 @@ public class NavService : INavService
         if (!Compass.IsSupported) return;
         Compass.Default.ReadingChanged -= CompassChangedFnc;
         Compass.Default.Stop();
+    }
+
+    public async Task<NavPoint?> TryGetLastPosition()
+    {
+        var geo = await Geolocation.Default.GetLastKnownLocationAsync();
+        return geo == null ? null : new NavPoint((float)geo.Latitude, (float)geo.Longitude, NavPointType.OtherDevice);
     }
 
     public async Task TryStartGps() // ToDo add option to change polling rate and timeout
@@ -70,7 +82,7 @@ public class NavService : INavService
         _cts = null;
     }
 
-    public List<NavPoint> GetNavPoints() => [.._navPoints];
+    public List<NavPoint> GetNavPoints() => [.._navPoints, .._userPoints.Values];
 
     public void AddNavPoint(NavPoint navPoint)
     {

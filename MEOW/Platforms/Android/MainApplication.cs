@@ -21,10 +21,14 @@ public class MainApplication : MauiApplication
     public override void OnCreate() //Changes here should be reflected in Platforms/iOS/AppDelegate.cs
     {
         base.OnCreate();
+        var messageService = IPlatformApplication.Current?.Services.GetService<IMessageService>();
         var chatService = IPlatformApplication.Current?.Services.GetService<IChatService>();
         var pinService = IPlatformApplication.Current?.Services.GetService<IPinService>();
+        var navService = IPlatformApplication.Current?.Services.GetService<INavService>();
 
         chatService?.SetupNotificationsAndChatService();
         pinService?.SetupReceiveMessages();
+        if (navService != null && messageService != null)
+            messageService.SetupMessageReceivedAction<MeowMessageGps>(navService.OnUserPoint);
     }
 }

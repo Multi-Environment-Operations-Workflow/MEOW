@@ -53,6 +53,7 @@
         Nav.NavPointsChanged += OnNavPoints;
 
         _navPoints = Nav.GetNavPoints();
+        AddDebugPoints();
 
         await Nav.StartCompass();
         _ = Nav.TryStartGps();

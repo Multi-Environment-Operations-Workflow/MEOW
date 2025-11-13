@@ -1,4 +1,5 @@
 using System.Text;
+using MEOW.Components.Enums;
 
 namespace MEOW.Components.Models;
 
@@ -59,17 +60,25 @@ public class MeowMessageText(byte userId, int messageNumber, string message, str
     }
 }
 
-public class MeowMessageGps(byte userId, int messageNumber, string sender, float longitude, float latitude) : MeowMessage(userId, messageNumber, sender)
+public class MeowMessageGps(
+    byte userId,
+    int messageNumber,
+    string sender,
+    float longitude,
+    float latitude,
+    NavPointType pointType) : MeowMessage(userId, messageNumber, sender)
 {
     public override MessageType Type => MessageType.GPS;
     public float Longitude { get; set; } = longitude;
     public float Latitude { get; set; } = latitude;
+    public NavPointType PointType { get; set; } = pointType;
 
     protected override void SerializeCore(BinaryWriter writer)
     {
         base.SerializeCore(writer);
         writer.Write(Longitude);
         writer.Write(Latitude);
+        writer.Write((byte)PointType);
     }
 }
 
