@@ -43,9 +43,9 @@ public class MessageService(IBluetoothService bluetooth, IErrorService errorServ
             {
                 var message = new ByteDeserializer(receivedData, errorService).Deserialize();
 
-                if (message is T typedMessage)
+                if (message is not T typedMessage)
                 {
-                    onMessage(typedMessage);
+                    return;
                 }
 
                 if (_messages.Any(m => m.MessageNumber == message.MessageNumber
@@ -53,7 +53,8 @@ public class MessageService(IBluetoothService bluetooth, IErrorService errorServ
                 {
                     return;
                 }
-
+                
+                onMessage(typedMessage);
                 RedistributeMessageToAllNodes(message);
                 _messages.Add(message);
             }
