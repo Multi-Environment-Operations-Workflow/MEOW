@@ -20,6 +20,7 @@ public class ByteDeserializer(byte[] payload, IErrorService errorService)
             MessageType.TEXT => DeserializeTextMessage(senderUserId, messageNumber, sender),
             MessageType.TASK => DeserializeTaskMessage(senderUserId, messageNumber, sender),
             MessageType.GPS => DeserializeGpsMessage(senderUserId, messageNumber, sender),
+            MessageType.QUICKCHAT => DeserializeQuickChat(senderUserId, messageNumber, sender),
             _ => DeserializeUnsupportedMessage(type)
         };
     }
@@ -49,6 +50,14 @@ public class ByteDeserializer(byte[] payload, IErrorService errorService)
         float longitude = ReadSingle();
         float latitude = ReadSingle();
         return new MeowMessageGps(senderUserId, messageNumber, sender, longitude, latitude);
+    }
+    
+    private MeowMessageQuickChat DeserializeQuickChat(byte senderUserId, int messageNumber, string sender)
+    {
+        int message = ReadInt32();
+        float longitude = ReadSingle();
+        float latitude = ReadSingle();
+        return new MeowMessageQuickChat(senderUserId, messageNumber, sender, message, longitude, latitude);
     }
 
     private byte ReadByte() => payload[_offset++];

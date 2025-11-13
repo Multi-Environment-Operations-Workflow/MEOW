@@ -9,6 +9,7 @@ public enum MessageType
     GPS,
     TASK,
     TEXT,
+    QUICKCHAT,
 }
 
 public abstract class MeowMessage(byte userId, int messageNumber, string sender)
@@ -73,6 +74,25 @@ public class MeowMessageGps(byte userId, int messageNumber, string sender, float
     }
 }
 
+public class MeowMessageQuickChat(byte userId, int messageNumber, string sender, int message, float longitude, float latitude) : MeowMessage(userId, messageNumber, sender)
+{
+    public override MessageType Type => MessageType.TEXT;
+    public int Message { get; set; } = message;
+    public float Longitude { get; set; } = longitude;
+    public float Latitude { get; set; } = latitude;
+
+    
+    //Lig den som en byte
+    //Lig det som enum
+    protected override void SerializeCore(BinaryWriter writer)
+    {
+        base.SerializeCore(writer);
+        
+        writer.Write(Message);
+        writer.Write(Longitude);
+        writer.Write(Latitude);
+    }
+}
 
 public class MeowMessageTask(byte userId, int messageNumber, string sender, string title, string textContext, string fileData) : MeowMessage(userId, messageNumber, sender)
 {
