@@ -53,7 +53,9 @@ public class AndroidBluetoothService(IErrorService errorService) : IBluetoothSer
     // Liste vi bruger til at holde styr på fundne enheder under scanning.
     // Devices.Add(device);  også til ui (var d in _devices) <div> d.Name</div>
     public ObservableCollection<MeowDevice> Devices { get; } = new();
-
+    
+    List<MeowDevice> _connectedDevices = new();
+    
 
     //Styre advertising (Bluetooth peripheral) “Server” Gør sig synlig, venter på at nogen forbinder
     //En funktion du tænder og slukker for (som “gør mig synlig for andre”) Android specific, plugin gør det ikke
@@ -76,7 +78,7 @@ public class AndroidBluetoothService(IErrorService errorService) : IBluetoothSer
     /// <returns>List of connected MeowDevice instances.</returns>
     public List<MeowDevice> GetConnectedDevices()
     {
-        return Devices.ToList();
+        return _connectedDevices.ToList();
     }
 
     public async Task<(bool, List<Exception>)> SendToAllAsync(byte[] data)
@@ -295,8 +297,12 @@ public class AndroidBluetoothService(IErrorService errorService) : IBluetoothSer
         } 
     } 
 
-
-    async public Task ConnectAsync(MeowDevice device)
+    /// <summary>
+    /// Connect to a specified MeowDevice.
+    /// </summary>
+    /// <param name="device">The MeowDevice to connect to.</param>
+    /// <exception cref="Exception">Thrown if the connection fails.</exception>
+    public async Task ConnectAsync(MeowDevice device)
     {
         try
         {
@@ -310,6 +316,8 @@ public class AndroidBluetoothService(IErrorService errorService) : IBluetoothSer
             {
                 await _adapter.ConnectToKnownDeviceAsync(device.Id);
             }
+            
+            _connectedDevices.Add(device);
 
             PeerConnected?.Invoke();
         }
