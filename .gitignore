@@ -7,3 +7,7 @@
 *.bat
 MEOW/Components/.DS_Store
 .DS_Store
+/MEOW_BUSINESS/obj
+/MEOW_BUSINESS/bin
+/MEOW_TESTING/bin
+/MEOW_TESTING/obj
