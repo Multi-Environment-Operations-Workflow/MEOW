@@ -5,9 +5,24 @@
 }
 
 .app-bar-sec > * {
-    width: 45px;
-    height: 45px;
+    color: white;
+    transition: transform 0.2s ease, color 0.2s ease;
 }
+
+.app-bar-sec > *:hover {
+    transform: scale(1.2);
+    color: #80ed99;
+}
+
+.mat-icon-button {
+    border-radius: 50%;
+    background-color: transparent;
+}
+
+.mat-icon-button:focus {
+    outline: none;
+}
+
 
 .content {
     padding-bottom: 4rem;

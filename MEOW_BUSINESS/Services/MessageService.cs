@@ -3,67 +3,87 @@ using MEOW_BUSINESS.Models;
 
 namespace MEOW_BUSINESS.Services;
 
-public class MessageService(IBluetoothService bluetooth, IUserStateService userStateService) : IMessageService
+public class MessageService(IBluetoothService bluetooth, IErrorService errorService) : IMessageService
 {
+    static int MessageCount { get; set; }
+    
     private readonly List<MeowMessage> _messages = new();
-    private readonly MessageSerializer _serializer = new();
-
+    
+    public static int GetMessageCount()
+    {
+        return MessageCount++;
+    }
+    
     // Sends a message using the bluetooth service
     public async Task<(bool, List<Exception>)> SendMessage(MeowMessage message)
     {
         if (message is null)
         {
-            return (false, [new Exception("No message")]);
+            var exception = new ArgumentNullException(nameof(message), "Message cannot be null");
+            errorService.Add(exception);
+            return (false, [exception]);
         }
+
+        //throw new Exception($"Sending {message}");
 
         _messages.Add(message);
 
-        var bytes = _serializer.Serialize(message);
+        var bytes = message.Serialize();
 
         var (anySuccess, allErrors) = await bluetooth.SendToAllAsync(bytes).ConfigureAwait(false);
+
         return (anySuccess, allErrors);
     }
 
-    // Sets up actions when messages are received
     public void SetupMessageReceivedAction<T>(Action<T> onMessage) where T : MeowMessage
     {
+
         bluetooth.DeviceDataReceived += (receivedData) =>
         {
             try
             {
-                var message = _serializer.Deserialize(receivedData);
+                var message = new ByteDeserializer(receivedData, errorService).Deserialize();
                 _messages.Add(message);
 
-                // Only send messages of type T to actions that wants that type
-                // e.g if a service wants MeowMessageText, it will only receive those
                 if (message is T typedMessage)
                 {
-                    onMessage((T)message);
+                    onMessage(typedMessage);
                 }
+
+                if (_messages.Any(m => m.MessageNumber == message.MessageNumber
+                                       && m.UserId == message.UserId))
+                {
+                    return;
+                }
+
+                _messages.Add(message);
+                RedistributeMessageToAllNodes(message);
+
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Failed to deserialize message: {ex.Message}");
-                throw new Exception($"Failed to deserialize message: {ex.Message}");
+                errorService.Add(ex);
             }
         };
 
     }
-
-    public int GetParticipantsCount()
+    
+    private void RedistributeMessageToAllNodes(MeowMessage message)
     {
-        return bluetooth.GetConnectedDevicesCount() + 1;
+        bluetooth.SendToAllAsync(message.Serialize());
     }
-
-    // Returns only messages of the specified types
+    
+    /// <summary>
+    /// Gets the list of connected devices.
+    /// </summary>
+    /// <returns>>A list of connected MeowDevice instances.</returns>
+    public List<MeowDevice> GetConnectedDevices()
+    {
+        return bluetooth.GetConnectedDevices();
+    }
+    
     public List<T> GetMessages<T>() where T : MeowMessage
     {
         return _messages.FindAll(m => m is T).Cast<T>().ToList();
-    }
-
-    // Returns the name of the sender
-    public string GetSender()
-    {
-        return userStateService.GetName();
     }
 }

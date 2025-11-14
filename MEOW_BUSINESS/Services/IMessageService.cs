@@ -8,9 +8,7 @@ public interface IMessageService
 
     void SetupMessageReceivedAction<T>(Action<T> onMessage) where T : MeowMessage;
 
-    int GetParticipantsCount();
+    List<MeowDevice> GetConnectedDevices();
 
-    public List<T> GetMessages<T>() where T : MeowMessage;
-
-    public string GetSender();
+    List<T> GetMessages<T>() where T : MeowMessage;
 }

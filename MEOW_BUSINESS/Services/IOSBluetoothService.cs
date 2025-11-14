@@ -64,11 +64,6 @@ public class IOSBluetoothService : NSObject, IBluetoothService, ICBPeripheralMan
         }
     }
 
-    public int GetConnectedDevicesCount()
-    {
-        return _connectedDevices.Count;
-    }
-
     public async Task<bool> ScanAsync()
     {
         Devices.Clear();
@@ -103,9 +98,28 @@ public class IOSBluetoothService : NSObject, IBluetoothService, ICBPeripheralMan
         return true;
     }
 
+    public Task<bool> ScanAsyncAutomatically()
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task RunInBackground(TimeSpan timeSpan, Func<Task> func)
+    {
+        throw new NotImplementedException();
+    }
+
     public bool CheckConnection()
     {
         return _adapter.ConnectedDevices.Count > 0;
+    }
+
+    /// <summary>
+    /// Gets the list of currently connected devices.
+    /// </summary>
+    /// <returns>List of connected MeowDevice instances.</returns>
+    public List<MeowDevice> GetConnectedDevices()
+    {
+        return _connectedDevices.ToList();
     }
 
     public async Task<(bool, List<Exception>)> SendToAllAsync(byte[] data)
