@@ -19,11 +19,6 @@ public class ChatService(
         return messageService.SendMessage(meowMessage);
     }
 
-    private void ChatMessageReceivedAction(MeowMessageText msg)
-    {
-        MeowMessageTexts.Add(msg);
-    }
-
     public void SetupNotificationsAndChatService()
     {
         messageService.SetupMessageReceivedAction<MeowMessageText>((msg) =>
