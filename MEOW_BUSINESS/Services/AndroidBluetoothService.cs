@@ -1,4 +1,4 @@
-#if ANDROID
+//#if ANDROID
 using MEOW_BUSINESS.Enums;
 using MEOW_BUSINESS.Models;
 using Android.Bluetooth.LE;
@@ -21,25 +21,51 @@ namespace MEOW_BUSINESS.Services;
 ///     - Spørger om tilladelser (CheckPermissions)
 /// 
 /// </summary>
-public class AndroidBluetoothService(IErrorService errorService): AbstractBluetoothService(errorService), IBluetoothService // Implementering af IBluetoothService til Android
+public class AndroidBluetoothService : AbstractBluetoothService, IBluetoothService // Implementering af IBluetoothService til Android
 {
     public new event Action<AdvertisingState, string?>? AdvertisingStateChanged;
 
     public new event Action? PeerConnected;
 
     public new event Action<byte[]>? DeviceDataReceived;
-    
+
     private BluetoothLeAdvertiser? _bleAdvertiser;
-    
+
     private AdvertisingCallback? _advertisingCallback;
 
+    /*
     // Lokal GATT-server så Android kan modtage beskeder. Er "client" i forhold til peripheral server forholdet. 
     private MeowAndroidGattServer? _gattServer;
-    
+    */
+
+    private static BluetoothManager _bluetoothManager;
+    private BluetoothGattServer _gattServer;
+
+    private readonly UUID _chatServiceUuid = UUID.FromString(ChatUuids.ChatService.ToString())!;
+    private readonly UUID _msgSendUuid = UUID.FromString(ChatUuids.MessageSendCharacteristic.ToString())!;
+    private readonly UUID _msgRecvUuid = UUID.FromString(ChatUuids.MessageReceiveCharacteristic.ToString())!;
+
+    private IErrorService _errorService;
+
     // For at ungå dupes
     private bool _isAdvertising = false;
     private bool _isScanning = false;
-    
+
+    public AndroidBluetoothService(IErrorService errorService) : base(errorService)
+    {
+        _errorService = errorService;
+        _bluetoothManager = (BluetoothManager?)Android.App.Application.Context.GetSystemService(Context.BluetoothService);
+        MeowGattCallback callback = new(OnReceive);
+        _gattServer = _bluetoothManager.OpenGattServer(Android.App.Application.Context, callback);
+
+        callback.SetGattServer(_gattServer);
+    }
+
+    private void OnReceive(byte[] data)
+    {
+        DeviceDataReceived.Invoke(data);
+    }
+
     // IBluetoothService.StartAdvertisingAsync
     public async Task StartAdvertisingAsync(string name)
     {
@@ -56,6 +82,7 @@ public class AndroidBluetoothService(IErrorService errorService): AbstractBlueto
             return;
         }
 
+        /*
         // Start GATT-server først (så write-requests kan modtages)
         // 1) GATT-server (peripheral) – samme service/char UUIDs som iOS
         _gattServer = new MeowAndroidGattServer(Android.App.Application.Context);
@@ -75,11 +102,28 @@ public class AndroidBluetoothService(IErrorService errorService): AbstractBlueto
 
         // Start håndtering af GATT-requests
         _gattServer.Start();
+        */
+
+        var service = new BluetoothGattService(_chatServiceUuid, GattServiceType.Primary);
+
+        var sendChar = new BluetoothGattCharacteristic(
+            _msgSendUuid,
+            GattProperty.Read | GattProperty.Notify,
+            GattPermission.Read);
+
+        var recvChar = new BluetoothGattCharacteristic(
+            _msgRecvUuid,
+            GattProperty.Write | GattProperty.WriteNoResponse,
+            GattPermission.Write);
+
+        service.AddCharacteristic(sendChar);
+        service.AddCharacteristic(recvChar);
+
+        _gattServer.AddService(service);
 
         // 2) Advertising med service UUID = ChatUuids.ChatService
         // Mere opsætning til advertising
-        var bluetoothManager = (BluetoothManager?)Android.App.Application.Context.GetSystemService(Context.BluetoothService);
-        var adapter = bluetoothManager?.Adapter;
+        var adapter = _bluetoothManager?.Adapter;
         var advertiser = adapter?.BluetoothLeAdvertiser;
 
         if (advertiser == null)
@@ -112,46 +156,46 @@ public class AndroidBluetoothService(IErrorService errorService): AbstractBlueto
         await Task.CompletedTask;
     }
 
-    private void OnDeviceDiscovered(object? s, Plugin.BLE.Abstractions.EventArgs.DeviceEventArgs a) 
+    private void OnDeviceDiscovered(object? s, Plugin.BLE.Abstractions.EventArgs.DeviceEventArgs a)
     { // Tjekker om vi allerede har den. Vis vi har gør vi ikke noget. Ellers tilføjer vi den til vores liste.
-        if (DiscoveredDevices.Any(d => d.Id == a.Device.Id)) 
-            return; 
-                                                    
-        if (a.Device.Name != null) 
-        { 
-            var device = new MeowDevice(a.Device.Name, a.Device.Id, a.Device); 
-            device.Name = device.Name.Replace("(MEOW) ", "").Trim(); 
-            DiscoveredDevices.Add(device); 
-        } 
-    } 
+        if (DiscoveredDevices.Any(d => d.Id == a.Device.Id))
+            return;
+
+        if (a.Device.Name != null)
+        {
+            var device = new MeowDevice(a.Device.Name, a.Device.Id, a.Device);
+            device.Name = device.Name.Replace("(MEOW) ", "").Trim();
+            DiscoveredDevices.Add(device);
+        }
+    }
 
     public Task StopAdvertisingAsync()
     {
         try
         {
             //  Stop aktiv scanning, hvis en kører. Virker delvist
-            if (_isScanning) 
-            { 
+            if (_isScanning)
+            {
                 try
-                { 
-                    if (Adapter.IsScanning) 
-                        Adapter.StopScanningForDevicesAsync(); 
-                } 
-                catch (Exception ex) 
                 {
-                    errorService.Add(ex);
-                } 
-                finally 
-                { 
-                    _isScanning = false; 
+                    if (Adapter.IsScanning)
+                        Adapter.StopScanningForDevicesAsync();
+                }
+                catch (Exception ex)
+                {
+                    _errorService.Add(ex);
+                }
+                finally
+                {
+                    _isScanning = false;
                     Adapter.DeviceDiscovered -= OnDeviceDiscovered; // Fjerner handles fordi vi også stopper scanning.  
-                } 
-            } 
+                }
+            }
 
             // Vis ikke vi cleare den risikere vi den går med over. Måske. Skal jeg lige teste !TODO
-            DiscoveredDevices.Clear(); 
+            DiscoveredDevices.Clear();
 
-            if (_bleAdvertiser != null && _advertisingCallback != null) 
+            if (_bleAdvertiser != null && _advertisingCallback != null)
             {
                 try
                 {
@@ -159,11 +203,11 @@ public class AndroidBluetoothService(IErrorService errorService): AbstractBlueto
                 }
                 catch (Exception ex)
                 {
-                    errorService.Add(ex);
+                    _errorService.Add(ex);
                 }
             }
 
-            _gattServer?.Stop();
+            //_gattServer?.Stop();
             _gattServer = null;
 
             _advertisingCallback = null;
@@ -177,7 +221,7 @@ public class AndroidBluetoothService(IErrorService errorService): AbstractBlueto
             _isAdvertising = false;
             _advertisingCallback = null;
             Adapter.DeviceDiscovered -= OnDeviceDiscovered;
-            _isScanning = false; 
+            _isScanning = false;
         }
 
         return Task.CompletedTask;
@@ -195,21 +239,21 @@ public class AndroidBluetoothService(IErrorService errorService): AbstractBlueto
             case PermissionStatus.Granted:
                 return true;
             case PermissionStatus.Denied:
-            {
-                if (Permissions.ShouldShowRationale<Permissions.Bluetooth>())
                 {
-                    var page = Application.Current?.Windows[0]?.Page;
-                    if (page != null)
+                    if (Permissions.ShouldShowRationale<Permissions.Bluetooth>())
                     {
-                        await page.DisplayAlert(
-                            "Bluetooth Access Required",
-                            "This app needs access to bluetooth to function",
-                            "OK"
-                        );
+                        var page = Application.Current?.Windows[0]?.Page;
+                        if (page != null)
+                        {
+                            await page.DisplayAlert(
+                                "Bluetooth Access Required",
+                                "This app needs access to bluetooth to function",
+                                "OK"
+                            );
+                        }
                     }
+                    break;
                 }
-                break;
-            }
         }
 
         status = await Permissions.RequestAsync<Permissions.Bluetooth>();
@@ -235,6 +279,36 @@ class AdvertisingCallback(Action onSuccess, Action<string> onFailure) : Advertis
         };
 
         onFailure?.Invoke(errorMessage);
+    }
+}
+
+class MeowGattCallback(Action<byte[]> onReceive) : BluetoothGattServerCallback
+{
+    private readonly UUID messageReceiveUuid = UUID.FromString(ChatUuids.MessageReceiveCharacteristic.ToString())!;
+
+    private BluetoothGattServer? _gattServer;
+
+    public void SetGattServer(BluetoothGattServer server)
+    {
+        _gattServer = server;
+    }
+
+    public override void OnCharacteristicReadRequest(BluetoothDevice? device, int requestId, int offset, BluetoothGattCharacteristic? characteristic)
+    {
+        var bytes = characteristic.GetValue() ?? Array.Empty<byte>();
+        _gattServer.SendResponse(device, requestId, GattStatus.Success, offset, bytes);
+    }
+
+    public override void OnCharacteristicWriteRequest(
+        BluetoothDevice? device, int requestId, BluetoothGattCharacteristic? characteristic,
+        bool preparedWrite, bool responseNeeded, int offset, byte[]? value)
+    {
+        if (characteristic.Uuid.Equals(messageReceiveUuid) && value != null)
+            onReceive.Invoke(value);
+
+        var resp = value ?? Array.Empty<byte>();
+        if (responseNeeded)
+            _gattServer.SendResponse(device, requestId, GattStatus.Success, offset, resp);
     }
 }
 
@@ -328,4 +402,4 @@ internal sealed class MeowAndroidGattServer(Context ctx)
         }
     }
 }
-#endif
+//#endif
