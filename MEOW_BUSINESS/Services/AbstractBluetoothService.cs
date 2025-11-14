@@ -125,11 +125,6 @@ public abstract class AbstractBluetoothService
         }
     }
     
-    public bool CheckConnection()
-    {
-        return Adapter.ConnectedDevices.Count > 0;
-    }
-
     /// <summary>
     /// Gets the list of currently connected devices.
     /// </summary>
@@ -208,7 +203,6 @@ public abstract class AbstractBluetoothService
 
         await Adapter.ConnectToDeviceAsync(device.NativeDevice).ConfigureAwait(false);
 
-        // Optionally, you can enumerate services if you need to initialize something.
         var services = await device.NativeDevice.GetServicesAsync().ConfigureAwait(false);
         foreach (var service in services)
         {
@@ -216,7 +210,6 @@ public abstract class AbstractBluetoothService
 
             foreach (var characteristic in characteristics)
             {
-                // Subscribe only if it's a readable or notifiable characteristic
                 if (characteristic.CanUpdate)
                 {
                     characteristic.ValueUpdated += (s, a) =>
