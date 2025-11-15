@@ -15,7 +15,7 @@ public abstract class AbstractBluetoothService
     public ObservableCollection<MeowDevice> DiscoveredDevices { get; } = new();
 
     protected readonly List<MeowDevice> ConnectedDevices = new();
-    
+
     protected readonly List<MeowDevice> EstablishingConnectionDevices = new();
 
     public event Action<byte[]>? DeviceDataReceived;
@@ -23,7 +23,7 @@ public abstract class AbstractBluetoothService
     public event Action<AdvertisingState, string?>? AdvertisingStateChanged;
 
     public event Action? PeerConnected;
-    
+
     protected AbstractBluetoothService(IErrorService errorService)
     {
         Adapter.DeviceConnected += (s, a) =>
@@ -37,13 +37,13 @@ public abstract class AbstractBluetoothService
             EstablishingConnectionDevices.RemoveAll(d => d.Id == device.Id);
             PeerConnected?.Invoke();
         };
-        
+
         Adapter.DeviceConnectionLost += (s, a) =>
         {
             var device = a.Device;
             ConnectedDevices.RemoveAll(cd => cd.Id == device.Id);
         };
-        
+
         Adapter.DeviceConnectionError += (s, a) =>
         {
             var device = a.Device;
@@ -102,7 +102,7 @@ public abstract class AbstractBluetoothService
         {
             Adapter.DeviceDiscovered -= discoveredHandler;
         }
-        
+
         return true;
     }
 
@@ -124,7 +124,7 @@ public abstract class AbstractBluetoothService
             await func();
         }
     }
-    
+
     /// <summary>
     /// Gets the list of currently connected devices.
     /// </summary>
@@ -145,7 +145,7 @@ public abstract class AbstractBluetoothService
             try
             {
                 var native = device.NativeDevice;
-                
+
                 if (native == null)
                     throw new Exception($"Native device is null for {device.Name}");
 
@@ -202,6 +202,10 @@ public abstract class AbstractBluetoothService
             throw new ArgumentNullException(nameof(device));
 
         await Adapter.ConnectToDeviceAsync(device.NativeDevice).ConfigureAwait(false);
+        // jeg er ikke sikker på om den her linje er nødvendig :shrug:
+        // Det virkede ikke rigtig før, nu gør
+        // kunne også være at den ikke fik uploadet det rigtige compile
+        try { await device.NativeDevice.RequestMtuAsync(185); } catch { /* best effort */ }
 
         var services = await device.NativeDevice.GetServicesAsync().ConfigureAwait(false);
         foreach (var service in services)

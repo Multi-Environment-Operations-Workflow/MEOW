@@ -33,11 +33,6 @@ public class AndroidBluetoothService : AbstractBluetoothService, IBluetoothServi
 
     private AdvertisingCallback? _advertisingCallback;
 
-    /*
-    // Lokal GATT-server så Android kan modtage beskeder. Er "client" i forhold til peripheral server forholdet. 
-    private MeowAndroidGattServer? _gattServer;
-    */
-
     private static BluetoothManager _bluetoothManager;
     private BluetoothGattServer _gattServer;
 
@@ -81,28 +76,6 @@ public class AndroidBluetoothService : AbstractBluetoothService, IBluetoothServi
             AdvertisingStateChanged?.Invoke(AdvertisingState.Failed, "Bluetooth permissions not granted.");
             return;
         }
-
-        /*
-        // Start GATT-server først (så write-requests kan modtages)
-        // 1) GATT-server (peripheral) – samme service/char UUIDs som iOS
-        _gattServer = new MeowAndroidGattServer(Android.App.Application.Context);
-
-        // Når vi skal modtage beskeder skal vi så igen gemme id. også sende beskden videre vis ikke vi har den.
-        _gattServer.MessageReceived += bytes =>
-        {
-            try
-            {
-                DeviceDataReceived?.Invoke(bytes);
-            }
-            catch (Exception ex)
-            {
-                errorService.Add(ex);
-            }
-        };
-
-        // Start håndtering af GATT-requests
-        _gattServer.Start();
-        */
 
         var service = new BluetoothGattService(_chatServiceUuid, GattServiceType.Primary);
 
@@ -311,95 +284,3 @@ class MeowGattCallback(Action<byte[]> onReceive) : BluetoothGattServerCallback
             _gattServer.SendResponse(device, requestId, GattStatus.Success, offset, resp);
     }
 }
-
-// ============================================================
-// LILLE INTERN GATT-SERVER
-// ============================================================
-internal sealed class MeowAndroidGattServer(Context ctx)
-{
-    private readonly BluetoothManager _btManager = (BluetoothManager)ctx.GetSystemService(Context.BluetoothService)!;
-    private BluetoothGattServer? _gattServer;
-    private readonly HashSet<BluetoothDevice> _subscribers = new();
-
-    private readonly UUID _chatServiceUuid = UUID.FromString(ChatUuids.ChatService.ToString())!;
-    private readonly UUID _msgSendUuid = UUID.FromString(ChatUuids.MessageSendCharacteristic.ToString())!;
-    private readonly UUID _msgRecvUuid = UUID.FromString(ChatUuids.MessageReceiveCharacteristic.ToString())!;
-
-    public event Action<byte[]>? MessageReceived;
-
-    // Brug denne ctor til standard ChatUuids
-
-    public void Start()
-    {
-        _gattServer = _btManager.OpenGattServer(Android.App.Application.Context, new ServerCb(this));
-
-        var service = new BluetoothGattService(_chatServiceUuid, GattServiceType.Primary);
-
-        var sendChar = new BluetoothGattCharacteristic(
-            _msgSendUuid,
-            GattProperty.Read | GattProperty.Notify,
-            GattPermission.Read);
-
-        var recvChar = new BluetoothGattCharacteristic(
-            _msgRecvUuid,
-            GattProperty.Write | GattProperty.WriteNoResponse,
-            GattPermission.Write);
-
-        service.AddCharacteristic(sendChar);
-        service.AddCharacteristic(recvChar);
-
-        _gattServer.AddService(service);
-    }
-
-    public void Stop()
-    {
-        try { _gattServer?.Close(); } finally { _subscribers.Clear(); }
-    }
-
-    public bool NotifyAll(byte[] data)
-    {
-        var svc = _gattServer?.GetService(_chatServiceUuid);
-        var ch = svc?.GetCharacteristic(_msgSendUuid);
-        if (ch == null || _gattServer == null) return false;
-
-        // (Obsolete warning på API 33+ er ok – vi bruger standardvej)
-        ch.SetValue(data);
-        var ok = false;
-        foreach (var dev in _subscribers)
-        {
-            ok |= _gattServer.NotifyCharacteristicChanged(dev, ch, false);
-        }
-        return ok;
-    }
-
-    private sealed class ServerCb : BluetoothGattServerCallback
-    {
-        private readonly MeowAndroidGattServer _o;
-        public ServerCb(MeowAndroidGattServer o) => _o = o;
-
-        public override void OnConnectionStateChange(BluetoothDevice device, ProfileState status, ProfileState newState)
-        {
-            if (newState == ProfileState.Connected) _o._subscribers.Add(device);
-            else _o._subscribers.Remove(device);
-        }
-
-        public override void OnCharacteristicReadRequest(BluetoothDevice device, int requestId, int offset, BluetoothGattCharacteristic characteristic)
-        {
-            var bytes = characteristic.GetValue() ?? Array.Empty<byte>();
-            _o._gattServer?.SendResponse(device, requestId, GattStatus.Success, offset, bytes);
-        }
-
-        public override void OnCharacteristicWriteRequest(
-            BluetoothDevice device, int requestId, BluetoothGattCharacteristic characteristic,
-            bool preparedWrite, bool responseNeeded, int offset, byte[]? value)
-        {
-            if (characteristic.Uuid.Equals(_o._msgRecvUuid) && value != null)
-                _o.MessageReceived?.Invoke(value);
-
-            var resp = value ?? Array.Empty<byte>();
-            if (responseNeeded)
-                _o._gattServer?.SendResponse(device, requestId, GattStatus.Success, offset, resp);
-        }
-    }
-}
-//#endif
