@@ -10,13 +10,19 @@ namespace MEOW_BUSINESS.Services;
 public interface IBluetoothService
 {
     public event Action<AdvertisingState, string?>? AdvertisingStateChanged;
+    
     public event Action? PeerConnected;
+    
     public event Action<byte[]>? DeviceDataReceived;
 
     ObservableCollection<MeowDevice> Devices { get; }
+    
     Task<bool> ScanAsync();
+    
     Task<bool> ScanAsyncAutomatically();
+    
     Task RunInBackground(TimeSpan timeSpan, Func<Task> func);
+    
     Task ConnectAsync(MeowDevice device);
 
     List<MeowDevice> GetConnectedDevices();

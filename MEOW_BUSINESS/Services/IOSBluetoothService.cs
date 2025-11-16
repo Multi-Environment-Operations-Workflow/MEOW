@@ -19,6 +19,8 @@ public class IOSBluetoothService : NSObject, IBluetoothService, ICBPeripheralMan
     public ObservableCollection<MeowDevice> Devices { get; } = new();
 
     private readonly List<MeowDevice> _connectedDevices = new();
+    
+    private readonly List<MeowDevice> _establishingConnection = new();
 
     public event Action<byte[]>? DeviceDataReceived;
     
@@ -33,7 +35,7 @@ public class IOSBluetoothService : NSObject, IBluetoothService, ICBPeripheralMan
 
     private readonly CBUUID chatServiceUuid = CBUUID.FromString(ChatUuids.ChatService.ToString());
 
-    public IOSBluetoothService(IUserStateService userStateService)
+    public IOSBluetoothService(IUserStateService userStateService, IErrorService errorService)
     {
         _userStateService = userStateService;
         _adapter.DeviceConnected += (s, a) =>
@@ -43,6 +45,23 @@ public class IOSBluetoothService : NSObject, IBluetoothService, ICBPeripheralMan
             {
                 _connectedDevices.Add(new MeowDevice(device.Name ?? string.Empty, device.Id, device));
             }
+            _connectedDevices.Add(_establishingConnection.FirstOrDefault(d => d.Id == device.Id)!);
+            _establishingConnection.RemoveAll(d => d.Id == device.Id);
+            PeerConnected?.Invoke();
+        };
+        
+        _adapter.DeviceConnectionLost += (s, a) =>
+        {
+            var device = a.Device;
+            _connectedDevices.RemoveAll(cd => cd.Id == device.Id);
+        };
+        
+        _adapter.DeviceConnectionError += (s, a) =>
+        {
+            var device = a.Device;
+            _connectedDevices.RemoveAll(cd => cd.Id == device.Id);
+            _establishingConnection.RemoveAll(d => d.Id == device.Id);
+            errorService.Add(new Exception($"Connection error with device {device.Name}"));
         };
 
         try
@@ -186,6 +205,7 @@ public class IOSBluetoothService : NSObject, IBluetoothService, ICBPeripheralMan
 
     public async Task ConnectAsync(MeowDevice device)
     {
+        _establishingConnection.Add(device);
         if (device?.NativeDevice == null)
             throw new ArgumentNullException(nameof(device));
 
