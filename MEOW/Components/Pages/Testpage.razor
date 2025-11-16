@@ -7,6 +7,16 @@
 @using System.Timers
 @inject IErrorService ErrorService
 @inject IUserStateService UserStateService
+@using System.Text
+@using System.IO
+
+<div class="text-center mt-4">
+    <button class="btn btn-warning btn-lg rounded-pill fw-semibold" @onclick="SaveCsvAsync">
+        💾 Gem CSV i Downloads
+    </button>
+</div>
+
+
 
 <div class="container py-5">
     <div class="row justify-content-center">
@@ -159,6 +169,8 @@
 </div>
 
 @code {
+    private Dictionary<string, DateTime> SentTimestamps = new();
+    private Dictionary<string, DateTime> ReceivedTimestamps = new();
     private string SelectedPresetMessage { get; set; } = "Hej";
     private int ReceiveTimeoutSeconds { get; set; } = 5;
 
@@ -182,6 +194,76 @@
         : 0;
 
     private System.Timers.Timer? _timeoutTimer;
+
+private async Task SaveCsvAsync()
+{
+#if ANDROID
+    try
+    {
+        var messages = ChatService.GetChatMessages();
+
+        // CSV
+        var sb = new StringBuilder();
+        sb.AppendLine("Sender,Message,SentAt,ReceivedAt");
+
+
+        foreach (var m in messages)
+        {
+            var parts = m.Message.Split('|', 2);
+            string id = parts.Length > 1 ? parts[0] : "";
+            string text = parts.Length > 1 ? parts[1] : m.Message;
+
+            SentTimestamps.TryGetValue(id, out var sentTime);
+            ReceivedTimestamps.TryGetValue(id, out var recvTime);
+
+            sb.AppendLine($"\"{m.Sender}\",\"{text}\",\"{sentTime:HH:mm:ss.fff}\",\"{recvTime:HH:mm:ss.fff}\"");
+        }
+
+
+        var bytes = Encoding.UTF8.GetBytes(sb.ToString());
+        var fileName = $"chat_{DateTime.Now:yyyyMMdd_HHmmss}.csv";
+
+        var context = Android.App.Application.Context;
+
+        var values = new Android.Content.ContentValues();
+        values.Put(Android.Provider.MediaStore.IMediaColumns.DisplayName, fileName);
+        values.Put(Android.Provider.MediaStore.IMediaColumns.MimeType, "text/csv");
+        values.Put(Android.Provider.MediaStore.Files.FileColumns.RelativePath, "Download/");
+        // VIGTIGT: Marker som pending mens vi skriver
+        values.Put(Android.Provider.MediaStore.IMediaColumns.IsPending, true);
+
+        var uri = context.ContentResolver.Insert(
+            Android.Provider.MediaStore.Downloads.ExternalContentUri,
+            values
+        );
+
+        if (uri == null)
+            throw new Exception("Kunne ikke oprette fil i MediaStore!");
+
+        // Skriv filen
+        using (var stream = context.ContentResolver.OpenOutputStream(uri, "w"))
+        {
+            stream.Write(bytes, 0, bytes.Length);
+        }
+
+        // MARKER FIL SOM FÆRDIG (vigtigt!!)
+        values = new Android.Content.ContentValues();
+        values.Put(Android.Provider.MediaStore.IMediaColumns.IsPending, false);
+        context.ContentResolver.Update(uri, values, null, null);
+
+        StatusMessage = $"✔️ Fil gemt i Downloads: {fileName}";
+    }
+    catch (Exception ex)
+    {
+        StatusMessage = "❌ Fejl: " + ex.Message;
+    }
+#else
+    StatusMessage = "Ikke understøttet på denne platform.";
+#endif
+
+    StateHasChanged();
+}
+
 
     private void StartReceiving()
     {
@@ -223,6 +305,13 @@
     // Your existing message handling logic, unchanged
     private void HandleIncomingMessage(MeowMessageText msg)
     {
+        var parts = msg.Message.Split('|', 2);
+        if (parts.Length == 2)
+        {
+            var id = parts[0];
+            ReceivedTimestamps[id] = DateTime.Now;
+        }
+
         if (ReceiveStartTime is null)
             ReceiveStartTime = DateTime.Now;
 
@@ -286,7 +375,10 @@
 
             for (int i = 0; i < MessageCount; i++)
             {
-                var msg = $"{SelectedPresetMessage} #{i + 1}";
+                var uniqueId = Guid.NewGuid().ToString();
+                var msg = $"{uniqueId}|{SelectedPresetMessage}";
+                SentTimestamps[uniqueId] = DateTime.Now;
+
                 var plannedTime = i * intervalMs;
 
                 try
