@@ -26,7 +26,7 @@ namespace MEOW_BUSINESS.Services;
 ///     - Spørger om tilladelser (CheckPermissions)
 /// 
 /// </summary>
-public class AndroidBluetoothService(IErrorService errorService) : IBluetoothService // Implementering af IBluetoothService til Android
+public class AndroidBluetoothService : IBluetoothService // Implementering af IBluetoothService til Android
 {
 
     // Plugin abstraktion til Bluetooth local enhed. Giver os adgang til fx _bluetooth.IsOn
@@ -35,6 +35,8 @@ public class AndroidBluetoothService(IErrorService errorService) : IBluetoothSer
 
     // instance af Bluetooth-adapteren, som håndterer scanning, forbindelser osv.
     private readonly IAdapter _adapter = CrossBluetoothLE.Current.Adapter;
+    
+    private readonly IErrorService _errorService;
     
     // Enum vi bruger til at holde styr på advertising state. 
     // AdvertisingStateChanged eventet bruges til at informere UI'et om ændringer i advertising status.
@@ -53,7 +55,11 @@ public class AndroidBluetoothService(IErrorService errorService) : IBluetoothSer
     // Liste vi bruger til at holde styr på fundne enheder under scanning.
     // Devices.Add(device);  også til ui (var d in _devices) <div> d.Name</div>
     public ObservableCollection<MeowDevice> Devices { get; } = new();
-
+    
+    List<MeowDevice> _connectedDevices = new();
+    
+    List<MeowDevice> _establishingConnection = new();
+    
 
     //Styre advertising (Bluetooth peripheral) “Server” Gør sig synlig, venter på at nogen forbinder
     //En funktion du tænder og slukker for (som “gør mig synlig for andre”) Android specific, plugin gør det ikke
@@ -69,6 +75,39 @@ public class AndroidBluetoothService(IErrorService errorService) : IBluetoothSer
     // For at ungå dupes
     private bool _isAdvertising = false;
     private bool _isScanning = false;
+    
+    public AndroidBluetoothService(IErrorService errorService)
+    {
+        _errorService = errorService;
+
+        _adapter.DeviceConnected += (s, a) =>
+        {
+            var existingDevice = _connectedDevices.FirstOrDefault(d => d.Id == a.Device.Id);
+            if (existingDevice == null)
+            {
+                var device = _establishingConnection.FirstOrDefault(d => d.Id == a.Device.Id)!;
+                _connectedDevices.Add(device);
+                _establishingConnection.RemoveAll(d => d.Id == a.Device.Id);
+            }
+        };
+
+        _adapter.DeviceDisconnected += (s, a) =>
+        {
+            var existingDevice = _connectedDevices.FirstOrDefault(d => d.Id == a.Device.Id);
+            if (existingDevice != null)
+            {
+                _connectedDevices.Remove(existingDevice);
+            }
+        };
+        
+        _adapter.DeviceConnectionError += (s, a) =>
+        {
+            var device = a.Device;
+            _connectedDevices.RemoveAll(cd => cd.Id == device.Id);
+            _establishingConnection.RemoveAll(d => d.Id == device.Id);
+            errorService.Add(new Exception($"Connection error with device {device.Name}"));
+        };
+    }
 
     /// <summary>
     /// Get a list of currently connected devices.
@@ -76,7 +115,7 @@ public class AndroidBluetoothService(IErrorService errorService) : IBluetoothSer
     /// <returns>List of connected MeowDevice instances.</returns>
     public List<MeowDevice> GetConnectedDevices()
     {
-        return Devices.ToList();
+        return _connectedDevices.ToList();
     }
 
     public async Task<(bool, List<Exception>)> SendToAllAsync(byte[] data)
@@ -178,7 +217,7 @@ public class AndroidBluetoothService(IErrorService errorService) : IBluetoothSer
             }
             catch (Exception ex)
             {
-                errorService.Add(ex);
+                _errorService.Add(ex);
             }
         };
 
@@ -295,8 +334,12 @@ public class AndroidBluetoothService(IErrorService errorService) : IBluetoothSer
         } 
     } 
 
-
-    async public Task ConnectAsync(MeowDevice device)
+    /// <summary>
+    /// Connect to a specified MeowDevice.
+    /// </summary>
+    /// <param name="device">The MeowDevice to connect to.</param>
+    /// <exception cref="Exception">Thrown if the connection fails.</exception>
+    public async Task ConnectAsync(MeowDevice device)
     {
         try
         {
@@ -310,6 +353,8 @@ public class AndroidBluetoothService(IErrorService errorService) : IBluetoothSer
             {
                 await _adapter.ConnectToKnownDeviceAsync(device.Id);
             }
+            
+            _establishingConnection.Add(device);
 
             PeerConnected?.Invoke();
         }
@@ -333,7 +378,7 @@ public class AndroidBluetoothService(IErrorService errorService) : IBluetoothSer
                 } 
                 catch (Exception ex) 
                 {
-                    errorService.Add(ex);
+                    _errorService.Add(ex);
                 } 
                 finally 
                 { 
@@ -353,7 +398,7 @@ public class AndroidBluetoothService(IErrorService errorService) : IBluetoothSer
                 }
                 catch (Exception ex)
                 {
-                    errorService.Add(ex);
+                    _errorService.Add(ex);
                 }
             }
 
