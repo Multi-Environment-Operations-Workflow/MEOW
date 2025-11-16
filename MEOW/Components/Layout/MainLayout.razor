@@ -1,8 +1,10 @@
-﻿@using MEOW.Components.Services
+﻿@using MEOW_BUSINESS.Services
 
 @inherits LayoutComponentBase
 @inject NavigationManager Navigation
 @inject IUserStateService UserStateService
+@inject IChatService ChatService
+@inject IPinService PinService
 @inject IErrorService ErrorService
 
 @if (!UserStateService.IsLoggedIn())
@@ -11,8 +13,8 @@
 }
 else
 {
-    <MatAppBarContainer Style="display: flex; flex-direction: column; height: 100vh">
-        <MatAppBarContent Style="flex: 1 0 auto; overflow-y: auto;">
+    <div style="display: flex; flex-direction: column; height: 100vh; margin: 0; padding: 0;">
+        <div style="flex: 1 0 auto; overflow-y: auto; padding: 0; margin: 0;">
             <div>
                 @foreach (var err in errors)
                 {
@@ -48,26 +50,25 @@ else
 
             </div>
             @Body
-        </MatAppBarContent>
-        <MatAppBar Fixed="true" Style="bottom: 0; width: 100%; height: 10vh; position: sticky; z-index: 1000;  padding-bottom: 1rem;">
+        </div>
+        <MatAppBar Fixed="true" Style="bottom: 0; width: 100%; height: 8vh; position: sticky; z-index: 1000;  padding-bottom: 1rem;">
             <MatAppBarRow>
-                <MatAppBarSection class="app-bar-sec" Style="align-items: center; justify-content: space-around;">
-                    <MatIconButton Icon="home" @onclick='() => Navigation.NavigateTo("/")'></MatIconButton>
-                    <MatIconButton Icon="chat" @onclick='() => Navigation.NavigateTo("/Chat")'></MatIconButton>
-                    <MatIconButton Icon="dashboard" @onclick='() => Navigation.NavigateTo("/Pinboard")'></MatIconButton>
-                    <MatIconButton Icon="more" @onclick='() => Navigation.NavigateTo("/MeshDiagram")'></MatIconButton>
-                    <MatIconButton Icon="test-page" @onclick='() => Navigation.NavigateTo("/test-page")'></MatIconButton>
-                    <MatIconButton Icon="near_me" @onclick='() => Navigation.NavigateTo("/Compass")'></MatIconButton>
-                    <MatIconButton Icon="logout" @onclick='Logout'></MatIconButton>
+                <MatAppBarSection class="app-bar-sec" Style="display: flex; justify-content: space-around; align-items: center; width: 100%;">
+                    <MatIconButton Icon="home" Title="Home" @onclick='() => Navigation.NavigateTo("/")' />
+                    <MatIconButton Icon="chat" Title="Chat" @onclick='() => Navigation.NavigateTo("/Chat")' />
+                    <MatIconButton Icon="dashboard" Title="Pinboard" @onclick='() => Navigation.NavigateTo("/Pinboard")' />
+                    <MatIconButton Icon="schema" Title="Mesh Diagram" @onclick='() => Navigation.NavigateTo("/MeshDiagram")' />
+                    <MatIconButton Icon="explore" Title="Compass" @onclick='() => Navigation.NavigateTo("/Compass")' />
+                    <MatIconButton Icon="logout" Title="Logout" @onclick='Logout' />
+                    <MatIconButton Icon="test-page" @onclick='() => Navigation.NavigateTo("/test-page")'/>
                 </MatAppBarSection>
             </MatAppBarRow>
         </MatAppBar>
-    </MatAppBarContainer>
+    </div>
 }
 
 @code {
     List<Exception> errors = new();
-
 
     public void Logout()
     {

@@ -1,0 +1,339 @@
+.pinboard-container {
+    min-height: 92vh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 24px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+.pinboard-header {
+    background: white;
+    padding: 24px 28px;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+}
+
+.pinboard-title {
+    font-size: 28px;
+    font-weight: 700;
+    /* Fallback color for accessibility */
+    color: #2d3748;
+    margin: 0;
+}
+
+/* Only apply gradient text if supported */
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+    .pinboard-title {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        /* Remove color property here to allow gradient text */
+    }
+}
+
+/* High contrast mode: force solid color for accessibility */
+@media (forced-colors: active) {
+    .pinboard-title {
+        background: none !important;
+        -webkit-background-clip: initial !important;
+        -webkit-text-fill-color: ButtonText !important;
+        background-clip: initial !important;
+        color: ButtonText !important;
+    }
+}
+.add-pin-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    color: white !important;
+    padding: 12px 24px !important;
+    border-radius: 10px !important;
+    font-weight: 600 !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3) !important;
+    border: none !important;
+}
+
+.add-pin-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4) !important;
+}
+
+.error-banner {
+    background: linear-gradient(135deg, #fc8181 0%, #f56565 100%);
+    color: white;
+    padding: 16px 20px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 12px rgba(245, 101, 101, 0.3);
+}
+
+.pin-form-card {
+    background: white !important;
+    padding: 32px !important;
+    border-radius: 16px !important;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12) !important;
+    margin-bottom: 28px;
+}
+
+.form-section {
+    margin-bottom: 24px;
+}
+
+.form-label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: #4a5568;
+    margin-bottom: 8px;
+}
+
+.upload-section {
+    margin: 28px 0;
+    padding: 24px;
+    border: 2px dashed #cbd5e0;
+    border-radius: 12px;
+    background: #f7fafc;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.upload-section:hover {
+    border-color: #667eea;
+    background: #edf2f7;
+}
+
+.upload-icon {
+    font-size: 48px;
+    color: #667eea;
+    margin-bottom: 12px;
+}
+
+.upload-label {
+    font-size: 15px;
+    color: #4a5568;
+    font-weight: 500;
+}
+
+.mt-3 {
+    margin-top: 16px;
+}
+
+.my-4 {
+    margin-top: 24px;
+    margin-bottom: 24px;
+}
+
+.preview-image {
+    margin-top: 20px;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    max-width: 100%;
+    position: relative;
+}
+
+.preview-image img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.preview-image::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+    pointer-events: none;
+}
+
+.form-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 28px;
+}
+
+.create-pin-btn {
+    flex: 1;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    color: white !important;
+    padding: 16px 32px !important;
+    border-radius: 12px !important;
+    font-weight: 600 !important;
+    font-size: 16px !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4) !important;
+    border: none !important;
+    cursor: pointer;
+}
+
+.create-pin-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 25px rgba(102, 126, 234, 0.5) !important;
+}
+
+.create-pin-btn:active {
+    transform: translateY(0);
+}
+
+.pins-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 24px;
+    margin-top: 8px;
+}
+
+.empty-state {
+    grid-column: 1 / -1;
+    background: white;
+    padding: 60px 40px;
+    border-radius: 16px;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.empty-state mat-icon {
+    font-size: 64px;
+    width: 64px;
+    height: 64px;
+    color: #cbd5e0;
+    margin-bottom: 16px;
+}
+
+.empty-state p {
+    font-size: 18px;
+    color: #718096;
+    margin: 0;
+}
+
+.pin-card {
+    background: white !important;
+    border-radius: 16px !important;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1) !important;
+    transition: all 0.3s ease !important;
+    display: flex;
+    flex-direction: column;
+}
+
+.pin-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.15) !important;
+}
+
+.pin-content {
+    padding: 24px;
+    flex: 1;
+}
+
+.pin-content h3 {
+    font-size: 20px;
+    font-weight: 700;
+    color: #2d3748;
+    margin: 0 0 12px 0;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.pin-content p {
+    font-size: 15px;
+    color: #4a5568;
+    line-height: 1.6;
+    margin: 0 0 16px 0;
+    white-space: pre-wrap;
+}
+
+.pin-image {
+    width: 100%;
+    height: auto;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    margin-top: 12px;
+}
+
+.pin-actions {
+    padding: 16px 24px;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: flex-end;
+    background: #f7fafc;
+}
+
+.delete-btn {
+    background: transparent !important;
+    color: #e53e3e !important;
+    border: 2px solid #e53e3e !important;
+    padding: 8px 16px !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    transition: all 0.2s ease !important;
+}
+
+.delete-btn:hover {
+    background: #e53e3e !important;
+    color: white !important;
+    transform: scale(1.05);
+}
+
+.validation-message {
+    color: #e53e3e;
+    font-size: 13px;
+    margin-top: 6px;
+    font-weight: 500;
+}
+
+@media (max-width: 768px) {
+    .pinboard-container {
+        padding: 16px;
+    }
+
+    .pinboard-header {
+        flex-direction: column;
+        gap: 16px;
+        text-align: center;
+    }
+
+    .pinboard-title {
+        font-size: 24px;
+    }
+
+    .pins-list {
+        grid-template-columns: 1fr;
+    }
+
+    .pin-form-card {
+        padding: 20px !important;
+    }
+
+    .form-actions {
+        flex-direction: column;
+    }
+}
+
+.pinboard-container::-webkit-scrollbar {
+    width: 10px;
+}
+
+.pinboard-container::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+}
+
+.pinboard-container::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 10px;
+}
+
+.pinboard-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.5);
+}
