@@ -1,11 +1,12 @@
 @page "/test-page"
-@using MEOW.Components.Services
-@using MEOW.Components.Models
-@using System.Timers
 @using System.Collections.Specialized
-
+@using MEOW_BUSINESS.Models
+@using MEOW_BUSINESS.Services
 @inject IChatService ChatService
+@inject NavigationManager Navigation
+@using System.Timers
 @inject IErrorService ErrorService
+@inject IUserStateService UserStateService
 
 <div class="container py-5">
     <div class="row justify-content-center">
