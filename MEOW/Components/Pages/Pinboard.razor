@@ -6,88 +6,104 @@
 @using System.Collections.Specialized
 @inject IPinService PinService
 
-<MatCard Class="p-6 m-4">
+<div class="pinboard-container">
+    <div class="pinboard-header">
+        <h2 class="pinboard-title">Pinboard</h2>
+
+        <MatButton Raised="true" Icon="@(_isPinFormVisible ? "expand_less" : "add_circle_outline")"
+            OnClick="TogglePinVisibility" Class="add-pin-btn">
+            @(_isPinFormVisible ? "Hide Form" : "Add Pin")
+        </MatButton>
+    </div>
 
     @if (!string.IsNullOrEmpty(_errorMessage))
     {
-        <MatCard Class="mb-4 p-4 bg-red-100 text-red-800">
+        <div class="error-banner">
             <MatIcon>error</MatIcon>
-            <span class="ml-2">@_errorMessage</span>
-        </MatCard>
-    }
-
-    <MatButton Raised="true" OnClick="TogglePinVisibility" Icon="add_circle_outline">
-        @(_isPinFormVisible ? "Hide Pin Module" : "Add Pin")
-    </MatButton>
-
-    @if (_isPinFormVisible)
-    {
-        <MatCard Class="mt-4 p-4">
-
-            <EditForm Model="@_currentPin" OnValidSubmit="AddPin">
-                <DataAnnotationsValidator />
-
-                <MatTextField Label="Title" @bind-Value="_currentPin.Title" Required="true" FullWidth="true" Class="mb-4" />
-                <ValidationMessage For="@(() => _currentPin.Title)" />
-
-                <MatTextField Label="Context" @bind-Value="_currentPin.TextContext" TextArea="true" Rows="5"
-                    FullWidth="true" Class="mb-4" />
-                <ValidationMessage For="@(() => _currentPin.TextContext)" />
-
-                <MatDivider Class="my-3" />
-
-                <MatFileUpload OnChange="@FilesReady" Label="Drop a file or browse" Icon="cloud_upload" Accept="image/*" />
-
-                @if (_currentPin.FileData != null)
-                {
-                    <div class="mt-3 flex justify-center">
-                        <img src="data:image/png;base64,@_currentPin.FileData" style="max-width:150px;border-radius:8px;" />
-                    </div>
-                }
-
-                <MatDivider Class="my-4" />
-
-                <MatButton Raised="true" Icon="add_task" Type="submit" Color="MatThemeColor.Primary">
-                    Create Pin
-                </MatButton>
-            </EditForm>
-        </MatCard>
-    }
-
-    <MatDivider Class="my-6" />
-
-    @if (!_pinList.Any())
-    {
-        <MatCard Class="p-4 text-center text-gray-500">
-            <MatIcon>info</MatIcon> No pins created yet.
-        </MatCard>
-    }
-    else
-    {
-        <div class="grid gap-4">
-            @foreach (var pin in _pinList)
-            {
-                <MatCard Class="p-4 flex justify-between items-start">
-                    <div class="flex-1 pr-4">
-                        <h3 class="font-semibold text-lg mb-1">@pin.Title</h3>
-                        <p class="text-sm text-gray-700 mb-2">@pin.TextContext</p>
-
-                        @if (pin.FileData != null)
-                        {
-                            <img src="data:image/png;base64,@pin.FileData" style="max-width:120px;border-radius:8px;" />
-                        }
-                    </div>
-
-                    <div class="flex items-start">
-                        <MatIconButton Icon="delete_forever" OnClick="@(() => RemovePin(pin))" Color="MatThemeColor.Secondary"
-                            Title="Delete pin" />
-                    </div>
-                </MatCard>
-            }
+            <span>@_errorMessage</span>
         </div>
     }
 
-</MatCard>
+    @if (_isPinFormVisible)
+    {
+        <div class="pin-form-card">
+            <EditForm Model="@_currentPin" OnValidSubmit="AddPin">
+                <DataAnnotationsValidator />
+
+                <div class="form-section">
+                    <MatTextField Label="Title" @bind-Value="_currentPin.Title" Required="true" FullWidth="true"
+                        Class="custom-mat-field" Placeholder="Enter a catchy title..." />
+                    <ValidationMessage For="@(() => _currentPin.Title)" class="validation-message" />
+                </div>
+
+                <div class="form-section">
+                    <MatTextField Label="Description" @bind-Value="_currentPin.TextContext" TextArea="true" Rows="7"
+                        FullWidth="true" Class="custom-mat-textarea"
+                        Placeholder="Add some context or details about this pin..." />
+                    <ValidationMessage For="@(() => _currentPin.TextContext)" class="validation-message" />
+                </div>
+
+                <div class="upload-section">
+                    <MatIcon Class="upload-icon">cloud_upload</MatIcon>
+                    <div class="upload-label">
+                        <MatFileUpload OnChange="@FilesReady" Label="Drop an image here or click to browse"
+                            Accept="image/*" />
+                    </div>
+                </div>
+
+                @if (_currentPin.FileData != null)
+                {
+                    <div class="preview-image">
+                        <img src="data:image/png;base64,@_currentPin.FileData" alt="Preview" />
+                    </div>
+                }
+
+                <div class="form-actions">
+                    <MatButton Raised="true" Icon="add_task" Type="submit" Class="create-pin-btn">
+                        Create Pin
+                    </MatButton>
+                </div>
+            </EditForm>
+        </div>
+    }
+
+    <div class="pins-list">
+        @if (!_pinList.Any())
+        {
+            <div class="empty-state">
+                <MatIcon>push_pin</MatIcon>
+                <p>No pins yet — click "Add Pin" to get started!</p>
+            </div>
+        }
+        else
+        {
+            @foreach (var pin in _pinList)
+            {
+                <div class="pin-card">
+                    <div class="pin-content">
+                        <h3>@pin.Title</h3>
+
+                        @if (!string.IsNullOrEmpty(pin.TextContext))
+                        {
+                            <p>@pin.TextContext</p>
+                        }
+
+                        @if (pin.FileData != null)
+                        {
+                            <img src="data:image/png;base64,@pin.FileData" alt="@pin.Title" class="pin-image" />
+                        }
+                    </div>
+
+                    <div class="pin-actions">
+                        <MatButton Outlined="true" Icon="delete_forever" OnClick="@(() => RemovePin(pin))" Class="delete-btn">
+                            Delete
+                        </MatButton>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</div>
 
 @code {
     private bool _isPinFormVisible;
@@ -161,7 +177,7 @@
         }
         catch (Exception ex)
         {
-    
+
         }
     }
 
