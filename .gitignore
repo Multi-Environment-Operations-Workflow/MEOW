@@ -11,3 +11,5 @@ MEOW/Components/.DS_Store
 /MEOW_BUSINESS/bin
 /MEOW_TESTING/bin
 /MEOW_TESTING/obj
+/MEOW_TESTING/TestResults
+/MEOW_TESTING/coveragereport
