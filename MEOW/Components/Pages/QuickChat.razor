@@ -7,7 +7,8 @@
 @inject IErrorService ErrorService
 
 <div>
-    <MatButton OnClick="SendQuickMessage">Found The Person!</MatButton>
+    <MatButton OnClick="() => (SendQuickMessage2(QuickChatMessageType.Found))">Found The Person!</MatButton>
+    <MatButton OnClick="() => (SendQuickMessage2(QuickChatMessageType.Help))">I Need Help!</MatButton>
 </div>
 
 @code
@@ -20,22 +21,30 @@
         Nav.LocationChanged += OnLocation;
         return base.OnInitializedAsync();
     }
-
-    private async Task SendQuickMessage()
+    public async Task SendQuickMessage2(QuickChatMessageType type)
     {
-        if (_location is null)
-            return;
         try
         {
-            var (success, errors) = await QuickChatService.SendMessage(new (_location.Longitude, _location.Latitude, QuickChatMessageType.Found));
-            if (!success)
+            int retryCount = 5;
+            int retryDelayMs = 500;
+            for (int i = 0; i < retryCount; i++)
             {
-                ErrorService.Add(errors.Any() ? errors : new[] { new Exception("Unknown error") });
+                var (success, errors) = await QuickChatService.SendMessage(new (_location.Longitude, _location.Latitude, type));
+                if (!success)
+                {
+                    var exceptions = !errors.Any()
+                        ? [new Exception("unknown error")]
+                        : errors;
+
+                    ErrorService.Add(exceptions);
+                }
+                else { return; }
+                await Task.Delay(retryDelayMs);
             }
         }
-        catch (Exception ex)
+        catch (Exception e)
         {
-            ErrorService.Add(ex);
+            ErrorService.Add(e);
         }
     }
 
