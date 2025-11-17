@@ -3,7 +3,11 @@ using MEOW.Components.Models;
 
 namespace MEOW.Components.Services;
 
-public class NavService : INavService
+public class NavService(
+    IMessageService messageService,
+    IUserStateService userStateService,
+    INotificationManagerService notificationManagerService,
+    IErrorService errorService) : INavService
 {
     public event EventHandler<NavPoint>? LocationChanged;
     public event EventHandler<CompassData>? CompassChanged;
@@ -98,5 +102,12 @@ public class NavService : INavService
         var index = _navPoints.FindIndex(point => id == point.Id);
         if (index != -1) _navPoints.RemoveAt(index);
         NavPointsChanged?.Invoke(this, GetNavPoints());
+    }
+
+    public async void TrySendNavPoint(NavPoint navPoint)
+    {
+        var msg = new MeowMessageGps(userStateService.GetId(), MessageService.GetMessageCount(),
+            userStateService.GetName(), navPoint.Longitude, navPoint.Latitude, navPoint.Type);
+        await messageService.SendMessage(msg);
     }
 }

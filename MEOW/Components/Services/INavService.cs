@@ -17,4 +17,5 @@ public interface INavService
     public void RemoveNavPoint(int id);
     public void OnUserPoint(MeowMessageGps msg);
     public Task<NavPoint?> TryGetLastPosition();
+    public void TrySendNavPoint(NavPoint navPoint);
 }

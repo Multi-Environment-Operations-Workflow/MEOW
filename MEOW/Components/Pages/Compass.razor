@@ -5,6 +5,7 @@
 @using MEOW.Components.UIComponents
 @implements IAsyncDisposable
 @inject INavService Nav
+@inject IMessageService Message
 <h3>Compass</h3>
 @if (_location is not null)
 {
@@ -26,6 +27,9 @@
     <div class="compass-inner-cover">
     </div>
 </div>
+<button onclick="@(() => Nav.TrySendNavPoint(_location))">Ballsack</button>
+
+
 
 @code {
     NavPoint? _location;
@@ -42,7 +46,6 @@
         await Nav.StopCompass();
     }
 
-
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender || _started) return;
@@ -53,7 +56,7 @@
         Nav.NavPointsChanged += OnNavPoints;
 
         _navPoints = Nav.GetNavPoints();
-        AddDebugPoints();
+        //AddDebugPoints();
 
         await Nav.StartCompass();
         _ = Nav.TryStartGps();
