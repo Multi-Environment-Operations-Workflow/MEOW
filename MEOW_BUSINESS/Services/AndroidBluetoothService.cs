@@ -49,6 +49,36 @@ public class AndroidBluetoothService : AbstractBluetoothService, IBluetoothServi
     public AndroidBluetoothService(IErrorService errorService) : base(errorService)
     {
         _errorService = errorService;
+
+
+        _adapter.DeviceConnected += (s, a) =>
+        {
+            var existingDevice = _connectedDevices.FirstOrDefault(d => d.Id == a.Device.Id);
+            if (existingDevice == null)
+            {
+                var device = _establishingConnection.FirstOrDefault(d => d.Id == a.Device.Id)!;
+                _connectedDevices.Add(device);
+                _establishingConnection.RemoveAll(d => d.Id == a.Device.Id);
+            }
+        };
+
+        _adapter.DeviceDisconnected += (s, a) =>
+        {
+            var existingDevice = _connectedDevices.FirstOrDefault(d => d.Id == a.Device.Id);
+            if (existingDevice != null)
+            {
+                _connectedDevices.Remove(existingDevice);
+            }
+        };
+
+        _adapter.DeviceConnectionError += (s, a) =>
+        {
+            var device = a.Device;
+            _connectedDevices.RemoveAll(cd => cd.Id == device.Id);
+            _establishingConnection.RemoveAll(d => d.Id == device.Id);
+            errorService.Add(new Exception($"Connection error with device {device.Name}"));
+        };
+
         _bluetoothManager = (BluetoothManager?)Android.App.Application.Context.GetSystemService(Context.BluetoothService);
         MeowGattCallback callback = new(OnReceive);
         _gattServer = _bluetoothManager.OpenGattServer(Android.App.Application.Context, callback);
