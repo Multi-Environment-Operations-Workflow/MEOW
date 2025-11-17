@@ -36,10 +36,7 @@ public class MessageService(IBluetoothService bluetooth, IErrorService errorServ
 
         _messages.Add(message);
         
-        /// <summary>
-        /// 
-        /// </summary>
-        /// 
+
         string name = message.Sender;
 
         string content = message is MeowMessageText textMsg
