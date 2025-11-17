@@ -313,14 +313,14 @@ public class AndroidBluetoothService : IBluetoothService // Implementering af IB
                 }
                 catch (DeviceConnectionException ex)
                 {
-                    errorService.Add(ex);
+                    _errorService.Add(ex);
                     throw new Exception($"Failed to automatically connect to device: {ex.Message}");
                 }
             }
         }
         catch (OperationCanceledException e)
         {
-            errorService.Add(e);
+            _errorService.Add(e);
         }
         finally
         {
@@ -395,7 +395,7 @@ public class AndroidBluetoothService : IBluetoothService // Implementering af IB
         }
         catch (Exception e)
         {
-            errorService.Add(e);
+            _errorService.Add(e);
         }
     }
 

@@ -1,7 +1,6 @@
-using MEOW.Components.Enums;
-using MEOW.Components.Models;
+namespace MEOW_BUSINESS.Services;
 
-namespace MEOW.Components.Services;
+using Models;
 
 public interface IQuickChatService
 {

@@ -1,8 +1,8 @@
-using MEOW.Components.Enums;
-using MEOW.Components.Models;
+using MEOW_BUSINESS.Models;
+using MEOW_BUSINESS.Enums;
 using System.Collections.ObjectModel;
 
-namespace MEOW.Components.Services;
+namespace MEOW_BUSINESS.Services;
 
 public class QuickChatService (IMessageService messageService, IUserStateService userStateService, IErrorService errorService) : IQuickChatService
 {

@@ -1,8 +1,8 @@
 @page "/quickChat"
 @inject INavService Nav
-@using MEOW.Components.Enums
-@using MEOW.Components.Services
-@using MEOW.Components.Models
+@using MEOW_BUSINESS.Enums
+@using MEOW_BUSINESS.Services
+@using MEOW_BUSINESS.Models
 @inject IQuickChatService QuickChatService
 @inject IErrorService ErrorService
 
@@ -27,7 +27,7 @@
             return;
         try
         {
-            var (success, errors) = await QuickChatService.SendMessage(new Models.QuickChat(_location.Longitude, _location.Latitude, QuickChatMessageType.Found));
+            var (success, errors) = await QuickChatService.SendMessage(new (_location.Longitude, _location.Latitude, QuickChatMessageType.Found));
             if (!success)
             {
                 ErrorService.Add(errors.Any() ? errors : new[] { new Exception("Unknown error") });

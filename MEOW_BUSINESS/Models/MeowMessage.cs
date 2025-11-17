@@ -1,5 +1,5 @@
 using System.Text;
-using MEOW.Components.Enums;
+using MEOW_BUSINESS.Enums;
 
 namespace MEOW_BUSINESS.Models;
 

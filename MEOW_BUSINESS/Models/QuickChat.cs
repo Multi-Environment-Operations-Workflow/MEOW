@@ -1,6 +1,6 @@
-using MEOW.Components.Enums;
+using MEOW_BUSINESS.Enums;
 
-namespace MEOW.Components.Models;
+namespace MEOW_BUSINESS.Models;
 
 public class QuickChat (float longitude, float latitude, QuickChatMessageType type)
 {

@@ -2,6 +2,7 @@ namespace MEOW_BUSINESS.Services;
 
 using System.Text;
 using Models;
+using Enums;
 
 public class ByteDeserializer(byte[] payload, IErrorService errorService)
 {
