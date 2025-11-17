@@ -1,5 +1,5 @@
 ﻿using MatBlazor;
-using MEOW.Components.Services;
+using MEOW_BUSINESS.Services;
 using Microsoft.Extensions.Logging;
 
 namespace MEOW;

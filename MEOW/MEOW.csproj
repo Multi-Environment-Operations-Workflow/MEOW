@@ -54,4 +54,9 @@
     <PackageReference Include="SVGCreator" Version="1.1.0" />
   </ItemGroup>
 
+  <!-- For a local project reference -->
+  <ItemGroup>
+    <ProjectReference Include="..\MEOW_BUSINESS\MEOW_BUSINESS.csproj" />
+  </ItemGroup>
+
 </Project>

@@ -1,7 +1,6 @@
 ﻿using Android.App;
 using Android.Runtime;
-using MEOW.Components.Models;
-using MEOW.Components.Services;
+using MEOW_BUSINESS.Services;
 using Microsoft.Maui.LifecycleEvents;
 using Microsoft.Extensions.DependencyInjection;
 using Exception = Java.Lang.Exception;
