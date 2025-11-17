@@ -54,6 +54,7 @@ public class AndroidBluetoothService : AbstractBluetoothService, IBluetoothServi
     public AndroidBluetoothService(IErrorService errorService) : base(errorService)
     {
         _errorService = errorService;
+
         _bluetoothManager = (BluetoothManager?)Android.App.Application.Context.GetSystemService(Context.BluetoothService);
         MeowGattCallback callback = new(OnReceive);
         _gattServer = _bluetoothManager.OpenGattServer(Android.App.Application.Context, callback);
