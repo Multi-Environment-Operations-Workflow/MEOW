@@ -1,13 +1,13 @@
 @page "/quickChat"
 @inject INavService Nav
+@using MEOW.Components.Enums
 @using MEOW.Components.Services
 @using MEOW.Components.Models
-@inject IChatService ChatService
+@inject IQuickChatService QuickChatService
 @inject IErrorService ErrorService
 
 <div>
-    <MatButton OnClick="@(() => SendQuickMessage("Found The Person!"))">Found The Person!</MatButton>
-    <MatButton OnClick="@(() => SendQuickMessage("Need Help Quick!"))">Need Help Quick!</MatButton>
+    <MatButton OnClick="SendQuickMessage">Found The Person!</MatButton>
 </div>
 
 @code
@@ -21,15 +21,13 @@
         return base.OnInitializedAsync();
     }
 
-    private async Task SendQuickMessage(string outgoing)
+    private async Task SendQuickMessage()
     {
-        if (string.IsNullOrWhiteSpace(outgoing))
+        if (_location is null)
             return;
         try
         {
-            var locationInfo = _location != null ? $"Lat: {_location.Latitude} Lon: {_location.Longitude}" : "Location could not be found.";
-            outgoing = $"{outgoing} {locationInfo}";
-            var (success, errors) = await ChatService.SendMessage(outgoing);
+            var (success, errors) = await QuickChatService.SendMessage(new Models.QuickChat(_location.Longitude, _location.Latitude, QuickChatMessageType.Found));
             if (!success)
             {
                 ErrorService.Add(errors.Any() ? errors : new[] { new Exception("Unknown error") });

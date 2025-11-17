@@ -23,8 +23,10 @@ public class MainApplication : MauiApplication
         base.OnCreate();
         var chatService = IPlatformApplication.Current?.Services.GetService<IChatService>();
         var pinService = IPlatformApplication.Current?.Services.GetService<IPinService>();
+        var quickChatService = IPlatformApplication.Current?.Services.GetService<IQuickChatService>();
 
         chatService?.SetupNotificationsAndChatService();
         pinService?.SetupReceiveMessages();
+        quickChatService?.SetupReceiveMessages();
     }
 }

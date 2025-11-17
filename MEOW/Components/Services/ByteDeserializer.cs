@@ -1,3 +1,5 @@
+using MEOW.Components.Enums;
+
 namespace MEOW.Components.Services;
 
 using System.ComponentModel;
@@ -55,10 +57,10 @@ public class ByteDeserializer(byte[] payload, IErrorService errorService)
     
     private MeowMessageQuickChat DeserializeQuickChat(byte senderUserId, int messageNumber, string sender)
     {
-        int message = ReadInt32();
         float longitude = ReadSingle();
         float latitude = ReadSingle();
-        return new MeowMessageQuickChat(senderUserId, messageNumber, sender, message, longitude, latitude);
+        QuickChatMessageType quickChatMessageType = (QuickChatMessageType) ReadByte();
+        return new MeowMessageQuickChat(senderUserId, messageNumber, sender, longitude, latitude, quickChatMessageType);
     }
 
     private byte ReadByte() => payload[_offset++];

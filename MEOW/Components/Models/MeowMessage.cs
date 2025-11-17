@@ -1,4 +1,5 @@
 using System.Text;
+using MEOW.Components.Enums;
 
 namespace MEOW.Components.Models;
 
@@ -74,12 +75,12 @@ public class MeowMessageGps(byte userId, int messageNumber, string sender, float
     }
 }
 
-public class MeowMessageQuickChat(byte userId, int messageNumber, string sender, int message, float longitude, float latitude) : MeowMessage(userId, messageNumber, sender)
+public class MeowMessageQuickChat(byte userId, int messageNumber, string sender, float longitude, float latitude, QuickChatMessageType type) : MeowMessage(userId, messageNumber, sender)
 {
-    public override MessageType Type => MessageType.TEXT;
-    public int Message { get; set; } = message;
+    public override MessageType Type => MessageType.QUICKCHAT;
     public float Longitude { get; set; } = longitude;
     public float Latitude { get; set; } = latitude;
+    public QuickChatMessageType QMessageType { get; set; } = type;
 
     
     //Lig den som en byte
@@ -88,9 +89,9 @@ public class MeowMessageQuickChat(byte userId, int messageNumber, string sender,
     {
         base.SerializeCore(writer);
         
-        writer.Write(Message);
         writer.Write(Longitude);
         writer.Write(Latitude);
+        writer.Write((byte) QMessageType);
     }
 }
 

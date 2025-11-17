@@ -23,7 +23,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<IUserStateService, UserStateService>();
 
         builder.Services.AddSingleton<INavService, NavService>();
-
+        builder.Services.AddSingleton<IQuickChatService, QuickChatService>();
         builder.Services.AddSingleton<IPinService, PinService>();
         builder.Services.AddSingleton<IMessageService, MessageService>();
         builder.Services.AddSingleton<IChatService, ChatService>();
