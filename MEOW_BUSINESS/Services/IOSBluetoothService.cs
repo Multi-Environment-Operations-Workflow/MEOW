@@ -1,241 +1,27 @@
 #if IOS
-using System.Collections.ObjectModel;
-using Plugin.BLE;
-using Plugin.BLE.Abstractions.Contracts;
-using Plugin.BLE.Abstractions.EventArgs;
 using CoreBluetooth;
 using Foundation;
 using MEOW_BUSINESS.Enums;
 using MEOW_BUSINESS.Models;
+using ObjCRuntime;
 
 namespace MEOW_BUSINESS.Services;
 
-public class IOSBluetoothService : NSObject, IBluetoothService, ICBPeripheralManagerDelegate
+public class IOSBluetoothService(IUserStateService userStateService, IErrorService errorService) : AbstractBluetoothService(errorService), IBluetoothService, ICBPeripheralManagerDelegate
 {
-    private readonly IBluetoothLE _bluetooth = CrossBluetoothLE.Current;
-    private readonly IAdapter _adapter = CrossBluetoothLE.Current.Adapter;
-    private readonly IUserStateService _userStateService;
-
-    public ObservableCollection<MeowDevice> Devices { get; } = new();
-
-    private readonly List<MeowDevice> _connectedDevices = new();
-    
-    private readonly List<MeowDevice> _establishingConnection = new();
-
-    public event Action<byte[]>? DeviceDataReceived;
-    
     private CBPeripheralManager? _peripheralManager;
 
     private CBMutableCharacteristic? _sendCharacteristic;
     private CBMutableCharacteristic? _receiveCharacteristic;
+    
+    public new event Action<byte[]>? DeviceDataReceived;
 
-    public event Action<AdvertisingState, string?>? AdvertisingStateChanged;
+    public new event Action<AdvertisingState, string?>? AdvertisingStateChanged;
 
-    public event Action? PeerConnected;
+    public new event Action? PeerConnected;
+    
 
     private readonly CBUUID chatServiceUuid = CBUUID.FromString(ChatUuids.ChatService.ToString());
-
-    public IOSBluetoothService(IUserStateService userStateService, IErrorService errorService)
-    {
-        _userStateService = userStateService;
-        _adapter.DeviceConnected += (s, a) =>
-        {
-            var device = a.Device;
-            if (_connectedDevices.All(cd => cd.Id != device.Id))
-            {
-                _connectedDevices.Add(new MeowDevice(device.Name ?? string.Empty, device.Id, device));
-            }
-            _connectedDevices.Add(_establishingConnection.FirstOrDefault(d => d.Id == device.Id)!);
-            _establishingConnection.RemoveAll(d => d.Id == device.Id);
-            PeerConnected?.Invoke();
-        };
-        
-        _adapter.DeviceConnectionLost += (s, a) =>
-        {
-            var device = a.Device;
-            _connectedDevices.RemoveAll(cd => cd.Id == device.Id);
-        };
-        
-        _adapter.DeviceConnectionError += (s, a) =>
-        {
-            var device = a.Device;
-            _connectedDevices.RemoveAll(cd => cd.Id == device.Id);
-            _establishingConnection.RemoveAll(d => d.Id == device.Id);
-            errorService.Add(new Exception($"Connection error with device {device.Name}"));
-        };
-
-        try
-        {
-            var currentlyConnected = _adapter?.ConnectedDevices;
-            if (currentlyConnected != null)
-            {
-                foreach (var dev in currentlyConnected)
-                {
-                    if (_connectedDevices.All(cd => cd.Id != dev.Id))
-                    {
-                        _connectedDevices.Add(new MeowDevice(dev.Name ?? string.Empty, dev.Id, dev));
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Failed to populate connected devices: {ex}");
-        }
-    }
-
-    public async Task<bool> ScanAsync()
-    {
-        Devices.Clear();
-        if (_bluetooth == null || _adapter == null)
-            throw new InvalidOperationException("Bluetooth not initialized");
-        if (!_bluetooth.IsOn)
-            throw new Exception("Bluetooth is off");
-
-        var foundDevices = new List<IDevice>();
-
-        EventHandler<DeviceEventArgs> discoveredHandler = (s, a) =>
-        {
-            if (foundDevices.Contains(a.Device)) return;
-            foundDevices.Add(a.Device);
-
-            if (a.Device.Name != null)
-            {
-                Devices.Add(new MeowDevice(a.Device.Name, a.Device.Id, a.Device));
-            }
-        };
-
-        _adapter.DeviceDiscovered += discoveredHandler;
-        try
-        {
-            await _adapter.StartScanningForDevicesAsync();
-        }
-        finally
-        {
-            _adapter.DeviceDiscovered -= discoveredHandler;
-        }
-        
-        return true;
-    }
-
-    public Task<bool> ScanAsyncAutomatically()
-    {
-        throw new NotImplementedException();
-    }
-
-    public Task RunInBackground(TimeSpan timeSpan, Func<Task> func)
-    {
-        throw new NotImplementedException();
-    }
-
-    public bool CheckConnection()
-    {
-        return _adapter.ConnectedDevices.Count > 0;
-    }
-
-    /// <summary>
-    /// Gets the list of currently connected devices.
-    /// </summary>
-    /// <returns>List of connected MeowDevice instances.</returns>
-    public List<MeowDevice> GetConnectedDevices()
-    {
-        return _connectedDevices.ToList();
-    }
-
-    public async Task<(bool, List<Exception>)> SendToAllAsync(byte[] data)
-    {
-        var anySuccess = false;
-        var exceptions = new List<Exception>();
-        var targets = _connectedDevices.ToList();
-
-        foreach (var device in targets)
-        {
-            try
-            {
-                var native = device.NativeDevice;
-                
-                if (native == null)
-                    throw new Exception($"Native device is null for {device.Name}");
-
-                if (_adapter.ConnectedDevices.All(d => d.Id != native.Id))
-                {
-                    await _adapter.ConnectToDeviceAsync(native).ConfigureAwait(false);
-                }
-
-                var services = await native.GetServicesAsync().ConfigureAwait(false);
-
-                var expectedServiceId = ChatUuids.ChatService.ToString();
-                var service = services.FirstOrDefault(s => string.Equals(s.Id.ToString(), expectedServiceId, StringComparison.OrdinalIgnoreCase));
-
-                if (service == null)
-                {
-                    Console.WriteLine($"Service {expectedServiceId} not found on {device.Name}. Available services:");
-                    foreach (var s in services)
-                    {
-                        Console.WriteLine($"  - {s.Id}");
-                    }
-                    throw new Exception($"Service {expectedServiceId} not found on {device.Name}.");
-                }
-
-                var characteristics = await service.GetCharacteristicsAsync().ConfigureAwait(false);
-                var expectedCharId = ChatUuids.MessageReceiveCharacteristic.ToString();
-                var characteristic = characteristics.FirstOrDefault(c => string.Equals(c.Id.ToString(), expectedCharId, StringComparison.OrdinalIgnoreCase));
-
-                if (characteristic == null)
-                {
-                    Console.WriteLine($"Characteristic {expectedCharId} not found on {device.Name}. Available characteristics:");
-                    foreach (var c in characteristics)
-                    {
-                        Console.WriteLine($"  - {c.Id}");
-                    }
-                    throw new Exception($"Characteristic {expectedCharId} not found on {device.Name}.");
-                }
-
-                await characteristic.WriteAsync(data).ConfigureAwait(false);
-                anySuccess = true;
-            }
-            catch (Exception ex)
-            {
-                exceptions.Add(ex);
-            }
-        }
-
-        return (anySuccess, exceptions);
-    }
-
-    public async Task ConnectAsync(MeowDevice device)
-    {
-        _establishingConnection.Add(device);
-        if (device?.NativeDevice == null)
-            throw new ArgumentNullException(nameof(device));
-
-        await _adapter.ConnectToDeviceAsync(device.NativeDevice).ConfigureAwait(false);
-
-        // Optionally, you can enumerate services if you need to initialize something.
-        var services = await device.NativeDevice.GetServicesAsync().ConfigureAwait(false);
-        foreach (var service in services)
-        {
-            var characteristics = await service.GetCharacteristicsAsync().ConfigureAwait(false);
-
-            foreach (var characteristic in characteristics)
-            {
-                // Subscribe only if it's a readable or notifiable characteristic
-                if (characteristic.CanUpdate)
-                {
-                    characteristic.ValueUpdated += (s, a) =>
-                    {
-                        var data = a.Characteristic?.Value;
-                        if (data != null && data.Length > 0)
-                        {
-                            DeviceDataReceived?.Invoke(data);
-                        }
-                    };
-
-                    await characteristic.StartUpdatesAsync().ConfigureAwait(false);
-                }
-            }
-        }
-    }
 
 
     public async Task StartAdvertisingAsync(string name)
@@ -292,7 +78,7 @@ public class IOSBluetoothService : NSObject, IBluetoothService, ICBPeripheralMan
         }
 
         // Only advertise AFTER the service is added successfully
-        var advertiseName = String.Concat("(MEOW) ", _userStateService.GetName());
+        var advertiseName = String.Concat("(MEOW) ", userStateService.GetName());
         var advertisementData = new NSMutableDictionary
         {
             { CBAdvertisement.DataLocalNameKey, new NSString(advertiseName) },
@@ -365,5 +151,14 @@ public class IOSBluetoothService : NSObject, IBluetoothService, ICBPeripheralMan
         }
     }
 
+    public void Dispose()
+    {
+        _peripheralManager?.Dispose();
+        _sendCharacteristic?.Dispose();
+        _receiveCharacteristic?.Dispose();
+        chatServiceUuid.Dispose();
+    }
+
+    public NativeHandle Handle { get; }
 }
 #endif
