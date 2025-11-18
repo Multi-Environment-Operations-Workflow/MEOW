@@ -4,6 +4,14 @@ namespace MEOW_BUSINESS.Services;
 
 public class MessageService(IBluetoothService bluetooth, IErrorService errorService) : IMessageService
 {
+
+    public record ChatEntry(string Name, string Content, DateTime Time);
+
+    public static class Chatlog
+    {
+        public static List<ChatEntry> message_log { get; } = new();
+    }
+
     static int MessageCount { get; set; }
     
     private readonly List<MeowMessage> _messages = new();
@@ -16,6 +24,7 @@ public class MessageService(IBluetoothService bluetooth, IErrorService errorServ
     // Sends a message using the bluetooth service
     public async Task<(bool, List<Exception>)> SendMessage(MeowMessage message)
     {
+        
         if (message is null)
         {
             var exception = new ArgumentNullException(nameof(message), "Message cannot be null");
@@ -26,6 +35,21 @@ public class MessageService(IBluetoothService bluetooth, IErrorService errorServ
         //throw new Exception($"Sending {message}");
 
         _messages.Add(message);
+        
+
+        string name = message.Sender;
+
+        string content = message is MeowMessageText textMsg
+            ? textMsg.Message
+            : message.Type.ToString();
+
+        MessageService.Chatlog.message_log.Add(new ChatEntry(
+            name,
+            content,
+            DateTime.Now
+        ));
+
+
 
         var bytes = message.Serialize();
 
@@ -55,6 +79,18 @@ public class MessageService(IBluetoothService bluetooth, IErrorService errorServ
                 }
                 
                 onMessage(typedMessage);
+
+                string name = typedMessage.Sender;
+
+                string content = typedMessage is MeowMessageText textMsg
+                    ? textMsg.Message
+                    : typedMessage.Type.ToString();   // fallback til GPS/TASK/etc
+
+                Chatlog.message_log.Add(new ChatEntry(
+                    name,
+                    content,
+                    DateTime.Now
+                ));
                 RedistributeMessageToAllNodes(message);
                 _messages.Add(message);
             }

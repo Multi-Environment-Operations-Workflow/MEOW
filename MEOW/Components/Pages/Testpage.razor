@@ -1,0 +1,475 @@
+@page "/test-page"
+@using System.Collections.Specialized
+@using MEOW_BUSINESS.Models
+@using MEOW_BUSINESS.Services
+@inject IChatService ChatService
+@inject NavigationManager Navigation
+@using System.Timers
+@inject IErrorService ErrorService
+@inject IUserStateService UserStateService
+@using System.Text
+@using System.IO
+
+<div class="text-center mt-4">
+    <button class="btn btn-warning btn-lg rounded-pill fw-semibold" @onclick="SaveCsvAsync">
+        💾 Save CSV in Downloads
+    </button>
+</div>
+
+
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow-lg border-0 rounded-4">
+                <div class="card-body p-4">
+                    <h3 class="text-center mb-4 text-primary fw-bold">📨 Test – Send messages</h3>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Chose a message</label>
+                        <select class="form-select" @bind="SelectedPresetMessage">
+                            @foreach (var msg in PresetMessages)
+                            {
+                                <option value="@msg">@msg</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Number of messages</label>
+                        <select class="form-select" @bind="MessageCount">
+                            @foreach (var n in new[] { 1, 5, 10, 20, 50, 100, 1000, 10000 })
+                            {
+                                <option value="@n">@n</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">Over how much time (seconds)</label>
+                        <select class="form-select" @bind="DurationSeconds">
+                            @foreach (var s in new[] { 1, 5, 10, 30, 60 })
+                            {
+                                <option value="@s">@s sekunder</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="d-grid">
+                        <button class="btn btn-primary btn-lg rounded-pill fw-semibold" @onclick="StartSending" disabled="@IsRunning">
+                            @if (IsRunning)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                <span>sending...</span>
+                            }
+                            else
+                            {
+                                <span>🚀 Start sending</span>
+                            }
+                        </button>
+                    </div>
+
+                    @if (IsRunning)
+                    {
+                        <div class="alert alert-info mt-4 text-center mb-0">
+                            sending is going...
+                        </div>
+                    }
+
+                    @if (ElapsedSeconds is not null)
+                    {
+                        <div class="alert alert-success mt-4 text-center mb-0">
+                            ✅ Done! Stats: <strong>@ElapsedSeconds?.ToString("0.00") seconds</strong>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(StatusMessage))
+                    {
+                        <div class="alert alert-secondary mt-3 text-center">@StatusMessage</div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODTAG PANEL -->
+    <div class="row justify-content-center mt-5">
+        <div class="col-md-8">
+            <div class="card shadow border-0 rounded-4">
+                <div class="card-body p-4">
+                    <h4 class="text-center text-success fw-bold mb-4">📥 Inbox</h4>
+
+                    @if (!IsReceiving)
+                    {
+                        <div class="text-center mb-3">
+                            <button class="btn btn-success btn-lg rounded-pill fw-semibold" @onclick="StartReceiving">
+                                ▶️ Start receiving
+                            </button>
+                        </div>
+                    }
+
+                    @if (IsReceiving)
+                    {
+                        <div class="alert alert-info text-center">Receiving messages...</div>
+                    }
+
+                    @if (ReceiveCount > 0)
+                    {
+                        <div class="mt-3">
+                            <ul class="list-group">
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span><strong>📦 Received:</strong></span>
+                                    <span>@ReceiveCount Messages</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span><strong>⏰ Start time:</strong></span>
+                                    <span>@ReceiveStartTime?.ToString("HH:mm:ss.fff")</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span><strong>⚡ Speed:</strong></span>
+                                    <span>@(ReceiveDuration > 0 ? (ReceiveCount / ReceiveDuration).ToString("0.00") : "0") Messages/sec.</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span><strong>🕒 Total time:</strong></span>
+                                    <span>@ReceiveDuration.ToString("0.00") sec.</span>
+                                </li>
+                            </ul>
+                        </div>
+                    }
+
+                    @if (ReceiveCompleted)
+                    {
+                        <div class="alert alert-success mt-4 text-center mb-0">
+                            ✅ Recieving ended after  <strong>@ReceiveDuration.ToString("0.00") seconds</strong>
+                            – @ReceiveCount messages recieved.
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FEJL PANEL Usiker på om den stadig bliver brugt, sidst testet 2 uger siden-->
+    @if (ErrorDetails.Any())
+    {
+        <div class="mt-5 p-4 border rounded bg-light">
+            <h5 class="fw-bold text-danger mb-3">🚨 Error details</h5>
+            @foreach (var e in ErrorDetails)
+            {
+                <div class="mb-4">
+                    <div><strong>Message:</strong> @e.MessageNumber / @MessageCount</div>
+                    <div><strong>Content:</strong> @e.MessageText</div>
+                    <div><strong>Type:</strong> @e.ExceptionType</div>
+                    <div><strong>Error:</strong> @e.Message</div>
+                    <pre class="bg-white border p-2 mt-2 rounded" style="font-size:0.8em; white-space:pre-wrap;">@e.StackTrace</pre>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+
+    private string SelectedPresetMessage { get; set; } = "Hej";
+    private int ReceiveTimeoutSeconds { get; set; } = 5;
+
+    private int MessageCount { get; set; } = 1;
+    private int DurationSeconds { get; set; } = 1;
+
+    private bool IsRunning { get; set; }
+    private double? ElapsedSeconds { get; set; }
+    private string StatusMessage { get; set; } = "";
+
+    private List<string> PresetMessages = new() { "Hej", "Test", "Status OK", "Fejl fundet" };
+    private List<ErrorInfo> ErrorDetails { get; set; } = new();
+
+    private bool IsReceiving { get; set; }
+    private bool ReceiveCompleted { get; set; }
+    private int ReceiveCount { get; set; }
+    private DateTime? ReceiveStartTime { get; set; }
+    private DateTime? ReceiveEndTime { get; set; }
+    private double ReceiveDuration => (ReceiveEndTime.HasValue && ReceiveStartTime.HasValue)
+        ? (ReceiveEndTime.Value - ReceiveStartTime.Value).TotalSeconds
+        : 0;
+
+    private System.Timers.Timer? _timeoutTimer;
+
+private async Task SaveCsvAsync()
+{
+#if ANDROID
+    try
+    {
+        var log = MessageService.Chatlog.message_log;
+
+        var sb = new StringBuilder();
+        sb.AppendLine("Name,Message,Timestamp");
+
+        foreach (var entry in log)
+        {
+            sb.AppendLine(
+                $"\"{entry.Name}\",\"{entry.Content}\",\"{entry.Time:HH:mm:ss.fff}\""
+            );
+        }
+
+        var bytes = Encoding.UTF8.GetBytes(sb.ToString());
+        var fileName = $"chatlog_{DateTime.Now:yyyyMMdd_HHmmss}.csv";
+
+        var context = Android.App.Application.Context;
+
+        var values = new Android.Content.ContentValues();
+        values.Put(Android.Provider.MediaStore.IMediaColumns.DisplayName, fileName);
+        values.Put(Android.Provider.MediaStore.IMediaColumns.MimeType, "text/csv");
+        values.Put(Android.Provider.MediaStore.Files.FileColumns.RelativePath, "Download/");
+        values.Put(Android.Provider.MediaStore.IMediaColumns.IsPending, true);
+
+        var uri = context.ContentResolver.Insert(
+            Android.Provider.MediaStore.Downloads.ExternalContentUri,
+            values
+        );
+
+        if (uri == null)
+            throw new Exception("Kunne ikke oprette fil i MediaStore!");
+
+        using (var stream = context.ContentResolver.OpenOutputStream(uri, "w"))
+        {
+            stream.Write(bytes, 0, bytes.Length);
+        }
+
+        values = new Android.Content.ContentValues();
+        values.Put(Android.Provider.MediaStore.IMediaColumns.IsPending, false);
+        context.ContentResolver.Update(uri, values, null, null);
+
+        StatusMessage = $"✔️ Fil gemt i Downloads: {fileName}";
+    }
+    catch (Exception ex)
+    {
+        StatusMessage = "❌ Fejl: " + ex.Message;
+    }
+#else
+    StatusMessage = "Ikke understøttet på denne platform.";
+#endif
+
+    StateHasChanged();
+}
+
+
+
+    private void StartReceiving()
+    {
+        if (IsReceiving) return;
+
+        IsReceiving = true;
+        ReceiveCompleted = false;
+        ReceiveCount = 0;
+        ReceiveStartTime = null;
+        ReceiveEndTime = null;
+
+        var messages = ChatService.GetChatMessages();
+        foreach (var msg in messages)
+        {
+            HandleIncomingMessage(msg);
+        }
+
+        // Subscribe using correct event handler type
+        ChatService.SetupChatMessageReceivedAction(OnCollectionChanged);
+
+        StateHasChanged();
+    }
+
+    
+    private void OnCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.NewItems != null)
+        {
+            foreach (var item in e.NewItems)
+            {
+                if (item is MeowMessageText msg)
+                {
+                    HandleIncomingMessage(msg);
+                }
+            }
+        }
+    }
+
+   
+    private void HandleIncomingMessage(MeowMessageText msg)
+    {
+
+        if (ReceiveStartTime is null)
+            ReceiveStartTime = DateTime.Now;
+
+        ReceiveCount++;
+        ReceiveEndTime = DateTime.Now;
+
+        _timeoutTimer?.Stop();
+        _timeoutTimer ??= new System.Timers.Timer(ReceiveTimeoutSeconds * 1000);
+        _timeoutTimer.Elapsed -= new System.Timers.ElapsedEventHandler(TimeoutElapsed);
+        _timeoutTimer.Elapsed += new System.Timers.ElapsedEventHandler(TimeoutElapsed);
+        _timeoutTimer.AutoReset = false;
+        _timeoutTimer.Start();
+
+        try
+        {
+            InvokeAsync(StateHasChanged);
+        }
+        catch (NotImplementedException)
+        {
+            Console.WriteLine("NotImplementedException ignoreret – AndroidNotificationManagerService ikke aktiv.");
+        }
+    }
+
+    private void TimeoutElapsed(object? sender, ElapsedEventArgs e) => StopReceiving();
+
+    private void StopReceiving()
+    {
+        if (!IsReceiving) return;
+
+        _timeoutTimer?.Stop();
+        _timeoutTimer?.Dispose();
+        _timeoutTimer = null;
+
+        IsReceiving = false;
+        ReceiveCompleted = true;
+        ReceiveEndTime ??= DateTime.Now;
+        InvokeAsync(StateHasChanged);
+    }
+
+    
+    private async Task StartSending()
+    {
+        if (IsRunning) return;
+        if (string.IsNullOrWhiteSpace(SelectedPresetMessage))
+        {
+            StatusMessage = "⚠️ Vælg en besked først.";
+            return;
+        }
+
+        IsRunning = true;
+        ElapsedSeconds = null;
+        ErrorDetails.Clear();
+        StatusMessage = "Starter afsendelse...";
+        StateHasChanged();
+
+        try
+        {
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            double totalMs = DurationSeconds * 1000.0;
+            double intervalMs = MessageCount > 1 ? totalMs / (MessageCount - 1) : 0;
+
+            for (int i = 0; i < MessageCount; i++)
+            {
+                var msg = $"{SelectedPresetMessage} #{i + 1}";
+
+                var plannedTime = i * intervalMs;
+
+                try
+                {
+                    var result = await ChatService.SendMessage(msg);
+                    if (!result.Item1)
+                    {
+                        var exceptions = result.Item2?.Any() == true
+                            ? result.Item2.SelectMany(UnwrapExceptions)
+                            : new[] { new Exception("Ukendt fejl — SendMessage returnerede false uden exceptions") };
+
+                        foreach (var ex in exceptions)
+                        {
+                            ErrorDetails.Add(new ErrorInfo
+                            {
+                                MessageNumber = i + 1,
+                                MessageText = msg,
+                                ExceptionType = ex.GetType().FullName ?? "Ukendt",
+                                Message = ex.Message,
+                                StackTrace = ex.ToString()
+                            });
+                        }
+
+                        ErrorService.Add(exceptions.ToList());
+                        StatusMessage = $"❌ Fejl ved besked {i + 1} (se detaljer nedenfor)";
+                        StateHasChanged();
+                        break;
+                    }
+
+                    StatusMessage = $"✅ Sendt {i + 1}/{MessageCount}";
+                }
+                catch (Exception sendEx)
+                {
+                    foreach (var ex in UnwrapExceptions(sendEx))
+                    {
+                        ErrorDetails.Add(new ErrorInfo
+                        {
+                            MessageNumber = i + 1,
+                            MessageText = msg,
+                            ExceptionType = ex.GetType().FullName ?? "Ukendt",
+                            Message = ex.Message,
+                            StackTrace = ex.ToString()
+                        });
+                    }
+
+                    ErrorService.Add(sendEx);
+                    StatusMessage = $"💥 Fejl ved besked {i + 1}: {sendEx.Message}";
+                    StateHasChanged();
+                    break;
+                }
+
+                var elapsed = stopwatch.Elapsed.TotalMilliseconds;
+                var waitMs = plannedTime + intervalMs - elapsed;
+                if (waitMs > 0)
+                    await Task.Delay((int)waitMs);
+
+                StateHasChanged();
+            }
+
+            stopwatch.Stop();
+            ElapsedSeconds = stopwatch.Elapsed.TotalSeconds;
+            StatusMessage = $"✅ Afsendelse færdig ({ElapsedSeconds:0.00}s)";
+        }
+        catch (Exception ex)
+        {
+            if (ex is NotImplementedException)
+            {
+                StatusMessage = "⚠️ Notifikationer er ikke implementeret (ignoreres i test).";
+                StateHasChanged();
+                return;
+            }
+
+            foreach (var inner in UnwrapExceptions(ex))
+            {
+                ErrorDetails.Add(new ErrorInfo
+                {
+                    MessageNumber = 0,
+                    MessageText = "(ukendt)",
+                    ExceptionType = inner.GetType().FullName ?? "Ukendt",
+                    Message = inner.Message,
+                    StackTrace = inner.ToString()
+                });
+            }
+
+            ErrorService.Add(ex);
+            StatusMessage = "💥 Generel fejl under afsendelse (se detaljer nedenfor)";
+            StateHasChanged();
+        }
+        finally
+        {
+            IsRunning = false;
+            StateHasChanged();
+        }
+    }
+
+    private static IEnumerable<Exception> UnwrapExceptions(Exception ex)
+    {
+        if (ex is AggregateException agg)
+            return agg.InnerExceptions.SelectMany(UnwrapExceptions);
+        if (ex.InnerException is not null)
+            return new[] { ex }.Concat(UnwrapExceptions(ex.InnerException));
+        return new[] { ex };
+    }
+
+    private class ErrorInfo
+    {
+        public int MessageNumber { get; set; }
+        public string MessageText { get; set; } = "";
+        public string ExceptionType { get; set; } = "";
+        public string Message { get; set; } = "";
+        public string StackTrace { get; set; } = "";
+    }
+}

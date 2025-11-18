@@ -95,7 +95,8 @@
             if (e.Action != NotifyCollectionChangedAction.Add || e.NewItems == null) return;
             _messages.AddRange(e.NewItems.Cast<MeowMessageText>());
             InvokeAsync(StateHasChanged);
-        }
+        }   
+        
         catch (Exception ex)
         {
             ErrorService.Add(ex);
