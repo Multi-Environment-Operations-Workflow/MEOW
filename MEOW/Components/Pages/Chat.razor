@@ -109,6 +109,14 @@
             if (string.IsNullOrWhiteSpace(_outgoing))
                 return;
 
+            if (ChatService.GetChatParticipantsCount() == 0)
+            {
+                var exceptions = new Exception("No connected device to send messages to.");
+                ErrorService.Add(exceptions);
+                _outgoing = string.Empty;
+                return;
+            }
+            
             var result = await ChatService.SendMessage(_outgoing);
 
             if (!result.Item1)

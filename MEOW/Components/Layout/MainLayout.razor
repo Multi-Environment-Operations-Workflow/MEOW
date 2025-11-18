@@ -3,8 +3,6 @@
 @inherits LayoutComponentBase
 @inject NavigationManager Navigation
 @inject IUserStateService UserStateService
-@inject IChatService ChatService
-@inject IPinService PinService
 @inject IErrorService ErrorService
 
 @if (!UserStateService.IsLoggedIn())
@@ -16,7 +14,7 @@ else
     <div style="display: flex; flex-direction: column; height: 100vh; margin: 0; padding: 0;">
         <div style="flex: 1 0 auto; overflow-y: auto; padding: 0; margin: 0;">
             <div>
-                @foreach (var err in errors)
+                @foreach (var err in _errors)
                 {
                     <MatCard style="margin: 1rem; border: 2px solid red; background-color: #ffe6e6;">
                         <MatCardContent>
@@ -55,6 +53,7 @@ else
             <MatAppBarRow>
                 <MatAppBarSection class="app-bar-sec" Style="display: flex; justify-content: space-around; align-items: center; width: 100%;">
                     <MatIconButton Icon="home" Title="Home" @onclick='() => Navigation.NavigateTo("/")' />
+                    <MatIconButton Icon="warning" Title="Quick Chat" @onclick='() => Navigation.NavigateTo("/quickChat")' />
                     <MatIconButton Icon="chat" Title="Chat" @onclick='() => Navigation.NavigateTo("/Chat")' />
                     <MatIconButton Icon="dashboard" Title="Pinboard" @onclick='() => Navigation.NavigateTo("/Pinboard")' />
                     <MatIconButton Icon="schema" Title="Mesh Diagram" @onclick='() => Navigation.NavigateTo("/MeshDiagram")' />
@@ -67,7 +66,8 @@ else
 }
 
 @code {
-    List<Exception> errors = new();
+    List<Exception> _errors = new();
+    HashSet<string> _errorsMessages = new();
 
     public void Logout()
     {
@@ -84,14 +84,18 @@ else
     {
         foreach (var exception in ex)
         {
-            errors.Add(exception);
+            if (_errorsMessages.Add(exception.Message))
+            {
+                _errors.Add(exception);
+            }
         }
         InvokeAsync(StateHasChanged);
     }
 
     void RemoveError(Exception ex)
     {
-        errors.Remove(ex);
+        _errors.Remove(ex);
+        _errorsMessages.Remove(ex.Message);
         StateHasChanged();
     }
     

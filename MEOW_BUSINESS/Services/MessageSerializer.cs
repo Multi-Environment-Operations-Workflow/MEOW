@@ -31,6 +31,7 @@ public class MessageSerializer : IMessageSerializer
             {
                 MessageType.TEXT => JsonSerializer.Deserialize<MeowMessageText>(json) ?? throw new InvalidDataException("Failed to deserialize TEXT message."),
                 MessageType.GPS => JsonSerializer.Deserialize<MeowMessageGps>(json) ?? throw new InvalidDataException("Failed to deserialize GPS message."),
+                MessageType.QUICKCHAT => JsonSerializer.Deserialize<MeowMessageQuickChat>(json) ?? throw new InvalidDataException("Failed to deserialize QUICKCHAT message."),
                 _ => throw new NotSupportedException($"Message Type {type} is not supported")
             };
         }

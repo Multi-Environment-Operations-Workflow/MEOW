@@ -2,6 +2,7 @@ namespace MEOW_BUSINESS.Services;
 
 using System.Text;
 using Models;
+using Enums;
 
 public class ByteDeserializer(byte[] payload, IErrorService errorService)
 {
@@ -20,6 +21,7 @@ public class ByteDeserializer(byte[] payload, IErrorService errorService)
             MessageType.TEXT => DeserializeTextMessage(senderUserId, messageNumber, sender),
             MessageType.TASK => DeserializeTaskMessage(senderUserId, messageNumber, sender),
             MessageType.GPS => DeserializeGpsMessage(senderUserId, messageNumber, sender),
+            MessageType.QUICKCHAT => DeserializeQuickChat(senderUserId, messageNumber, sender),
             _ => DeserializeUnsupportedMessage(type)
         };
     }
@@ -49,6 +51,14 @@ public class ByteDeserializer(byte[] payload, IErrorService errorService)
         float longitude = ReadSingle();
         float latitude = ReadSingle();
         return new MeowMessageGps(senderUserId, messageNumber, sender, longitude, latitude);
+    }
+    
+    private MeowMessageQuickChat DeserializeQuickChat(byte senderUserId, int messageNumber, string sender)
+    {
+        float longitude = ReadSingle();
+        float latitude = ReadSingle();
+        QuickChatMessageType quickChatMessageType = (QuickChatMessageType) ReadByte();
+        return new MeowMessageQuickChat(senderUserId, messageNumber, sender, longitude, latitude, quickChatMessageType);
     }
 
     private byte ReadByte() => payload[_offset++];
