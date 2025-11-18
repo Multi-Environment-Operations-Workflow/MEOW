@@ -4,6 +4,7 @@ using Plugin.BLE.Abstractions.Contracts;
 using Plugin.BLE.Abstractions.EventArgs;
 using MEOW_BUSINESS.Enums;
 using MEOW_BUSINESS.Models;
+using Plugin.BLE.Abstractions;
 
 namespace MEOW_BUSINESS.Services;
 
@@ -154,7 +155,7 @@ public abstract class AbstractBluetoothService
                     await Adapter.ConnectToDeviceAsync(native).ConfigureAwait(false);
                 }
 
-                var services = await native.GetServicesAsync().ConfigureAwait(false);
+                var services = await native.GetServicesAsync();
 
                 var expectedServiceId = ChatUuids.ChatService.ToString();
                 var service = services.FirstOrDefault(s => string.Equals(s.Id.ToString(), expectedServiceId, StringComparison.OrdinalIgnoreCase));
@@ -168,8 +169,25 @@ public abstract class AbstractBluetoothService
                     }
                     throw new Exception($"Service {expectedServiceId} not found on {device.Name}.");
                 }
+                
+                var messageSendChar = (await service.GetCharacteristicsAsync())
+                    .FirstOrDefault(c => c.Id == ChatUuids.MessageSendCharacteristic);
 
-                var characteristics = await service.GetCharacteristicsAsync().ConfigureAwait(false);
+                if (messageSendChar == null)
+                {
+                    throw new Exception($"Message Send Characteristic not found on {device.Name}.");
+                }
+
+                if (messageSendChar.Properties.HasFlag(CharacteristicPropertyType.Notify))
+                {
+                    messageSendChar.ValueUpdated += (s, e) =>
+                    {
+                        DeviceDataReceived?.Invoke(e.Characteristic.Value);
+                    };
+                    await messageSendChar.StartUpdatesAsync();
+                }
+
+                var characteristics = await service.GetCharacteristicsAsync();
                 var expectedCharId = ChatUuids.MessageReceiveCharacteristic.ToString();
                 var characteristic = characteristics.FirstOrDefault(c => string.Equals(c.Id.ToString(), expectedCharId, StringComparison.OrdinalIgnoreCase));
 
