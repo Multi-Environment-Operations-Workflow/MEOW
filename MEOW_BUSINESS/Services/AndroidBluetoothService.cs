@@ -138,10 +138,21 @@ public class AndroidBluetoothService : IBluetoothService // Implementering af IB
                 // Er Services på anden device, finder chatservice, finder hvad vi kan gøre på chatservice, finder characteristic vi kan skrive til.
                 // Finder services, som den anden enhed "tilbyder" Burde gerne være de samme, i denne fil.
                 // Vi får Generic Attribute Profile (Gatt). Nødvendigt da IOS kun kan komunikere via GATT.
-                var services = await device.GetServicesAsync().ConfigureAwait(false);
+                var services = await device.GetServicesAsync();
                 var chatService = services.FirstOrDefault(s => s.Id == ChatUuids.ChatService);
                 if (chatService == null)
                     throw new Exception($"Service {ChatUuids.ChatService} not found on {device.Name}");
+                var messageSendChar = (await chatService.GetCharacteristicsAsync())
+                                      .FirstOrDefault(c => c.Id == ChatUuids.MessageSendCharacteristic);
+
+                if (messageSendChar.Properties.HasFlag(CharacteristicPropertyType.Notify))
+                {
+                    messageSendChar.ValueUpdated += (s, e) =>
+                    {
+                        DeviceDataReceived?.Invoke(e.Characteristic.Value);
+                    };
+                    await messageSendChar.StartUpdatesAsync();
+                }
                 var characteristics = await chatService.GetCharacteristicsAsync().ConfigureAwait(false);
                 var messageReceiveChar = characteristics.FirstOrDefault(c => c.Id == ChatUuids.MessageReceiveCharacteristic);
                 if (messageReceiveChar == null)
