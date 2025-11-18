@@ -12,7 +12,7 @@
 
 <div class="text-center mt-4">
     <button class="btn btn-warning btn-lg rounded-pill fw-semibold" @onclick="SaveCsvAsync">
-        💾 Gem CSV i Downloads
+        💾 Save CSV in Downloads
     </button>
 </div>
 
@@ -23,10 +23,10 @@
         <div class="col-md-6">
             <div class="card shadow-lg border-0 rounded-4">
                 <div class="card-body p-4">
-                    <h3 class="text-center mb-4 text-primary fw-bold">📨 Test – Send beskeder</h3>
+                    <h3 class="text-center mb-4 text-primary fw-bold">📨 Test – Send messages</h3>
 
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Vælg foruddefineret besked</label>
+                        <label class="form-label fw-semibold">Chose a message</label>
                         <select class="form-select" @bind="SelectedPresetMessage">
                             @foreach (var msg in PresetMessages)
                             {
@@ -36,7 +36,7 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Antal beskeder</label>
+                        <label class="form-label fw-semibold">Number of messages</label>
                         <select class="form-select" @bind="MessageCount">
                             @foreach (var n in new[] { 1, 5, 10, 20, 50, 100, 1000, 10000 })
                             {
@@ -46,7 +46,7 @@
                     </div>
 
                     <div class="mb-4">
-                        <label class="form-label fw-semibold">Over hvor lang tid (sekunder)</label>
+                        <label class="form-label fw-semibold">Over how much time (seconds)</label>
                         <select class="form-select" @bind="DurationSeconds">
                             @foreach (var s in new[] { 1, 5, 10, 30, 60 })
                             {
@@ -60,11 +60,11 @@
                             @if (IsRunning)
                             {
                                 <span class="spinner-border spinner-border-sm me-2" role="status"></span>
-                                <span>Afsender...</span>
+                                <span>sending...</span>
                             }
                             else
                             {
-                                <span>🚀 Start afsendelse</span>
+                                <span>🚀 Start sending</span>
                             }
                         </button>
                     </div>
@@ -72,14 +72,14 @@
                     @if (IsRunning)
                     {
                         <div class="alert alert-info mt-4 text-center mb-0">
-                            Afsendelse er i gang...
+                            sending is going...
                         </div>
                     }
 
                     @if (ElapsedSeconds is not null)
                     {
                         <div class="alert alert-success mt-4 text-center mb-0">
-                            ✅ Færdig! Varighed: <strong>@ElapsedSeconds?.ToString("0.00") sekunder</strong>
+                            ✅ Done! Stats: <strong>@ElapsedSeconds?.ToString("0.00") seconds</strong>
                         </div>
                     }
 
@@ -97,20 +97,20 @@
         <div class="col-md-8">
             <div class="card shadow border-0 rounded-4">
                 <div class="card-body p-4">
-                    <h4 class="text-center text-success fw-bold mb-4">📥 Modtagelse af beskeder</h4>
+                    <h4 class="text-center text-success fw-bold mb-4">📥 Inbox</h4>
 
                     @if (!IsReceiving)
                     {
                         <div class="text-center mb-3">
                             <button class="btn btn-success btn-lg rounded-pill fw-semibold" @onclick="StartReceiving">
-                                ▶️ Start modtagelse
+                                ▶️ Start receiving
                             </button>
                         </div>
                     }
 
                     @if (IsReceiving)
                     {
-                        <div class="alert alert-info text-center">Modtager beskeder...</div>
+                        <div class="alert alert-info text-center">Receiving messages...</div>
                     }
 
                     @if (ReceiveCount > 0)
@@ -118,20 +118,20 @@
                         <div class="mt-3">
                             <ul class="list-group">
                                 <li class="list-group-item d-flex justify-content-between">
-                                    <span><strong>📦 Modtaget:</strong></span>
-                                    <span>@ReceiveCount beskeder</span>
+                                    <span><strong>📦 Received:</strong></span>
+                                    <span>@ReceiveCount Messages</span>
                                 </li>
                                 <li class="list-group-item d-flex justify-content-between">
-                                    <span><strong>⏰ Starttidspunkt:</strong></span>
+                                    <span><strong>⏰ Start time:</strong></span>
                                     <span>@ReceiveStartTime?.ToString("HH:mm:ss.fff")</span>
                                 </li>
                                 <li class="list-group-item d-flex justify-content-between">
-                                    <span><strong>⚡ Hastighed:</strong></span>
-                                    <span>@(ReceiveDuration > 0 ? (ReceiveCount / ReceiveDuration).ToString("0.00") : "0") beskeder/sek.</span>
+                                    <span><strong>⚡ Speed:</strong></span>
+                                    <span>@(ReceiveDuration > 0 ? (ReceiveCount / ReceiveDuration).ToString("0.00") : "0") Messages/sec.</span>
                                 </li>
                                 <li class="list-group-item d-flex justify-content-between">
-                                    <span><strong>🕒 Samlet varighed:</strong></span>
-                                    <span>@ReceiveDuration.ToString("0.00") sek.</span>
+                                    <span><strong>🕒 Total time:</strong></span>
+                                    <span>@ReceiveDuration.ToString("0.00") sec.</span>
                                 </li>
                             </ul>
                         </div>
@@ -140,8 +140,8 @@
                     @if (ReceiveCompleted)
                     {
                         <div class="alert alert-success mt-4 text-center mb-0">
-                            ✅ Modtagelse afsluttet efter <strong>@ReceiveDuration.ToString("0.00") sekunder</strong>
-                            – @ReceiveCount beskeder modtaget.
+                            ✅ Recieving ended after  <strong>@ReceiveDuration.ToString("0.00") seconds</strong>
+                            – @ReceiveCount messages recieved.
                         </div>
                     }
                 </div>
@@ -153,14 +153,14 @@
     @if (ErrorDetails.Any())
     {
         <div class="mt-5 p-4 border rounded bg-light">
-            <h5 class="fw-bold text-danger mb-3">🚨 Fejldetaljer</h5>
+            <h5 class="fw-bold text-danger mb-3">🚨 Error details</h5>
             @foreach (var e in ErrorDetails)
             {
                 <div class="mb-4">
-                    <div><strong>Besked:</strong> @e.MessageNumber / @MessageCount</div>
-                    <div><strong>Indhold:</strong> @e.MessageText</div>
+                    <div><strong>Message:</strong> @e.MessageNumber / @MessageCount</div>
+                    <div><strong>Content:</strong> @e.MessageText</div>
                     <div><strong>Type:</strong> @e.ExceptionType</div>
-                    <div><strong>Fejl:</strong> @e.Message</div>
+                    <div><strong>Error:</strong> @e.Message</div>
                     <pre class="bg-white border p-2 mt-2 rounded" style="font-size:0.8em; white-space:pre-wrap;">@e.StackTrace</pre>
                 </div>
             }
