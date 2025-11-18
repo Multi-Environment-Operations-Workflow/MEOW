@@ -149,7 +149,7 @@
         </div>
     </div>
 
-    <!-- FEJL PANEL -->
+    <!-- FEJL PANEL Usiker på om den stadig bliver brugt, sidst testet 2 uger siden-->
     @if (ErrorDetails.Any())
     {
         <div class="mt-5 p-4 border rounded bg-light">
@@ -276,7 +276,7 @@ private async Task SaveCsvAsync()
         StateHasChanged();
     }
 
-    // The correct signature for NotifyCollectionChangedEventHandler
+    
     private void OnCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         if (e.NewItems != null)
