@@ -18,7 +18,11 @@ public interface IBluetoothService
     ObservableCollection<MeowDevice> Devices { get; }
     
     Task<bool> ScanAsync();
-    Task KeepScanning(TimeSpan timeSpan);
+    
+    Task<bool> ScanAsyncAutomatically();
+    
+    Task RunInBackground(TimeSpan timeSpan, Func<Task> func);
+    
     Task ConnectAsync(MeowDevice device);
 
     List<MeowDevice> GetConnectedDevices();

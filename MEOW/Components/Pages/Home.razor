@@ -165,21 +165,20 @@
 
     private async Task StopAdvertisingAsync() => await Bluetooth.StopAdvertisingAsync();
 
-    private async Task RunAsyncScan()
+    private async Task ScanAsyncAutomatically()
     {
         if (_isScanning) return;
         _isScanning = true;
-        try
+        try { await Bluetooth.ScanAsyncAutomatically(); }
+        catch (Exception ex)
         {
-            await Bluetooth.KeepScanning(TimeSpan.FromSeconds(10));
-        }
-        catch (OperationCanceledException e)
-        {
-            ErrorService.Add(e);
+            ErrorService.Add(ex);
         }
         _isScanning = false;
     }
-    
+
+    private async void RunAsyncScan() => await Bluetooth.RunInBackground(TimeSpan.FromSeconds(10), ScanAsyncAutomatically);
+
     private void Logout()
     {
         UserStateService.ResetState();
