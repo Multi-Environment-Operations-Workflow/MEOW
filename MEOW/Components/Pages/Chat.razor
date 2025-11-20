@@ -114,7 +114,7 @@
             if (!result.Item1)
             {
                 var exceptions = !result.Item2.Any()
-                    ? [new Exception("unknown error")]
+                    ? [new Exception("No one to send a message to!")]
                     : result.Item2;
 
                 ErrorService.Add(exceptions);
