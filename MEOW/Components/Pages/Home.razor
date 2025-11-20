@@ -103,7 +103,7 @@
         }
 
         _name = UserStateService.GetName();
-        _devices = Bluetooth.Devices;
+        _devices = Bluetooth.DiscoveredDevices;
 
         Bluetooth.AdvertisingStateChanged += OnAdvertisingStateChanged;
         Bluetooth.PeerConnected += OnPeerConnected;

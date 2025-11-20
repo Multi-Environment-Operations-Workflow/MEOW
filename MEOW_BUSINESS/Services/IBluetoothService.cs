@@ -15,11 +15,11 @@ public interface IBluetoothService
     
     public event Action<byte[]>? DeviceDataReceived;
 
-    ObservableCollection<MeowDevice> Devices { get; }
+    ObservableCollection<MeowDevice> DiscoveredDevices { get; }
     
     Task<bool> ScanAsync();
     
-    Task<bool> ScanAsyncAutomatically();
+    Task ScanAsyncAutomatically();
     
     Task RunInBackground(TimeSpan timeSpan, Func<Task> func);
     
