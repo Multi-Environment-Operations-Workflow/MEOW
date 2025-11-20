@@ -31,7 +31,7 @@ public class MessageService(IBluetoothService bluetooth, IErrorService errorServ
             errorService.Add(exception);
             return (false, [exception]);
         }
-
+        message.Time = DateTime.Now;
         //throw new Exception($"Sending {message}");
 
         _messages.Add(message);
@@ -71,7 +71,7 @@ public class MessageService(IBluetoothService bluetooth, IErrorService errorServ
                 {
                     return;
                 }
-
+                message.Time = DateTime.Now;
                 if (_messages.Any(m => m.MessageNumber == message.MessageNumber
                                        && m.UserId == message.UserId))
                 {
