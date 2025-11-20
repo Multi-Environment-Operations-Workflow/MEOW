@@ -32,7 +32,7 @@ public class AndroidBluetoothService : AbstractBluetoothService, IBluetoothServi
     private BluetoothLeAdvertiser? _bleAdvertiser;
 
     private AdvertisingCallback? _advertisingCallback;
-
+    private readonly Dictionary<Guid, int> _latestRssi = new();
     private static BluetoothManager _bluetoothManager;
     private BluetoothGattServer _gattServer;
 

@@ -16,6 +16,7 @@ public class AndroidNotificationManagerService : INotificationManagerService
     private const string CHANNEL_DESCRIPTION = "Notifications for MEOW app";
 
     public event EventHandler? NotificationReceived;
+    
 
     public AndroidNotificationManagerService()
     {

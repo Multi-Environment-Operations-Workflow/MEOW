@@ -19,7 +19,9 @@ public abstract class MeowMessage(byte userId, int messageNumber, string sender)
     public string Sender { get; set; } = sender;
 
     public DateTime Time {get; set;}
-    
+
+    public int latest_rssi {get; set;}
+
     public byte[] Serialize()
     {
         using var stream = new MemoryStream();
