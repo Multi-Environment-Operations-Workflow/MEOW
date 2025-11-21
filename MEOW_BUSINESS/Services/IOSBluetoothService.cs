@@ -18,9 +18,6 @@ public class IOSBluetoothService(IUserStateService userStateService, IErrorServi
 
     public new event Action<AdvertisingState, string?>? AdvertisingStateChanged;
 
-    public new event Action? PeerConnected;
-    
-
     private readonly CBUUID chatServiceUuid = CBUUID.FromString(ChatUuids.ChatService.ToString());
 
 

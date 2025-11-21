@@ -23,7 +23,7 @@ namespace MEOW_BUSINESS.Services;
 /// </summary>
 public class AndroidBluetoothService : AbstractBluetoothService, IBluetoothService // Implementering af IBluetoothService til Android
 {
-    public new event Action<AdvertisingState, string?>? AdvertisingStateChanged;
+    public event Action<AdvertisingState, string?>? AdvertisingStateChanged;
 
     public new event Action? PeerConnected;
 
@@ -129,19 +129,6 @@ public class AndroidBluetoothService : AbstractBluetoothService, IBluetoothServi
         await Task.CompletedTask;
     }
 
-    private void OnDeviceDiscovered(object? s, Plugin.BLE.Abstractions.EventArgs.DeviceEventArgs a)
-    { // Tjekker om vi allerede har den. Vis vi har gør vi ikke noget. Ellers tilføjer vi den til vores liste.
-        if (DiscoveredDevices.Any(d => d.Id == a.Device.Id))
-            return;
-
-        if (a.Device.Name != null)
-        {
-            var device = new MeowDevice(a.Device.Name, a.Device.Id, a.Device);
-            device.Name = device.Name.Replace("(MEOW) ", "").Trim();
-            DiscoveredDevices.Add(device);
-        }
-    }
-
     public Task StopAdvertisingAsync()
     {
         try
@@ -161,12 +148,8 @@ public class AndroidBluetoothService : AbstractBluetoothService, IBluetoothServi
                 finally
                 {
                     _isScanning = false;
-                    Adapter.DeviceDiscovered -= OnDeviceDiscovered; // Fjerner handles fordi vi også stopper scanning.  
                 }
             }
-
-            // Vis ikke vi cleare den risikere vi den går med over. Måske. Skal jeg lige teste !TODO
-            DiscoveredDevices.Clear();
 
             if (_bleAdvertiser != null && _advertisingCallback != null)
             {
@@ -193,7 +176,6 @@ public class AndroidBluetoothService : AbstractBluetoothService, IBluetoothServi
             AdvertisingStateChanged?.Invoke(AdvertisingState.Failed, $"Failed to stop advertising: {ex.Message}"); // kan fx ske vis den ikke advetizer til at starte med.
             _isAdvertising = false;
             _advertisingCallback = null;
-            Adapter.DeviceDiscovered -= OnDeviceDiscovered;
             _isScanning = false;
         }
 

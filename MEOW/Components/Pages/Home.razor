@@ -46,9 +46,9 @@
         <div class="devices-section">
             <h3 class="section-title">
                 Available Devices
-                @if (_devices.Any())
+                @if (_discoveredDevices.Any())
                 {
-                    <span class="device-count">@_devices.Count</span>
+                    <span class="device-count">@_discoveredDevices.Count</span>
                 }
             </h3>
 
@@ -59,7 +59,7 @@
                     <p>Scanning for nearby devices...</p>
                 </div>
             }
-            else if (!_devices.Any())
+            else if (!_discoveredDevices.Any())
             {
                 <div class="empty-state">
                     <p class="empty-icon">📭</p>
@@ -70,7 +70,7 @@
             else
             {
                 <div class="device-grid">
-                    @foreach (var d in _devices)
+                    @foreach (var d in _discoveredDevices)
                     {
                         <div class="device-card" @onclick="() => ConnectAsync(d)">
                             <div class="device-header">
@@ -91,7 +91,7 @@
 @code {
     private string _name = string.Empty;
     private bool _isScanning;
-    private ObservableCollection<MeowDevice> _devices = new();
+    private List<MeowDevice> _discoveredDevices = new();
     private string _advertisingMessage = string.Empty;
 
     protected override void OnInitialized()
@@ -103,7 +103,6 @@
         }
 
         _name = UserStateService.GetName();
-        _devices = Bluetooth.DiscoveredDevices;
 
         Bluetooth.AdvertisingStateChanged += OnAdvertisingStateChanged;
         Bluetooth.PeerConnected += OnPeerConnected;
@@ -132,7 +131,7 @@
         _isScanning = true;
         try
         {
-            await Bluetooth.ScanAsync();
+            _discoveredDevices = await Bluetooth.ScanForDevices();
         }
         catch (Exception e)
         {
@@ -145,7 +144,7 @@
     {
         try
         {
-            await Bluetooth.ConnectAsync(device);
+            await Bluetooth.ConnectToDevice(device);
             Navigation.NavigateTo("/Chat");
         }
         catch (Exception e)
@@ -169,7 +168,7 @@
     {
         if (_isScanning) return;
         _isScanning = true;
-        try { await Bluetooth.ScanAsyncAutomatically(); }
+        try { await Bluetooth.ScanAndConnectToAllFoundDevices(); }
         catch (Exception ex)
         {
             ErrorService.Add(ex);
