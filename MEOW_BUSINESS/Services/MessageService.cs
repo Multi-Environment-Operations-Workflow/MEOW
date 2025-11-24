@@ -5,12 +5,6 @@ namespace MEOW_BUSINESS.Services;
 public class MessageService(IBluetoothService bluetooth, IErrorService errorService) : IMessageService
 {
 
-    public record ChatEntry(string Name, string Content, DateTime Time);
-
-    public static class Chatlog
-    {
-        public static List<ChatEntry> message_log { get; } = new();
-    }
 
     static int MessageCount { get; set; }
     
@@ -46,7 +40,7 @@ public class MessageService(IBluetoothService bluetooth, IErrorService errorServ
     public void SetupMessageReceivedAction<T>(Action<T> onMessage) where T : MeowMessage
     {
 
-        bluetooth.DeviceDataReceived += (receivedData) =>
+        bluetooth.DeviceDataReceived += async (receivedData) =>
         {
             try
             {
@@ -57,6 +51,15 @@ public class MessageService(IBluetoothService bluetooth, IErrorService errorServ
                     return;
                 }
                 message.Time = DateTime.Now;
+                var deviceName = bluetooth.get_device_name_by_id(message.UserId);
+
+                if (deviceName != null)
+                {
+                    message.latest_rssi = await bluetooth.GetRSSI(deviceName);
+                       
+                }
+
+
                 if (_messages.Any(m => m.MessageNumber == message.MessageNumber
                                        && m.UserId == message.UserId))
                 {

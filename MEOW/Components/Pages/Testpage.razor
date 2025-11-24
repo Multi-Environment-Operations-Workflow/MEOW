@@ -204,12 +204,12 @@
             
 
             var sb = new StringBuilder();
-            sb.AppendLine("Name,Message,Timestamp");
+            sb.AppendLine("Name,Message,Timestamp,Rssi");
 
             foreach (var entry in _messages)
             {
                 sb.AppendLine(
-                    $"\"{entry.Sender}\",\"{entry.Message}\",\"{entry.Time:HH:mm:ss.fff}\""
+                    $"\"{entry.Sender}\",\"{entry.Message}\",\"{entry.latest_rssi}\",\"{entry.Time:HH:mm:ss.fff}\""
                 );
             }
 

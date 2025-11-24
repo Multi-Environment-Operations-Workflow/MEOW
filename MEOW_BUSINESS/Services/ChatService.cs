@@ -25,8 +25,9 @@ public class ChatService(
         {
             try
             {
+                
                 MeowMessageTexts.Add(msg);
-                notificationManagerService.SendNotification("New Chat Message", $"{msg.Sender}: {msg.Message}",
+                notificationManagerService.SendNotification("New Chat Message", $"{msg.Sender}: {msg.Message} : {msg.latest_rssi}",
                     DateTime.Now.AddSeconds(1));
             }
             catch (Exception ex)

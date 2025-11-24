@@ -29,7 +29,9 @@ public interface IBluetoothService
     
     Task<(bool anySuccess, List<Exception> allErrors)> SendToAllAsync(byte[] data);
 
+    public Task<int> GetRSSI(string deviceName);
 
+    public string? get_device_name_by_id(byte userId);
     Task StartAdvertisingAsync(string name);
     Task StopAdvertisingAsync();
 }

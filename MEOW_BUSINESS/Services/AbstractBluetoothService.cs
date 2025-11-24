@@ -11,6 +11,7 @@ public abstract class AbstractBluetoothService
 {
     protected readonly IBluetoothLE BluetoothLe = CrossBluetoothLE.Current;
     protected readonly IAdapter Adapter = CrossBluetoothLE.Current.Adapter;
+    private readonly Dictionary<byte, string> _userIdToDeviceName = new();
 
     public ObservableCollection<MeowDevice> DiscoveredDevices { get; } = new();
 
@@ -21,6 +22,7 @@ public abstract class AbstractBluetoothService
     public event Action<byte[]>? DeviceDataReceived;
 
     public event Action<AdvertisingState, string?>? AdvertisingStateChanged;
+
 
     public event Action? PeerConnected;
     
@@ -226,4 +228,33 @@ public abstract class AbstractBluetoothService
             }
         }
     }
+   
+    public string? get_device_name_by_id(byte userId)
+    {
+        if (_userIdToDeviceName.TryGetValue(userId, out var name))
+            return name;
+
+        return null;
+    }
+
+
+public async Task<int> GetRSSI(string deviceName)
+{
+    // Find enheden (uden at kaste fejl)
+    var device = Adapter.ConnectedDevices.FirstOrDefault(d => d.Name == deviceName);
+
+    if (device == null)
+        return -1;
+
+    // Vent korrekt på RSSI-opdateringen
+    var updated = await device.UpdateRssiAsync();
+
+    if (!updated)
+        return -1;
+
+    return device.Rssi;
+}
+
+
+
 }
