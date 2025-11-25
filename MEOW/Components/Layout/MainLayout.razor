@@ -6,6 +6,7 @@
 @inject IChatService ChatService
 @inject IPinService PinService
 @inject IErrorService ErrorService
+@inject ILoggingService LoggingService
 
 @if (!UserStateService.IsLoggedIn())
 {
@@ -16,6 +17,24 @@ else
     <div style="display: flex; flex-direction: column; height: 100vh; margin: 0; padding: 0;">
         <div style="flex: 1 0 auto; overflow-y: auto; padding: 0; margin: 0;">
             <div>
+                
+                @foreach (var log in logs)
+                {
+                    <MatCard style="margin: 1rem; border: 2px solid red; background-color: #ffe6e6;">
+                        <MatCardContent>
+                            <h4 style="color: red;">Error:</h4>
+                            <p style="color: red;">@log.msg</p>
+
+                            @if (log.obj is not null)
+                            {
+                                @log.obj.ToString();
+                            }
+
+
+                            <MatButton Style="margin-top: 0.5rem;" @onclick="() => RemoveLog(log)">Dismiss</MatButton>
+                        </MatCardContent>
+                    </MatCard>
+                }
                 @foreach (var err in errors)
                 {
                     <MatCard style="margin: 1rem; border: 2px solid red; background-color: #ffe6e6;">
@@ -30,7 +49,7 @@ else
                                 {
                                     <div style="font-size: 0.9rem; color: darkred; word-wrap: break-word; overflow-wrap: anywhere; white-space: normal; max-width: 100%;">
                                         <p style="margin: 0;">
-                                            <b>File:</b><br />
+                                            <b>File:</b><br/>
                                             <code style="display: block; white-space: normal; word-break: break-all;">
                                                 @frame.GetFileName()
                                             </code>
@@ -68,6 +87,7 @@ else
 
 @code {
     List<Exception> errors = new();
+    List<(string msg, object? obj)> logs = new();
 
     public void Logout()
     {
@@ -78,6 +98,7 @@ else
     protected override void OnInitialized()
     {
         ErrorService.OnError += HandleError;
+        LoggingService.OnLog += HandleLog;
     }
 
     void HandleError(IEnumerable<Exception> ex)
@@ -87,6 +108,18 @@ else
             errors.Add(exception);
         }
         InvokeAsync(StateHasChanged);
+    }
+    
+    void HandleLog((string, object) log)
+    {
+        logs.Add(log);
+        InvokeAsync(StateHasChanged);
+    }
+    
+    void RemoveLog((string msg, object? obj) log)
+    {
+        logs.Remove(log);
+        StateHasChanged();
     }
 
     void RemoveError(Exception ex)
