@@ -105,8 +105,6 @@ public class AndroidBluetoothService : AbstractBluetoothService, IBluetoothServi
             return;
         }
 
-        // Det navn folk vil se i deres Bluetooth-liste
-        adapter?.SetName($"(MEOW) {name}");
         // Mere settings
         var settings = new AdvertiseSettings.Builder()
             .SetAdvertiseMode(AdvertiseMode.Balanced)
@@ -261,9 +259,17 @@ class MeowGattCallback(Action<byte[]> onReceive) : BluetoothGattServerCallback
 
     private BluetoothGattServer? _gattServer;
 
+    private readonly HashSet<BluetoothDevice> _subscribers = new();
+
     public void SetGattServer(BluetoothGattServer server)
     {
         _gattServer = server;
+    }
+
+    public override void OnConnectionStateChange(BluetoothDevice? device, ProfileState status, ProfileState newState)
+    {
+        if (newState == ProfileState.Connected) _subscribers.Add(device);
+        else _subscribers.Remove(device);
     }
 
     public override void OnCharacteristicReadRequest(BluetoothDevice? device, int requestId, int offset, BluetoothGattCharacteristic? characteristic)
