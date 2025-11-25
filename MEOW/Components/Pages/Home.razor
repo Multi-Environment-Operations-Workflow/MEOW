@@ -176,7 +176,14 @@
         _isScanning = false;
     }
 
-    private async void RunAsyncScan() => await Bluetooth.RunInBackground(TimeSpan.FromSeconds(10), ScanAsyncAutomatically);
+    private async void RunAsyncScan()
+    {
+        var periodicTimer = new PeriodicTimer(TimeSpan.FromSeconds(10));
+        while (await periodicTimer.WaitForNextTickAsync())
+        {
+            await ScanAsyncAutomatically();
+        }
+    }
 
     private void Logout()
     {

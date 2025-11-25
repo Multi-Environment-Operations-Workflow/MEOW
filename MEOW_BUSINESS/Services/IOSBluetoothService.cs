@@ -10,7 +10,6 @@ namespace MEOW_BUSINESS.Services;
 public class IOSBluetoothService(IUserStateService userStateService, IErrorService errorService) : AbstractBluetoothService(errorService), IBluetoothService, ICBPeripheralManagerDelegate
 {
     private CBPeripheralManager? _peripheralManager;
-
     private CBMutableCharacteristic? _sendCharacteristic;
     private CBMutableCharacteristic? _receiveCharacteristic;
     
@@ -18,7 +17,9 @@ public class IOSBluetoothService(IUserStateService userStateService, IErrorServi
 
     public new event Action<AdvertisingState, string?>? AdvertisingStateChanged;
 
-    private readonly CBUUID chatServiceUuid = CBUUID.FromString(ChatUuids.ChatService.ToString());
+    private readonly CBUUID _chatServiceUuid = CBUUID.FromString(ChatUuids.ChatService.ToString());
+    private readonly CBUUID _msgSendUuid = CBUUID.FromString(ChatUuids.MessageSendCharacteristic.ToString());
+    private readonly CBUUID _msgRecvUuid = CBUUID.FromString(ChatUuids.MessageReceiveCharacteristic.ToString());
 
 
     public async Task StartAdvertisingAsync(string name)
@@ -36,7 +37,7 @@ public class IOSBluetoothService(IUserStateService userStateService, IErrorServi
         }
 
         // Create service and characteristics
-        var chatService = new CBMutableService(chatServiceUuid, true);
+        var chatService = new CBMutableService(_chatServiceUuid, true);
 
         CBCharacteristicProperties allProps = CBCharacteristicProperties.Read
                                               | CBCharacteristicProperties.Write
@@ -45,14 +46,14 @@ public class IOSBluetoothService(IUserStateService userStateService, IErrorServi
                                               | CBCharacteristicProperties.Indicate;
 
         _sendCharacteristic = new CBMutableCharacteristic(
-            CBUUID.FromString(ChatUuids.MessageSendCharacteristic.ToString()),
+            _msgSendUuid,
             allProps,
             null,
             CBAttributePermissions.Readable
         );
 
         _receiveCharacteristic = new CBMutableCharacteristic(
-            CBUUID.FromString(ChatUuids.MessageReceiveCharacteristic.ToString()),
+            _msgRecvUuid,
             allProps,
             null,
             CBAttributePermissions.Writeable
@@ -75,11 +76,10 @@ public class IOSBluetoothService(IUserStateService userStateService, IErrorServi
         }
 
         // Only advertise AFTER the service is added successfully
-        var advertiseName = String.Concat("(MEOW) ", userStateService.GetName());
         var advertisementData = new NSMutableDictionary
         {
-            { CBAdvertisement.DataLocalNameKey, new NSString(advertiseName) },
-            { CBAdvertisement.DataServiceUUIDsKey, NSArray.FromObjects(service.UUID) }
+            { CBAdvertisement.DataLocalNameKey, new NSString(userStateService.GetName()) },
+            { CBAdvertisement.DataServiceUUIDsKey, service.UUID }
         };
 
         peripheral.StartAdvertising(advertisementData);
@@ -107,7 +107,7 @@ public class IOSBluetoothService(IUserStateService userStateService, IErrorServi
     {
         foreach (var request in requests)
         {
-            if (request.Characteristic?.UUID?.Equals(_receiveCharacteristic?.UUID) == true && request.Value != null)
+            if (request.Characteristic.UUID.Equals(_receiveCharacteristic?.UUID) == true && request.Value != null)
             {
                 var buffer = new byte[request.Value.Length];
                 System.Runtime.InteropServices.Marshal.Copy(request.Value.Bytes, buffer, 0, (int)request.Value.Length);
@@ -153,7 +153,9 @@ public class IOSBluetoothService(IUserStateService userStateService, IErrorServi
         _peripheralManager?.Dispose();
         _sendCharacteristic?.Dispose();
         _receiveCharacteristic?.Dispose();
-        chatServiceUuid.Dispose();
+        _chatServiceUuid.Dispose();
+        _msgSendUuid.Dispose();
+        _msgRecvUuid.Dispose();
     }
 
     public NativeHandle Handle { get; }

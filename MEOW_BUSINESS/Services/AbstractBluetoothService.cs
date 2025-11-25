@@ -79,8 +79,23 @@ public abstract class AbstractBluetoothService
                 foundDevices.Add(new MeowDevice(a.Device.Name, a.Device.Id, a.Device));
             }
         };
-        await Adapter.StartScanningForDevicesAsync([ChatUuids.ChatService]);
-        return foundDevices;
+        await Adapter.StartScanningForDevicesAsync();
+        var filteredDevices = new List<MeowDevice>(); // replace DeviceType with your type
+        foreach (var device in foundDevices)
+        {
+            try
+            {
+                var service = await device.NativeDevice.GetServiceAsync(ChatUuids.ChatService);
+                if (service != null)
+                    filteredDevices.Add(device);
+            }
+            catch
+            {
+                // Service not found, ignore this device
+            }
+        }
+
+        return filteredDevices.Count > 0 ? filteredDevices : foundDevices;
     }
 
 
@@ -90,15 +105,6 @@ public abstract class AbstractBluetoothService
         foreach (var device in devices)
         {
             await ConnectToDevice(device);
-        }
-    }
-
-    public async Task RunInBackground(TimeSpan timeSpan, Func<Task> func)
-    {
-        var periodicTimer = new PeriodicTimer(timeSpan);
-        while (await periodicTimer.WaitForNextTickAsync())
-        {
-            await func();
         }
     }
     

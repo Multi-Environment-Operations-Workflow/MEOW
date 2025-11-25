@@ -15,8 +15,6 @@ public interface IBluetoothService
     
     Task ScanAndConnectToAllFoundDevices();
     
-    Task RunInBackground(TimeSpan timeSpan, Func<Task> func);
-    
     Task ConnectToDevice(MeowDevice device);
 
     List<MeowDevice> GetConnectedDevices();
