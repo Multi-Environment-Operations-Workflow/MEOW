@@ -7,7 +7,7 @@ using ObjCRuntime;
 
 namespace MEOW_BUSINESS.Services;
 
-public class IOSBluetoothService(IUserStateService userStateService, IErrorService errorService) : AbstractBluetoothService(errorService), IBluetoothService, ICBPeripheralManagerDelegate
+public class IOSBluetoothService(IUserStateService userStateService, IErrorService errorService, ILoggingService loggingService) : AbstractBluetoothService(errorService, loggingService), IBluetoothService, ICBPeripheralManagerDelegate
 {
     private CBPeripheralManager? _peripheralManager;
     private CBMutableCharacteristic? _sendCharacteristic;
@@ -105,6 +105,7 @@ public class IOSBluetoothService(IUserStateService userStateService, IErrorServi
     [Export("peripheralManager:didReceiveWriteRequests:")]
     public void DidReceiveWriteRequests(CBPeripheralManager peripheral, CBATTRequest[] requests)
     {
+        loggingService.AddLog(("Received write requests via Bluetooth.", null));
         foreach (var request in requests)
         {
             if (request.Characteristic.UUID.Equals(_receiveCharacteristic?.UUID) == true && request.Value != null)

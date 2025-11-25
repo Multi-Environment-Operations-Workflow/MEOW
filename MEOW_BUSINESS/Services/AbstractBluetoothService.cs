@@ -8,6 +8,8 @@ public abstract class AbstractBluetoothService
 {
     private readonly IBluetoothLE _bluetoothLe = CrossBluetoothLE.Current;
     protected readonly IAdapter Adapter = CrossBluetoothLE.Current.Adapter;
+    private ILoggingService _loggingService;
+    private IErrorService _errorService;
     
     private readonly List<MeowDevice> _connectedDevices = new();
     
@@ -17,8 +19,10 @@ public abstract class AbstractBluetoothService
     
     public event Action? PeerConnected;
     
-    protected AbstractBluetoothService(IErrorService errorService)
+    protected AbstractBluetoothService(IErrorService errorService, ILoggingService loggingService)
     {
+        _loggingService = loggingService;
+        _errorService = errorService;
         Adapter.DeviceConnected += (_, a) =>
         {
             var device = a.Device;
@@ -134,39 +138,24 @@ public abstract class AbstractBluetoothService
 
                 if (Adapter.ConnectedDevices.All(d => d.Id != native.Id))
                 {
-                    await Adapter.ConnectToDeviceAsync(native).ConfigureAwait(false);
+                    await Adapter.ConnectToDeviceAsync(native);
                 }
 
-                var services = await native.GetServicesAsync().ConfigureAwait(false);
-
-                var expectedServiceId = ChatUuids.ChatService.ToString();
-                var service = services.FirstOrDefault(s => string.Equals(s.Id.ToString(), expectedServiceId, StringComparison.OrdinalIgnoreCase));
-
+                var service = await native.GetServiceAsync(ChatUuids.ChatService);
+                
                 if (service == null)
                 {
-                    Console.WriteLine($"Service {expectedServiceId} not found on {device.Name}. Available services:");
-                    foreach (var s in services)
-                    {
-                        Console.WriteLine($"  - {s.Id}");
-                    }
-                    throw new Exception($"Service {expectedServiceId} not found on {device.Name}.");
+                    throw new Exception($"Service {ChatUuids.ChatService} not found on {device.Name}.");
                 }
-
-                var characteristics = await service.GetCharacteristicsAsync().ConfigureAwait(false);
-                var expectedCharId = ChatUuids.MessageReceiveCharacteristic.ToString();
-                var characteristic = characteristics.FirstOrDefault(c => string.Equals(c.Id.ToString(), expectedCharId, StringComparison.OrdinalIgnoreCase));
+                
+                var characteristic = await service.GetCharacteristicAsync(ChatUuids.MessageSendCharacteristic);
 
                 if (characteristic == null)
                 {
-                    Console.WriteLine($"Characteristic {expectedCharId} not found on {device.Name}. Available characteristics:");
-                    foreach (var c in characteristics)
-                    {
-                        Console.WriteLine($"  - {c.Id}");
-                    }
-                    throw new Exception($"Characteristic {expectedCharId} not found on {device.Name}.");
+                    throw new Exception($"Characteristic {ChatUuids.MessageSendCharacteristic} not found on {device.Name}. Available characteristics:");
                 }
 
-                await characteristic.WriteAsync(data).ConfigureAwait(false);
+                await characteristic.WriteAsync(data);
                 anySuccess = true;
             }
             catch (Exception ex)
@@ -184,29 +173,42 @@ public abstract class AbstractBluetoothService
         if (device.NativeDevice == null)
             throw new ArgumentNullException(nameof(device));
 
-        await Adapter.ConnectToDeviceAsync(device.NativeDevice).ConfigureAwait(false);
-
-        var services = await device.NativeDevice.GetServicesAsync().ConfigureAwait(false);
-        foreach (var service in services)
+        try
         {
-            var characteristics = await service.GetCharacteristicsAsync().ConfigureAwait(false);
-
-            foreach (var characteristic in characteristics)
-            {
-                if (characteristic.CanUpdate)
-                {
-                    characteristic.ValueUpdated += (_, a) =>
-                    {
-                        var data = a.Characteristic?.Value;
-                        if (data != null && data.Length > 0)
-                        {
-                            DeviceDataReceived?.Invoke(data);
-                        }
-                    };
-
-                    await characteristic.StartUpdatesAsync().ConfigureAwait(false);
-                }
-            }
+            await Adapter.ConnectToDeviceAsync(device.NativeDevice);
         }
+        catch (Exception exception)
+        {
+            _errorService.Add(exception);
+        }
+
+        _loggingService.AddLog(("Connected to device!", device.NativeDevice));
+
+        var service = await device.NativeDevice.GetServiceAsync(ChatUuids.ChatService);
+        _loggingService.AddLog(("Device has service:", service.Id));
+
+        if (service == null)
+        {
+            throw new Exception("Service not found on device after connection.");
+        }
+        
+        var characteristic = await service.GetCharacteristicAsync(ChatUuids.MessageSendCharacteristic);
+        _loggingService.AddLog(("Device has char:", characteristic.Id));
+
+        if (characteristic == null)
+        {
+            throw new Exception("Characteristic not found on device after connection.");
+        }
+        
+        characteristic.ValueUpdated += (_, a) =>
+        {
+            var data = a.Characteristic?.Value;
+            if (data != null && data.Length > 0)
+            {
+                DeviceDataReceived?.Invoke(data);
+            }
+        };
+
+        await characteristic.StartUpdatesAsync();
     }
 }

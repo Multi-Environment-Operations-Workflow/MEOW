@@ -3,7 +3,7 @@ using MEOW_BUSINESS.Services;
 
 namespace MEOW_TESTING.Mocks;
 
-public class TestBluetoothService(IErrorService errorService): AbstractBluetoothService(errorService), IBluetoothService
+public class TestBluetoothService(IErrorService errorService, ILoggingService loggingService): AbstractBluetoothService(errorService, loggingService), IBluetoothService
 {
     public new event Action<AdvertisingState, string?>? AdvertisingStateChanged;
     public new event Action? PeerConnected;

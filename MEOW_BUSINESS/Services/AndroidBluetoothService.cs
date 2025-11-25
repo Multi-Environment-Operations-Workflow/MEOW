@@ -46,7 +46,7 @@ public class AndroidBluetoothService : AbstractBluetoothService, IBluetoothServi
     private bool _isAdvertising = false;
     private bool _isScanning = false;
 
-    public AndroidBluetoothService(IErrorService errorService) : base(errorService)
+    public AndroidBluetoothService(IErrorService errorService, ILoggingService loggingService) : base(errorService, loggingService)
     {
         _errorService = errorService;
         _bluetoothManager = (BluetoothManager?)Android.App.Application.Context.GetSystemService(Context.BluetoothService);

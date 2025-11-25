@@ -10,7 +10,8 @@ public class AbstractBluetoothServiceTest
     public async Task ScanForDevices_Works()
     {
         var errorService = new TestErrorService();
-        var abstractBluetoothService = new TestBluetoothService(errorService);
+        var loggingService = new LoggingService();
+        var abstractBluetoothService = new TestBluetoothService(errorService, loggingService);
         await abstractBluetoothService.ScanForDevices();
         
     }
