@@ -29,6 +29,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<IChatService, ChatService>();
         builder.Services.AddSingleton<IErrorService, MeowErrorService>();
         builder.Services.AddSingleton<IMeowPreferences, MeowPreferences>();
+        builder.Services.AddSingleton<ILoggingService, LoggingService>();
 
         builder.Services.AddMauiBlazorWebView();
         builder.Services.AddMatBlazor();
