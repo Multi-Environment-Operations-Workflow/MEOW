@@ -23,30 +23,6 @@ public abstract class AbstractBluetoothService
     {
         _loggingService = loggingService;
         _errorService = errorService;
-        Adapter.DeviceConnected += (_, a) =>
-        {
-            var device = a.Device;
-            if (_connectedDevices.All(cd => cd.Id != device.Id))
-            {
-                _connectedDevices.Add(new MeowDevice(device.Name ?? string.Empty, device.Id, device));
-            }
-            _establishingConnectionDevices.RemoveAll(d => d.Id == device.Id);
-            PeerConnected?.Invoke();
-        };
-        
-        Adapter.DeviceConnectionLost += (_, a) =>
-        {
-            var device = a.Device;
-            _connectedDevices.RemoveAll(cd => cd.Id == device.Id);
-        };
-        
-        Adapter.DeviceConnectionError += (_, a) =>
-        {
-            var device = a.Device;
-            _connectedDevices.RemoveAll(cd => cd.Id == device.Id);
-            _establishingConnectionDevices.RemoveAll(d => d.Id == device.Id);
-            errorService.Add(new Exception($"Connection error with device {device.Name}"));
-        };
 
         try
         {
@@ -151,6 +127,7 @@ public abstract class AbstractBluetoothService
         {
             throw new Exception($"Characteristic {ChatUuids.MessageReceiveCharacteristic} not found on {device.Name}.");
         }
+        
         _loggingService.AddLog(("Sending data to device:", device.Name));
         await receiveCharacteristic.WriteAsync(data);
     }
@@ -191,6 +168,7 @@ public abstract class AbstractBluetoothService
         try
         {
             await Adapter.ConnectToDeviceAsync(device.NativeDevice);
+            await device.NativeDevice.RequestMtuAsync(512);
             _loggingService.AddLog(("Connected to device!", device.NativeDevice));
         }
         catch (Exception exception)
