@@ -196,6 +196,7 @@ public abstract class AbstractBluetoothService
         catch (Exception exception)
         {
             _errorService.Add(exception);
+            return;
         }
         finally
         {
