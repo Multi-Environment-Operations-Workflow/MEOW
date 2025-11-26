@@ -67,7 +67,6 @@ public class IOSBluetoothService(IUserStateService userStateService, IErrorServi
         // Only advertise AFTER the service is added successfully
         var advertisementData = new NSMutableDictionary
         {
-            { CBAdvertisement.DataLocalNameKey, new NSString(userStateService.GetName()) },
             { CBAdvertisement.DataServiceUUIDsKey, NSArray.FromObjects(service.UUID) }
         };
 
