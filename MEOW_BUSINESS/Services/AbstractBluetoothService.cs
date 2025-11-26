@@ -191,6 +191,7 @@ public abstract class AbstractBluetoothService
         try
         {
             await Adapter.ConnectToDeviceAsync(device.NativeDevice);
+            _loggingService.AddLog(("Connected to device!", device.NativeDevice));
         }
         catch (Exception exception)
         {
@@ -201,7 +202,6 @@ public abstract class AbstractBluetoothService
             _establishingConnectionDevices.RemoveAll(d => d.Id == device.Id);
         }
 
-        _loggingService.AddLog(("Connected to device!", device.NativeDevice));
 
         var service = await device.NativeDevice.GetServiceAsync(ChatUuids.ChatService);
         _loggingService.AddLog(("Device has service:", service.Id));
