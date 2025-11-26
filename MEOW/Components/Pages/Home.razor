@@ -1,12 +1,10 @@
 ﻿@page "/"
-@using System.Collections.ObjectModel
 @using MEOW_BUSINESS.Enums
 @using MEOW_BUSINESS.Models
 @using MEOW_BUSINESS.Services
 @inject IBluetoothService Bluetooth
 @inject IUserStateService UserStateService
 @inject NavigationManager Navigation
-@inject INotificationManagerService NotificationManagerService
 @inject IErrorService ErrorService
 
 <div class="bt-container">
@@ -106,15 +104,6 @@
 
         Bluetooth.AdvertisingStateChanged += OnAdvertisingStateChanged;
         Bluetooth.PeerConnected += OnPeerConnected;
-
-        try
-        {
-            NotificationManagerService.SendNotification("Welcome to MEOW!", "You are now ready to connect with others.", DateTime.Now + TimeSpan.FromSeconds(30));
-        }
-        catch (PermissionException exception)
-        {
-            ErrorService.Add(exception); 
-        }
     }
 
     private void OnPeerConnected() => Navigation.NavigateTo("/Chat");
