@@ -4,12 +4,11 @@ public class LoggingService: ILoggingService
 {
     List<(string, object?)> Logs { get; } = new();
     
-    public event Action<(string, object?)> OnLog;
-
+    public event Action<(string, object?)>? OnLog;
     
     public void AddLog((string, object?) message)
     {
         Logs.Add(message);
-        OnLog.Invoke(message);
+        OnLog?.Invoke(message);
     }
 }
