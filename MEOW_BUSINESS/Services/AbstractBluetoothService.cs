@@ -68,6 +68,12 @@ public abstract class AbstractBluetoothService
             Console.WriteLine($"Failed to populate connected devices: {ex}");
         }
     }
+    
+    
+    protected void InvokeDataReceived(byte[] data)
+    {
+        DeviceDataReceived?.Invoke(data);
+    }
 
     public async Task<List<MeowDevice>> ScanForDevices()
     {
@@ -143,24 +149,12 @@ public abstract class AbstractBluetoothService
         }
             
         var receiveCharacteristic = await service.GetCharacteristicAsync(ChatUuids.MessageReceiveCharacteristic);
-
-        if (receiveCharacteristic == null)
+        if (receiveCharacteristic == null) 
         {
             throw new Exception($"Characteristic {ChatUuids.MessageReceiveCharacteristic} not found on {device.Name}.");
         }
-
-        _loggingService.AddLog(("Wrote data to receive characteristic.", null));
+        _loggingService.AddLog(("Sending data to device:", device.Name));
         await receiveCharacteristic.WriteAsync(data);
-        
-        var sendCharacteristic = await service.GetCharacteristicAsync(ChatUuids.MessageSendCharacteristic); 
-        
-        if (sendCharacteristic == null)
-        {
-            throw new Exception($"Characteristic {ChatUuids.MessageSendCharacteristic} not found on {device.Name}.");
-        }
-        
-        _loggingService.AddLog(("Wrote data to send characteristic.", null));
-        await sendCharacteristic.WriteAsync(data);
     }
 
     public async Task<(bool, List<Exception>)> BroadcastMessage(byte[] data)
@@ -231,7 +225,7 @@ public abstract class AbstractBluetoothService
         characteristic.ValueUpdated += (_, a) =>
         {
             var data = a.Characteristic?.Value;
-            throw new Exception("I told you so! This never happens!");
+            _loggingService.AddLog(("This surely never happens...", null));
             if (data != null && data.Length > 0)
             {
                 DeviceDataReceived?.Invoke(data);

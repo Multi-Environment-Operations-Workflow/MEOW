@@ -26,9 +26,7 @@ public class AndroidBluetoothService : AbstractBluetoothService, IBluetoothServi
     public event Action<AdvertisingState, string?>? AdvertisingStateChanged;
 
     public new event Action? PeerConnected;
-
-    public new event Action<byte[]>? DeviceDataReceived;
-
+    
     private BluetoothLeAdvertiser? _bleAdvertiser;
 
     private AdvertisingCallback? _advertisingCallback;
@@ -50,15 +48,10 @@ public class AndroidBluetoothService : AbstractBluetoothService, IBluetoothServi
     {
         _errorService = errorService;
         _bluetoothManager = (BluetoothManager?)Android.App.Application.Context.GetSystemService(Context.BluetoothService);
-        MeowGattCallback callback = new(OnReceive);
+        MeowGattCallback callback = new(InvokeDataReceived);
         _gattServer = _bluetoothManager.OpenGattServer(Android.App.Application.Context, callback);
 
         callback.SetGattServer(_gattServer);
-    }
-
-    private void OnReceive(byte[] data)
-    {
-        DeviceDataReceived.Invoke(data);
     }
 
     // IBluetoothService.StartAdvertisingAsync

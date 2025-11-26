@@ -13,9 +13,7 @@ public class IOSBluetoothService(IUserStateService userStateService, IErrorServi
     private CBMutableCharacteristic? _sendCharacteristic;
     private CBMutableCharacteristic? _receiveCharacteristic;
     
-    public new event Action<byte[]>? DeviceDataReceived;
-
-    public new event Action<AdvertisingState, string?>? AdvertisingStateChanged;
+    public event Action<AdvertisingState, string?>? AdvertisingStateChanged;
 
     private readonly CBUUID _chatServiceUuid = CBUUID.FromString(ChatUuids.ChatService.ToString());
     private readonly CBUUID _msgSendUuid = CBUUID.FromString(ChatUuids.MessageSendCharacteristic.ToString());
@@ -39,22 +37,16 @@ public class IOSBluetoothService(IUserStateService userStateService, IErrorServi
         // Create service and characteristics
         var chatService = new CBMutableService(_chatServiceUuid, true);
 
-        CBCharacteristicProperties allProps = CBCharacteristicProperties.Read
-                                              | CBCharacteristicProperties.Write
-                                              | CBCharacteristicProperties.WriteWithoutResponse
-                                              | CBCharacteristicProperties.Notify
-                                              | CBCharacteristicProperties.Indicate;
-
         _sendCharacteristic = new CBMutableCharacteristic(
             _msgSendUuid,
-            allProps,
+            CBCharacteristicProperties.Notify | CBCharacteristicProperties.Indicate | CBCharacteristicProperties.Read,
             null,
-            CBAttributePermissions.Readable
+            CBAttributePermissions.Readable | CBAttributePermissions.Writeable
         );
 
         _receiveCharacteristic = new CBMutableCharacteristic(
             _msgRecvUuid,
-            allProps,
+            CBCharacteristicProperties.Write | CBCharacteristicProperties.WriteWithoutResponse,
             null,
             CBAttributePermissions.Writeable
         );
@@ -79,7 +71,7 @@ public class IOSBluetoothService(IUserStateService userStateService, IErrorServi
         var advertisementData = new NSMutableDictionary
         {
             { CBAdvertisement.DataLocalNameKey, new NSString(userStateService.GetName()) },
-            { CBAdvertisement.DataServiceUUIDsKey, service.UUID }
+            { CBAdvertisement.DataServiceUUIDsKey, NSArray.FromObjects(service.UUID) }
         };
 
         peripheral.StartAdvertising(advertisementData);
@@ -113,9 +105,9 @@ public class IOSBluetoothService(IUserStateService userStateService, IErrorServi
                 var buffer = new byte[request.Value.Length];
                 System.Runtime.InteropServices.Marshal.Copy(request.Value.Bytes, buffer, 0, (int)request.Value.Length);
                 
-                DeviceDataReceived?.Invoke(buffer);
+                InvokeDataReceived(buffer);
 
-                _peripheralManager?.RespondToRequest(request, CBATTError.Success);
+                peripheral.RespondToRequest(request, CBATTError.Success);
             }
         }
     }
