@@ -30,7 +30,6 @@ public abstract class AbstractBluetoothService
             {
                 _connectedDevices.Add(new MeowDevice(device.Name ?? string.Empty, device.Id, device));
             }
-            _connectedDevices.Add(_establishingConnectionDevices.FirstOrDefault(d => d.Id == device.Id)!);
             _establishingConnectionDevices.RemoveAll(d => d.Id == device.Id);
             PeerConnected?.Invoke();
         };
@@ -52,14 +51,13 @@ public abstract class AbstractBluetoothService
         try
         {
             var currentlyConnected = Adapter.ConnectedDevices;
-            if (currentlyConnected != null)
+            if (currentlyConnected == null) return;
+            
+            foreach (var dev in currentlyConnected)
             {
-                foreach (var dev in currentlyConnected)
+                if (_connectedDevices.All(cd => cd.Id != dev.Id))
                 {
-                    if (_connectedDevices.All(cd => cd.Id != dev.Id))
-                    {
-                        _connectedDevices.Add(new MeowDevice(dev.Name ?? string.Empty, dev.Id, dev));
-                    }
+                    _connectedDevices.Add(new MeowDevice(dev.Name ?? string.Empty, dev.Id, dev));
                 }
             }
         }
@@ -160,7 +158,6 @@ public abstract class AbstractBluetoothService
     public async Task<(bool, List<Exception>)> BroadcastMessage(byte[] data)
     {
         var anySuccess = false;
-        var exceptions = new List<Exception>();
         var targets = _connectedDevices.ToList();
 
         foreach (var device in targets)
@@ -214,24 +211,14 @@ public abstract class AbstractBluetoothService
             throw new Exception("Service not found on device after connection.");
         }
         
-        var characteristic = await service.GetCharacteristicAsync(ChatUuids.MessageSendCharacteristic);
-        _loggingService.AddLog(("Device has char:", characteristic.Id));
+        var receiveCharacteristic = await service.GetCharacteristicAsync(ChatUuids.MessageReceiveCharacteristic);
+        _loggingService.AddLog(("Device has char:", receiveCharacteristic.Id));
 
-        if (characteristic == null)
+        if (receiveCharacteristic == null)
         {
             throw new Exception("Characteristic not found on device after connection.");
         }
         
-        characteristic.ValueUpdated += (_, a) =>
-        {
-            var data = a.Characteristic?.Value;
-            _loggingService.AddLog(("This surely never happens...", null));
-            if (data != null && data.Length > 0)
-            {
-                DeviceDataReceived?.Invoke(data);
-            }
-        };
-
-        await characteristic.StartUpdatesAsync();
+        await receiveCharacteristic.StartUpdatesAsync();
     }
 }

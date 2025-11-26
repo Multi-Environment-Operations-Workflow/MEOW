@@ -20,8 +20,6 @@ public interface IBluetoothService
     List<MeowDevice> GetConnectedDevices();
     
     Task<(bool anySuccess, List<Exception> allErrors)> BroadcastMessage(byte[] data);
-
-
-    Task StartAdvertisingAsync(string name);
+    Task StartAdvertisingAsync();
     Task StopAdvertisingAsync();
 }

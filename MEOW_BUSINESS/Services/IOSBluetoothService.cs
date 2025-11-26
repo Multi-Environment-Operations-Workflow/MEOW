@@ -20,11 +20,10 @@ public class IOSBluetoothService(IUserStateService userStateService, IErrorServi
     private readonly CBUUID _msgRecvUuid = CBUUID.FromString(ChatUuids.MessageReceiveCharacteristic.ToString());
 
 
-    public async Task StartAdvertisingAsync(string name)
+    public async Task StartAdvertisingAsync()
     {
         _peripheralManager = new CBPeripheralManager(this, null);
 
-        // Wait for Bluetooth to be powered on
         while (_peripheralManager.State is CBManagerState.Unknown or CBManagerState.Resetting)
             await Task.Delay(100);
 
@@ -34,26 +33,24 @@ public class IOSBluetoothService(IUserStateService userStateService, IErrorServi
             return;
         }
 
-        // Create service and characteristics
         var chatService = new CBMutableService(_chatServiceUuid, true);
 
         _sendCharacteristic = new CBMutableCharacteristic(
             _msgSendUuid,
             CBCharacteristicProperties.Notify | CBCharacteristicProperties.Indicate | CBCharacteristicProperties.Read,
             null,
-            CBAttributePermissions.Readable | CBAttributePermissions.Writeable
+            CBAttributePermissions.Readable
         );
 
         _receiveCharacteristic = new CBMutableCharacteristic(
             _msgRecvUuid,
-            CBCharacteristicProperties.Write | CBCharacteristicProperties.WriteWithoutResponse,
+            CBCharacteristicProperties.Write | CBCharacteristicProperties.WriteWithoutResponse | CBCharacteristicProperties.Notify,
             null,
             CBAttributePermissions.Writeable
         );
 
         chatService.Characteristics = new CBCharacteristic[] { _sendCharacteristic, _receiveCharacteristic };
 
-        // Add the service — asynchronous operation
         _peripheralManager.AddService(chatService);
     }
 
@@ -77,8 +74,7 @@ public class IOSBluetoothService(IUserStateService userStateService, IErrorServi
         peripheral.StartAdvertising(advertisementData);
         AdvertisingStateChanged?.Invoke(AdvertisingState.Started, "Advertising started successfully with service.");
     }
-
-
+    
     public async Task StopAdvertisingAsync()
     {
         try

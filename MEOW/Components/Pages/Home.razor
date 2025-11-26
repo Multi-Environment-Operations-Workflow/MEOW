@@ -155,7 +155,7 @@
 
     private async Task StartAdvertisingAsync()
     {
-        try { await Bluetooth.StartAdvertisingAsync("(MEOW) " + UserStateService.GetName()); }
+        try { await Bluetooth.StartAdvertisingAsync(); }
         catch (Exception ex)
         {
             ErrorService.Add(ex);
