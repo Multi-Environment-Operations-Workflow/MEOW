@@ -1,7 +1,6 @@
 using Plugin.BLE;
 using Plugin.BLE.Abstractions.Contracts;
 using MEOW_BUSINESS.Models;
-using Plugin.BLE.Abstractions;
 
 namespace MEOW_BUSINESS.Services;
 
@@ -24,31 +23,7 @@ public abstract class AbstractBluetoothService
     {
         _loggingService = loggingService;
         _errorService = errorService;
-        Adapter.DeviceConnected += (_, a) =>
-        {
-            var device = a.Device;
-            if (_connectedDevices.All(cd => cd.Id != device.Id))
-            {
-                _connectedDevices.Add(new MeowDevice(device.Name ?? string.Empty, device.Id, device));
-            }
-            _establishingConnectionDevices.RemoveAll(d => d.Id == device.Id);
-            PeerConnected?.Invoke();
-        };
         
-        Adapter.DeviceConnectionLost += (_, a) =>
-        {
-            var device = a.Device;
-            _connectedDevices.RemoveAll(cd => cd.Id == device.Id);
-        };
-        
-        Adapter.DeviceConnectionError += (_, a) =>
-        {
-            var device = a.Device;
-            _connectedDevices.RemoveAll(cd => cd.Id == device.Id);
-            _establishingConnectionDevices.RemoveAll(d => d.Id == device.Id);
-            errorService.Add(new Exception($"Connection error with device {device.Name}"));
-        };
-
         try
         {
             var currentlyConnected = Adapter.ConnectedDevices;
@@ -146,22 +121,14 @@ public abstract class AbstractBluetoothService
         {
             throw new Exception($"Service {ChatUuids.ChatService} not found on {device.Name}.");
         }
-
+        
         var sendCharacteristic = await service.GetCharacteristicAsync(ChatUuids.MessageSendCharacteristic);
-        if (sendCharacteristic == null)
+        
+        if (sendCharacteristic == null) 
         {
-            throw new Exception($"Message Send Characteristic not found on {device.Name}.");
+            throw new Exception($"Characteristic {ChatUuids.MessageSendCharacteristic} not found on {device.Name}.");
         }
-
-        if (sendCharacteristic.Properties.HasFlag(CharacteristicPropertyType.Notify))
-        {
-            sendCharacteristic.ValueUpdated += (s, e) =>
-            {
-                DeviceDataReceived?.Invoke(e.Characteristic.Value);
-            };
-            await sendCharacteristic.StartUpdatesAsync();
-        }
-            
+        
         var receiveCharacteristic = await service.GetCharacteristicAsync(ChatUuids.MessageReceiveCharacteristic);
         if (receiveCharacteristic == null) 
         {

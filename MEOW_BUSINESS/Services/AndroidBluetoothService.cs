@@ -174,88 +174,6 @@ public class AndroidBluetoothService : AbstractBluetoothService, IBluetoothServi
 
         return Task.CompletedTask;
     }
-    
-    public new async Task<(bool, List<Exception>)> SendToAllAsync(byte[] data)
-{
-    var anySuccess = false;
-    var exceptions = new List<Exception>();
-
-   
-    foreach (var device in Adapter.ConnectedDevices.ToList())
-    {
-        try
-        {
-            try { await device.RequestMtuAsync(185).ConfigureAwait(false); } catch { }
-
-            var services = await device.GetServicesAsync();
-            var chatService = services.FirstOrDefault(s => s.Id == ChatUuids.ChatService);
-            if (chatService == null)
-                throw new Exception($"Service {ChatUuids.ChatService} not found on {device.Name}");
-            var messageSendChar = (await chatService.GetCharacteristicsAsync())
-                .FirstOrDefault(c => c.Id == ChatUuids.MessageSendCharacteristic);
-
-            if (messageSendChar.Properties.HasFlag(CharacteristicPropertyType.Notify))
-            {
-                messageSendChar.ValueUpdated += (s, e) =>
-                {
-                    InvokeDataReceived(e.Characteristic.Value);
-                };
-                await messageSendChar.StartUpdatesAsync();
-            }
-
-            var characteristics = await chatService.GetCharacteristicsAsync().ConfigureAwait(false);
-            var messageReceiveChar = characteristics.FirstOrDefault(c => c.Id == ChatUuids.MessageReceiveCharacteristic);
-            if (messageReceiveChar == null)
-                throw new Exception($"Characteristic {ChatUuids.MessageReceiveCharacteristic} not found on {device.Name}");
-
-            if (messageReceiveChar.Properties.HasFlag(CharacteristicPropertyType.Write))
-            {
-                messageReceiveChar.WriteType = CharacteristicWriteType.WithResponse;
-                await messageReceiveChar.WriteAsync(data).ConfigureAwait(false);
-            }
-            else if (messageReceiveChar.Properties.HasFlag(CharacteristicPropertyType.WriteWithoutResponse))
-            {
-                messageReceiveChar.WriteType = CharacteristicWriteType.WithoutResponse;
-                await messageReceiveChar.WriteAsync(data).ConfigureAwait(false);
-            }
-            else
-            {
-                throw new Exception("Characteristic is not writable");
-            }
-
-            anySuccess = true;
-        }
-        catch (Exception ex)
-        {
-            exceptions.Add(ex);
-        }
-    }
-    
-    try
-    {
-        var service = _gattServer?.GetService(_chatServiceUuid);
-        if (service != null)
-        {
-            var sendChar = service.GetCharacteristic(_msgSendUuid);
-            if (sendChar != null)
-            {
-                sendChar.SetValue(data);
-
-                foreach (var device in _bluetoothManager.GetConnectedDevices(ProfileType.GattServer))
-                {
-                    bool ok = _gattServer.NotifyCharacteristicChanged(device, sendChar, false);
-                    if (ok) anySuccess = true;
-                }
-            }
-        }
-    }
-    catch (Exception ex)
-    {
-        exceptions.Add(ex);
-    }
-
-    return (anySuccess, exceptions);
-}
 
     /// <summary>
     /// Checks and requests Bluetooth permissions on Android.
@@ -341,6 +259,7 @@ class MeowGattCallback(Action<byte[]> onReceive) : BluetoothGattServerCallback
         BluetoothDevice? device, int requestId, BluetoothGattCharacteristic? characteristic,
         bool preparedWrite, bool responseNeeded, int offset, byte[]? value)
     {
+        _loggingService.AddLog(("Characteristic write request received", device));
         if (characteristic.Uuid.Equals(messageReceiveUuid) && value != null)
             onReceive.Invoke(value);
 
