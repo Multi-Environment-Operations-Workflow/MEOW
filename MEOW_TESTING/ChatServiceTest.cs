@@ -11,7 +11,7 @@ public class ChatServiceTest
     {
         // Mock the BluetoothService to simulate successful sending
         var bluetoothService = Substitute.For<IBluetoothService>();
-        bluetoothService.SendToAllAsync(Arg.Any<byte[]>()).Returns((true, []));
+        bluetoothService.BroadcastMessage(Arg.Any<byte[]>()).Returns((true, []));
         var errorService = new TestErrorService();
         var messageService = new MessageService(bluetoothService, errorService);
         

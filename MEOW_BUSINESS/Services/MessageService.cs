@@ -22,14 +22,12 @@ public class MessageService(IBluetoothService bluetooth, IErrorService errorServ
             errorService.Add(exception);
             return (false, [exception]);
         }
-
-        //throw new Exception($"Sending {message}");
-
+        
         _messages.Add(message);
 
         var bytes = message.Serialize();
 
-        var (anySuccess, allErrors) = await bluetooth.SendToAllAsync(bytes).ConfigureAwait(false);
+        var (anySuccess, allErrors) = await bluetooth.BroadcastMessage(bytes);
 
         return (anySuccess, allErrors);
     }
@@ -68,7 +66,7 @@ public class MessageService(IBluetoothService bluetooth, IErrorService errorServ
     
     private void RedistributeMessageToAllNodes(MeowMessage message)
     {
-        bluetooth.SendToAllAsync(message.Serialize());
+        bluetooth.BroadcastMessage(message.Serialize());
     }
     
     /// <summary>

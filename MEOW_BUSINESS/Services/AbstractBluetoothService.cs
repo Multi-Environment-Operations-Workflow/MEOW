@@ -120,8 +120,50 @@ public abstract class AbstractBluetoothService
     {
         return _connectedDevices.ToList();
     }
+    
+    /// <summary>
+    /// Sends data to a specific device.
+    /// </summary>
+    /// <param name="device"></param>
+    /// <param name="data"></param>
+    /// <returns></returns>
+    /// <exception cref="Exception">If the native device, service, or characteristic is not found.</exception>
+    public async Task SendToDevice(MeowDevice device, byte[] data)
+    {
+        var native = device.NativeDevice;
+            
+        if (native == null)
+            throw new Exception($"Native device is null for {device.Name}");
 
-    public async Task<(bool, List<Exception>)> SendToAllAsync(byte[] data)
+        var service = await native.GetServiceAsync(ChatUuids.ChatService);
+            
+        if (service == null)
+        {
+            throw new Exception($"Service {ChatUuids.ChatService} not found on {device.Name}.");
+        }
+            
+        var receiveCharacteristic = await service.GetCharacteristicAsync(ChatUuids.MessageReceiveCharacteristic);
+
+        if (receiveCharacteristic == null)
+        {
+            throw new Exception($"Characteristic {ChatUuids.MessageReceiveCharacteristic} not found on {device.Name}.");
+        }
+
+        _loggingService.AddLog(("Wrote data to receive characteristic.", null));
+        await receiveCharacteristic.WriteAsync(data);
+        
+        var sendCharacteristic = await service.GetCharacteristicAsync(ChatUuids.MessageSendCharacteristic); 
+        
+        if (sendCharacteristic == null)
+        {
+            throw new Exception($"Characteristic {ChatUuids.MessageSendCharacteristic} not found on {device.Name}.");
+        }
+        
+        _loggingService.AddLog(("Wrote data to send characteristic.", null));
+        await sendCharacteristic.WriteAsync(data);
+    }
+
+    public async Task<(bool, List<Exception>)> BroadcastMessage(byte[] data)
     {
         var anySuccess = false;
         var exceptions = new List<Exception>();
@@ -131,44 +173,26 @@ public abstract class AbstractBluetoothService
         {
             try
             {
-                var native = device.NativeDevice;
-                
-                if (native == null)
-                    throw new Exception($"Native device is null for {device.Name}");
-
-                if (Adapter.ConnectedDevices.All(d => d.Id != native.Id))
-                {
-                    await Adapter.ConnectToDeviceAsync(native);
-                }
-
-                var service = await native.GetServiceAsync(ChatUuids.ChatService);
-                
-                if (service == null)
-                {
-                    throw new Exception($"Service {ChatUuids.ChatService} not found on {device.Name}.");
-                }
-                
-                var characteristic = await service.GetCharacteristicAsync(ChatUuids.MessageSendCharacteristic);
-
-                if (characteristic == null)
-                {
-                    throw new Exception($"Characteristic {ChatUuids.MessageSendCharacteristic} not found on {device.Name}. Available characteristics:");
-                }
-
-                await characteristic.WriteAsync(data);
+                _loggingService.AddLog(("Broadcasting message to device:", device.Name));
+                await SendToDevice(device, data);
                 anySuccess = true;
             }
             catch (Exception ex)
             {
-                exceptions.Add(ex);
+                _errorService.Add(ex);
             }
         }
 
-        return (anySuccess, exceptions);
+        return (anySuccess, null);
     }
 
     public async Task ConnectToDevice(MeowDevice device)
     {
+        if (_establishingConnectionDevices.Any(d => d.Id == device.Id))
+        {
+            throw new Exception("Already establishing connection to device");
+        }
+
         _establishingConnectionDevices.Add(device);
         if (device.NativeDevice == null)
             throw new ArgumentNullException(nameof(device));
@@ -180,6 +204,10 @@ public abstract class AbstractBluetoothService
         catch (Exception exception)
         {
             _errorService.Add(exception);
+        }
+        finally
+        {
+            _establishingConnectionDevices.RemoveAll(d => d.Id == device.Id);
         }
 
         _loggingService.AddLog(("Connected to device!", device.NativeDevice));
@@ -203,6 +231,7 @@ public abstract class AbstractBluetoothService
         characteristic.ValueUpdated += (_, a) =>
         {
             var data = a.Characteristic?.Value;
+            throw new Exception("I told you so! This never happens!");
             if (data != null && data.Length > 0)
             {
                 DeviceDataReceived?.Invoke(data);

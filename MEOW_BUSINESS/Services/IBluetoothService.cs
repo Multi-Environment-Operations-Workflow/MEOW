@@ -19,7 +19,7 @@ public interface IBluetoothService
 
     List<MeowDevice> GetConnectedDevices();
     
-    Task<(bool anySuccess, List<Exception> allErrors)> SendToAllAsync(byte[] data);
+    Task<(bool anySuccess, List<Exception> allErrors)> BroadcastMessage(byte[] data);
 
 
     Task StartAdvertisingAsync(string name);
