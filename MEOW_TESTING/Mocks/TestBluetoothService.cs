@@ -9,7 +9,7 @@ public class TestBluetoothService(IErrorService errorService, ILoggingService lo
     public new event Action? PeerConnected;
     public new event Action<byte[]>? DeviceDataReceived;
 
-    public Task StartAdvertisingAsync(string name)
+    public Task StartAdvertisingAsync( )
     {
         throw new NotImplementedException();
     }

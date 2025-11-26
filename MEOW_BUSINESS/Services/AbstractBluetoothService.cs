@@ -147,19 +147,19 @@ public abstract class AbstractBluetoothService
             throw new Exception($"Service {ChatUuids.ChatService} not found on {device.Name}.");
         }
 
-        var sendCharacteristic = await service.GetCharacteristicAsync(Chatuuids.MessageSendCharacteristic);
+        var sendCharacteristic = await service.GetCharacteristicAsync(ChatUuids.MessageSendCharacteristic);
         if (sendCharacteristic == null)
         {
             throw new Exception($"Message Send Characteristic not found on {device.Name}.");
         }
 
-        if (messageSendChar.Properties.HasFlag(CharacteristicPropertyType.Notify))
+        if (sendCharacteristic.Properties.HasFlag(CharacteristicPropertyType.Notify))
         {
-            messageSendChar.ValueUpdated += (s, e) =>
+            sendCharacteristic.ValueUpdated += (s, e) =>
             {
                 DeviceDataReceived?.Invoke(e.Characteristic.Value);
             };
-            await messageSendChar.StartUpdatesAsync();
+            await sendCharacteristic.StartUpdatesAsync();
         }
             
         var receiveCharacteristic = await service.GetCharacteristicAsync(ChatUuids.MessageReceiveCharacteristic);

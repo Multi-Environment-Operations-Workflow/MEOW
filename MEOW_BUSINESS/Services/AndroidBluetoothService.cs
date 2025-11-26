@@ -198,7 +198,7 @@ public class AndroidBluetoothService : AbstractBluetoothService, IBluetoothServi
             {
                 messageSendChar.ValueUpdated += (s, e) =>
                 {
-                    DeviceDataReceived?.Invoke(e.Characteristic.Value);
+                    InvokeDataReceived(e.Characteristic.Value);
                 };
                 await messageSendChar.StartUpdatesAsync();
             }
