@@ -1,6 +1,6 @@
 ﻿using MEOW_BUSINESS.Services;
 using MEOW_TESTING.Mocks;
-using Moq;
+using NSubstitute;
 
 namespace MEOW_TESTING;
 
@@ -10,18 +10,18 @@ public class ChatServiceTest
     public async Task SendMessageTest()
     {
         // Mock the BluetoothService to simulate successful sending
-        var bluetoothService = new Mock<IBluetoothService>();
-        bluetoothService.Setup(bs => bs.SendToAllAsync(It.IsAny<byte[]>())).ReturnsAsync((true, []));
+        var bluetoothService = Substitute.For<IBluetoothService>();
+        bluetoothService.BroadcastMessage(Arg.Any<byte[]>()).Returns((true, []));
         var errorService = new TestErrorService();
-        var messageService = new MessageService(bluetoothService.Object, errorService);
+        var messageService = new MessageService(bluetoothService, errorService);
         
         // Mock the MeowPreferences to provide a username
-        var meowPreferences = new Mock<IMeowPreferences>();
-        meowPreferences.Setup(p => p.Get("username", "")).Returns("TestUser");
+        var meowPreferences = Substitute.For<IMeowPreferences>();
+        meowPreferences.Get("username", "").Returns("TestUser");
         
-        var userStateService = new UserStateService(meowPreferences.Object);
-        var notificationManagerService = new Mock<INotificationManagerService>();
-        var chatService = new ChatService(messageService, userStateService, notificationManagerService.Object, errorService);
+        var userStateService = new UserStateService(meowPreferences);
+        var notificationManagerService = Substitute.For<INotificationManagerService>();
+        var chatService = new ChatService(messageService, userStateService, notificationManagerService, errorService);
         
         // Send a message and verify the result
         var result = await chatService.SendMessage("Hello, World!");

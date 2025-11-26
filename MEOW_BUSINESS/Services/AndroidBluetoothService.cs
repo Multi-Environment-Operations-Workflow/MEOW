@@ -25,12 +25,10 @@ namespace MEOW_BUSINESS.Services;
 /// </summary>
 public class AndroidBluetoothService : AbstractBluetoothService, IBluetoothService // Implementering af IBluetoothService til Android
 {
-    public new event Action<AdvertisingState, string?>? AdvertisingStateChanged;
+    public event Action<AdvertisingState, string?>? AdvertisingStateChanged;
 
     public new event Action? PeerConnected;
-
-    public new event Action<byte[]>? DeviceDataReceived;
-
+    
     private BluetoothLeAdvertiser? _bleAdvertiser;
 
     private AdvertisingCallback? _advertisingCallback;
@@ -43,28 +41,24 @@ public class AndroidBluetoothService : AbstractBluetoothService, IBluetoothServi
     private readonly UUID _msgRecvUuid = UUID.FromString(ChatUuids.MessageReceiveCharacteristic.ToString())!;
 
     private IErrorService _errorService;
+    private ILoggingService _loggingService;
 
     // For at ungå dupes
     private bool _isAdvertising = false;
     private bool _isScanning = false;
 
-    public AndroidBluetoothService(IErrorService errorService) : base(errorService)
+    public AndroidBluetoothService(IErrorService errorService, ILoggingService loggingService) : base(errorService, loggingService)
     {
         _errorService = errorService;
+        _loggingService = loggingService;
         _bluetoothManager = (BluetoothManager?)Android.App.Application.Context.GetSystemService(Context.BluetoothService);
-        MeowGattCallback callback = new(OnReceive);
+        MeowGattCallback callback = new(InvokeDataReceived);
         _gattServer = _bluetoothManager.OpenGattServer(Android.App.Application.Context, callback);
 
-        callback.SetGattServer(_gattServer);
+        callback.SetGattServer(_gattServer, loggingService);
     }
 
-    private void OnReceive(byte[] data)
-    {
-        DeviceDataReceived.Invoke(data);
-    }
-
-    // IBluetoothService.StartAdvertisingAsync
-    public async Task StartAdvertisingAsync(string name)
+    public async Task StartAdvertisingAsync()
     {
         if (_isAdvertising)
         {
@@ -88,7 +82,7 @@ public class AndroidBluetoothService : AbstractBluetoothService, IBluetoothServi
 
         var recvChar = new BluetoothGattCharacteristic(
             _msgRecvUuid,
-            GattProperty.Write | GattProperty.WriteNoResponse,
+            GattProperty.Write | GattProperty.WriteNoResponse | GattProperty.Notify,
             GattPermission.Write);
 
         service.AddCharacteristic(sendChar);
@@ -107,9 +101,6 @@ public class AndroidBluetoothService : AbstractBluetoothService, IBluetoothServi
             return;
         }
 
-        // Det navn folk vil se i deres Bluetooth-liste
-        adapter?.SetName($"(MEOW) {name}");
-        // Mere settings
         var settings = new AdvertiseSettings.Builder()
             .SetAdvertiseMode(AdvertiseMode.Balanced)
             .SetConnectable(true)
@@ -124,24 +115,11 @@ public class AndroidBluetoothService : AbstractBluetoothService, IBluetoothServi
 
         // Callback til at håndtere advertising resultater
         var callback = new AdvertisingCallback(
-            onSuccess: () => AdvertisingStateChanged?.Invoke(AdvertisingState.Started, $"Advertising as {name}"),
+            onSuccess: () => AdvertisingStateChanged?.Invoke(AdvertisingState.Started, $"Advertising as {adapter?.Name}"),
             onFailure: (errorMessage) => AdvertisingStateChanged?.Invoke(AdvertisingState.Failed, errorMessage));
         // Her starter vi så faktisk det som gør vi kan se enheden på andre enheder.
         advertiser.StartAdvertising(settings, data, callback);
         await Task.CompletedTask;
-    }
-
-    private void OnDeviceDiscovered(object? s, Plugin.BLE.Abstractions.EventArgs.DeviceEventArgs a)
-    { // Tjekker om vi allerede har den. Vis vi har gør vi ikke noget. Ellers tilføjer vi den til vores liste.
-        if (DiscoveredDevices.Any(d => d.Id == a.Device.Id))
-            return;
-
-        if (a.Device.Name != null)
-        {
-            var device = new MeowDevice(a.Device.Name, a.Device.Id, a.Device);
-            device.Name = device.Name.Replace("(MEOW) ", "").Trim();
-            DiscoveredDevices.Add(device);
-        }
     }
 
     public Task StopAdvertisingAsync()
@@ -163,12 +141,8 @@ public class AndroidBluetoothService : AbstractBluetoothService, IBluetoothServi
                 finally
                 {
                     _isScanning = false;
-                    Adapter.DeviceDiscovered -= OnDeviceDiscovered; // Fjerner handles fordi vi også stopper scanning.  
                 }
             }
-
-            // Vis ikke vi cleare den risikere vi den går med over. Måske. Skal jeg lige teste !TODO
-            DiscoveredDevices.Clear();
 
             if (_bleAdvertiser != null && _advertisingCallback != null)
             {
@@ -195,7 +169,6 @@ public class AndroidBluetoothService : AbstractBluetoothService, IBluetoothServi
             AdvertisingStateChanged?.Invoke(AdvertisingState.Failed, $"Failed to stop advertising: {ex.Message}"); // kan fx ske vis den ikke advetizer til at starte med.
             _isAdvertising = false;
             _advertisingCallback = null;
-            Adapter.DeviceDiscovered -= OnDeviceDiscovered;
             _isScanning = false;
         }
 
@@ -344,16 +317,24 @@ class MeowGattCallback(Action<byte[]> onReceive) : BluetoothGattServerCallback
     private readonly UUID messageReceiveUuid = UUID.FromString(ChatUuids.MessageReceiveCharacteristic.ToString())!;
 
     private BluetoothGattServer? _gattServer;
+    
+    private ILoggingService _loggingService;
 
-    public void SetGattServer(BluetoothGattServer server)
+    public void SetGattServer(BluetoothGattServer server, ILoggingService loggingService)
     {
         _gattServer = server;
+        _loggingService = loggingService;
     }
 
     public override void OnCharacteristicReadRequest(BluetoothDevice? device, int requestId, int offset, BluetoothGattCharacteristic? characteristic)
     {
         var bytes = characteristic.GetValue() ?? Array.Empty<byte>();
         _gattServer.SendResponse(device, requestId, GattStatus.Success, offset, bytes);
+    }
+
+    public override void OnConnectionStateChange(BluetoothDevice? device, ProfileState status, ProfileState newState)
+    {
+        _loggingService.AddLog(("Gatt connection state changed: " + newState, device));
     }
 
     public override void OnCharacteristicWriteRequest(

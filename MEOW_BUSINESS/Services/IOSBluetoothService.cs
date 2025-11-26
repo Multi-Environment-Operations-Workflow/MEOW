@@ -7,28 +7,23 @@ using ObjCRuntime;
 
 namespace MEOW_BUSINESS.Services;
 
-public class IOSBluetoothService(IUserStateService userStateService, IErrorService errorService) : AbstractBluetoothService(errorService), IBluetoothService, ICBPeripheralManagerDelegate
+public class IOSBluetoothService(IUserStateService userStateService, IErrorService errorService, ILoggingService loggingService) : AbstractBluetoothService(errorService, loggingService), IBluetoothService, ICBPeripheralManagerDelegate
 {
     private CBPeripheralManager? _peripheralManager;
-
     private CBMutableCharacteristic? _sendCharacteristic;
     private CBMutableCharacteristic? _receiveCharacteristic;
     
-    public new event Action<byte[]>? DeviceDataReceived;
+    public event Action<AdvertisingState, string?>? AdvertisingStateChanged;
 
-    public new event Action<AdvertisingState, string?>? AdvertisingStateChanged;
-
-    public new event Action? PeerConnected;
-    
-
-    private readonly CBUUID chatServiceUuid = CBUUID.FromString(ChatUuids.ChatService.ToString());
+    private readonly CBUUID _chatServiceUuid = CBUUID.FromString(ChatUuids.ChatService.ToString());
+    private readonly CBUUID _msgSendUuid = CBUUID.FromString(ChatUuids.MessageSendCharacteristic.ToString());
+    private readonly CBUUID _msgRecvUuid = CBUUID.FromString(ChatUuids.MessageReceiveCharacteristic.ToString());
 
 
-    public async Task StartAdvertisingAsync(string name)
+    public async Task StartAdvertisingAsync()
     {
         _peripheralManager = new CBPeripheralManager(this, null);
 
-        // Wait for Bluetooth to be powered on
         while (_peripheralManager.State is CBManagerState.Unknown or CBManagerState.Resetting)
             await Task.Delay(100);
 
@@ -38,32 +33,24 @@ public class IOSBluetoothService(IUserStateService userStateService, IErrorServi
             return;
         }
 
-        // Create service and characteristics
-        var chatService = new CBMutableService(chatServiceUuid, true);
-
-        CBCharacteristicProperties allProps = CBCharacteristicProperties.Read
-                                              | CBCharacteristicProperties.Write
-                                              | CBCharacteristicProperties.WriteWithoutResponse
-                                              | CBCharacteristicProperties.Notify
-                                              | CBCharacteristicProperties.Indicate;
+        var chatService = new CBMutableService(_chatServiceUuid, true);
 
         _sendCharacteristic = new CBMutableCharacteristic(
-            CBUUID.FromString(ChatUuids.MessageSendCharacteristic.ToString()),
-            allProps,
+            _msgSendUuid,
+            CBCharacteristicProperties.Notify | CBCharacteristicProperties.Indicate | CBCharacteristicProperties.Read,
             null,
             CBAttributePermissions.Readable
         );
 
         _receiveCharacteristic = new CBMutableCharacteristic(
-            CBUUID.FromString(ChatUuids.MessageReceiveCharacteristic.ToString()),
-            allProps,
+            _msgRecvUuid,
+            CBCharacteristicProperties.Write | CBCharacteristicProperties.WriteWithoutResponse | CBCharacteristicProperties.Notify,
             null,
             CBAttributePermissions.Writeable
         );
 
         chatService.Characteristics = new CBCharacteristic[] { _sendCharacteristic, _receiveCharacteristic };
 
-        // Add the service — asynchronous operation
         _peripheralManager.AddService(chatService);
     }
 
@@ -77,19 +64,15 @@ public class IOSBluetoothService(IUserStateService userStateService, IErrorServi
             return;
         }
 
-        // Only advertise AFTER the service is added successfully
-        var advertiseName = String.Concat("(MEOW) ", userStateService.GetName());
         var advertisementData = new NSMutableDictionary
         {
-            { CBAdvertisement.DataLocalNameKey, new NSString(advertiseName) },
             { CBAdvertisement.DataServiceUUIDsKey, NSArray.FromObjects(service.UUID) }
         };
 
         peripheral.StartAdvertising(advertisementData);
         AdvertisingStateChanged?.Invoke(AdvertisingState.Started, "Advertising started successfully with service.");
     }
-
-
+    
     public async Task StopAdvertisingAsync()
     {
         try
@@ -108,16 +91,17 @@ public class IOSBluetoothService(IUserStateService userStateService, IErrorServi
     [Export("peripheralManager:didReceiveWriteRequests:")]
     public void DidReceiveWriteRequests(CBPeripheralManager peripheral, CBATTRequest[] requests)
     {
+        loggingService.AddLog(("Received write requests via Bluetooth.", null));
         foreach (var request in requests)
         {
-            if (request.Characteristic?.UUID?.Equals(_receiveCharacteristic?.UUID) == true && request.Value != null)
+            if (request.Characteristic.UUID.Equals(_receiveCharacteristic?.UUID) == true && request.Value != null)
             {
                 var buffer = new byte[request.Value.Length];
                 System.Runtime.InteropServices.Marshal.Copy(request.Value.Bytes, buffer, 0, (int)request.Value.Length);
                 
-                DeviceDataReceived?.Invoke(buffer);
+                InvokeDataReceived(buffer);
 
-                _peripheralManager?.RespondToRequest(request, CBATTError.Success);
+                peripheral.RespondToRequest(request, CBATTError.Success);
             }
         }
     }
@@ -156,7 +140,9 @@ public class IOSBluetoothService(IUserStateService userStateService, IErrorServi
         _peripheralManager?.Dispose();
         _sendCharacteristic?.Dispose();
         _receiveCharacteristic?.Dispose();
-        chatServiceUuid.Dispose();
+        _chatServiceUuid.Dispose();
+        _msgSendUuid.Dispose();
+        _msgRecvUuid.Dispose();
     }
 
     public NativeHandle Handle { get; }
