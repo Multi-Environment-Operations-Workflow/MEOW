@@ -257,8 +257,7 @@ class MeowGattCallback(Action<byte[]> onReceive) : BluetoothGattServerCallback
         BluetoothDevice? device, int requestId, BluetoothGattCharacteristic? characteristic,
         bool preparedWrite, bool responseNeeded, int offset, byte[]? value)
     {
-        if (characteristic.Uuid.Equals(messageReceiveUuid) && value != null)
-            onReceive.Invoke(value);
+        onReceive.Invoke(value);
 
         var resp = value ?? Array.Empty<byte>();
         if (responseNeeded)
