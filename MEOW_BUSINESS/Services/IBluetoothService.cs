@@ -11,7 +11,12 @@ public interface IBluetoothService
     
     public event Action<byte[]>? DeviceDataReceived;
     
+    List<MeowDevice> ConnectedDevices { get; }
+    List<MeowDevice> EstablishingConnectionDevices { get; }
+    
     Task<List<MeowDevice>> ScanForDevices();
+    
+    Task ScanAndConnectToDeviceName(string name);
     
     Task ScanAndConnectToAllFoundDevices();
     
