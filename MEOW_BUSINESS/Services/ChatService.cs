@@ -18,7 +18,7 @@ public class ChatService(
 
         var connected = messageService.GetConnectedDevices();
 
-        if (connected.Count == 0)
+        if (connected.Count < 1)
         {
             errors.Add(new Exception("No Devices Connected"));
             return Task.FromResult<(bool, List<Exception>)>((false, errors));
