@@ -16,9 +16,12 @@ public abstract class AbstractBluetoothService
     private ILoggingService _loggingService;
     private IErrorService _errorService;
     
-    private readonly List<MeowDevice> _connectedDevices = new();
+    public List<MeowDevice> ConnectedDevices { get; } = new();
     
-    private readonly List<MeowDevice> _establishingConnectionDevices = new();
+    public List<MeowDevice> EstablishingConnectionDevices { get; } = new();
+
+    private List<MeowDevice> _discoveredDevices = new();
+    private DateTime _lastScanTime = DateTime.MinValue;
 
     public event Action<byte[]>? DeviceDataReceived;
 
@@ -40,9 +43,9 @@ public abstract class AbstractBluetoothService
             
             foreach (var dev in currentlyConnected)
             {
-                if (_connectedDevices.All(cd => cd.Id != dev.Id))
+                if (ConnectedDevices.All(cd => cd.Id != dev.Id))
                 {
-                    _connectedDevices.Add(new MeowDevice(dev.Name ?? string.Empty, dev.Id, dev));
+                    ConnectedDevices.Add(new MeowDevice(dev.Name ?? string.Empty, dev.Id, dev));
                 }
             }
         }
@@ -62,33 +65,40 @@ public abstract class AbstractBluetoothService
     {
         if (!_bluetoothLe.IsOn)
             throw new Exception("Bluetooth is off");
-
-        var foundDevices = new List<MeowDevice>();
-
+        
+        if (_lastScanTime <= DateTime.Now.AddSeconds(-15))
+        {
+            _discoveredDevices.Clear();
+            _lastScanTime = DateTime.Now;
+        }
+        else
+        {
+            return _discoveredDevices;
+        }
+        
         Adapter.DeviceDiscovered += (_, a) =>
         {
             if (a.Device.Name != null)
             {
-                foundDevices.Add(new MeowDevice(a.Device.Name, a.Device.Id, a.Device));
+                _discoveredDevices.Add(new MeowDevice(a.Device.Name, a.Device.Id, a.Device));
             }
         };
-        await Adapter.StartScanningForDevicesAsync();
-        var filteredDevices = new List<MeowDevice>(); // replace DeviceType with your type
-        foreach (var device in foundDevices)
-        {
-            try
-            {
-                var service = await device.NativeDevice.GetServiceAsync(ChatUuids.ChatService);
-                if (service != null)
-                    filteredDevices.Add(device);
-            }
-            catch
-            {
-                // Service not found, ignore this device
-            }
-        }
+        await Adapter.StartScanningForDevicesAsync([ChatUuids.ChatService]);
+        return _discoveredDevices;
+    }
 
-        return filteredDevices.Count > 0 ? filteredDevices : foundDevices;
+    public async Task ScanAndConnectToDeviceName(string name)
+    {
+        var devices = await ScanForDevices();
+        var targetDevice = devices.FirstOrDefault(d => d.Name == name);
+        if (targetDevice != null)
+        {
+            await ConnectToDevice(targetDevice);
+        }
+        else
+        {
+            throw new Exception($"Device with name {name} not found.");
+        }
     }
 
 
@@ -107,7 +117,7 @@ public abstract class AbstractBluetoothService
     /// <returns>List of connected MeowDevice instances.</returns>
     public List<MeowDevice> GetConnectedDevices()
     {
-        return _connectedDevices.ToList();
+        return ConnectedDevices.ToList();
     }
     
     /// <summary>
@@ -144,7 +154,7 @@ public abstract class AbstractBluetoothService
     public async Task<(bool, List<Exception>)> BroadcastMessage(byte[] data)
     {
         var anySuccess = false;
-        var targets = _connectedDevices.ToList();
+        var targets = ConnectedDevices.ToList();
 
         foreach (var device in targets)
         {
@@ -165,12 +175,12 @@ public abstract class AbstractBluetoothService
 
     public async Task ConnectToDevice(MeowDevice device)
     {
-        if (_establishingConnectionDevices.Any(d => d.Id == device.Id))
+        if (EstablishingConnectionDevices.Any(d => d.Id == device.Id))
         {
             throw new Exception("Already establishing connection to device");
         }
 
-        _establishingConnectionDevices.Add(device);
+        EstablishingConnectionDevices.Add(device);
         if (device.NativeDevice == null)
             throw new ArgumentNullException(nameof(device));
 
@@ -178,6 +188,8 @@ public abstract class AbstractBluetoothService
         {
             await Adapter.ConnectToDeviceAsync(device.NativeDevice);
             await device.NativeDevice.RequestMtuAsync(512);
+            ConnectedDevices.Add(device);
+            PeerConnected?.Invoke();
             _loggingService.AddLog(("Connected to device!", device.NativeDevice));
         }
         catch (Exception exception)
@@ -187,7 +199,7 @@ public abstract class AbstractBluetoothService
         }
         finally
         {
-            _establishingConnectionDevices.RemoveAll(d => d.Id == device.Id);
+            EstablishingConnectionDevices.RemoveAll(d => d.Id == device.Id);
         }
 
 
