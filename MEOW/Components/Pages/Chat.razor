@@ -58,10 +58,9 @@
                       Label="Type a message..." 
                       Class="message-input"
                       Immediate="true"
-                      Disabled="@_isSending"
-                      />
+                      Disabled="@(!_isSending && !IsConnected)" />
         <div class="button-group">
-            <button class="send-btn" @onclick="SendAsync" disabled="@string.IsNullOrWhiteSpace(_outgoing)">
+            <button class="send-btn" @onclick="SendAsync" disabled="@(!IsConnected || string.IsNullOrWhiteSpace(_outgoing) || _isSending)">
                 @(_isSending ? "Sending..." : "Send")
             </button>
         </div>
@@ -74,6 +73,7 @@
     private int _chatParticipantCount = 0;
     private List<string> _connectedDeviceNames = new();
     private bool _isSending = false;
+    private bool IsConnected => _chatParticipantCount > 1;
 
     protected override Task OnInitializedAsync()
     {
@@ -107,7 +107,7 @@
 
     private async Task SendAsync()
     {
-        if (string.IsNullOrWhiteSpace(_outgoing) || _isSending)
+        if (!IsConnected || string.IsNullOrWhiteSpace(_outgoing) || _isSending)
             return;
 
         var messageToSend = _outgoing;
