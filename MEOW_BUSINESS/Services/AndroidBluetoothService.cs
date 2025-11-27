@@ -41,7 +41,6 @@ public class AndroidBluetoothService : AbstractBluetoothService, IBluetoothServi
     private IErrorService _errorService;
     private ILoggingService _loggingService;
 
-    // For at ungå dupes
     private bool _isAdvertising = false;
     private bool _isScanning = false;
 
@@ -53,7 +52,7 @@ public class AndroidBluetoothService : AbstractBluetoothService, IBluetoothServi
         MeowGattCallback callback = new(InvokeDataReceived);
         _gattServer = _bluetoothManager.OpenGattServer(Android.App.Application.Context, callback);
 
-        callback.SetGattServer(_gattServer, loggingService);
+        callback.SetGattServer(_gattServer, loggingService, this);
     }
 
     public async Task StartAdvertisingAsync()
@@ -87,9 +86,7 @@ public class AndroidBluetoothService : AbstractBluetoothService, IBluetoothServi
         service.AddCharacteristic(recvChar);
 
         _gattServer.AddService(service);
-
-        // 2) Advertising med service UUID = ChatUuids.ChatService
-        // Mere opsætning til advertising
+        
         var adapter = _bluetoothManager?.Adapter;
         var advertiser = adapter?.BluetoothLeAdvertiser;
 
@@ -154,7 +151,6 @@ public class AndroidBluetoothService : AbstractBluetoothService, IBluetoothServi
                 }
             }
 
-            //_gattServer?.Stop();
             _gattServer = null;
 
             _advertisingCallback = null;
@@ -235,11 +231,14 @@ class MeowGattCallback(Action<byte[]> onReceive) : BluetoothGattServerCallback
     private BluetoothGattServer? _gattServer;
     
     private ILoggingService _loggingService;
+    
+    private IBluetoothService _bluetoothService;
 
-    public void SetGattServer(BluetoothGattServer server, ILoggingService loggingService)
+    public void SetGattServer(BluetoothGattServer server, ILoggingService loggingService, IBluetoothService bluetoothService)
     {
         _gattServer = server;
         _loggingService = loggingService;
+        _bluetoothService = bluetoothService;
     }
 
     public override void OnCharacteristicReadRequest(BluetoothDevice? device, int requestId, int offset, BluetoothGattCharacteristic? characteristic)
@@ -250,7 +249,27 @@ class MeowGattCallback(Action<byte[]> onReceive) : BluetoothGattServerCallback
 
     public override void OnConnectionStateChange(BluetoothDevice? device, ProfileState status, ProfileState newState)
     {
-        _loggingService.AddLog(("Gatt connection state changed: " + newState, device));
+        _loggingService.AddLog(("Device id: " + device?.Name, null));
+        try
+        {
+            if (String.IsNullOrEmpty(device?.Name))
+            {
+                return;  
+            }
+            if (_bluetoothService.EstablishingConnectionDevices.Any(d => d.Name == device.Name))
+            {
+                return;
+            }
+            if (_bluetoothService.ConnectedDevices.Any(d => d.Name == device.Name))
+            {
+                return;
+            }
+            _bluetoothService.ScanAndConnectToDeviceName(device.Name);
+        }
+        catch (Exception ex)
+        {
+            _loggingService.AddLog(("Error connecting to device: " + ex.Message, device));
+        }
     }
 
     public override void OnCharacteristicWriteRequest(
