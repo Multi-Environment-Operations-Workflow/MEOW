@@ -1,3 +1,4 @@
+using System;
 
 namespace MEOW_BUSINESS.Models;
 
@@ -13,6 +14,7 @@ public class PinItem
         {
             throw new ArgumentException("Title cannot be null or whitespace", nameof(title));
         }
+
         Title = title;
         TextContext = textContext;
         FileData = fileData;

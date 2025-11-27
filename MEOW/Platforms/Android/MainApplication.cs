@@ -3,6 +3,7 @@ using Android.Runtime;
 using MEOW_BUSINESS.Services;
 using Microsoft.Maui.LifecycleEvents;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Maui.Controls.PlatformConfiguration.AndroidSpecific;
 using Exception = Java.Lang.Exception;
 
 namespace MEOW;
@@ -25,5 +26,7 @@ public class MainApplication : MauiApplication
 
         chatService?.SetupNotificationsAndChatService();
         pinService?.SetupReceiveMessages();
+        App.Current.On<Microsoft.Maui.Controls.PlatformConfiguration.Android>()
+            .UseWindowSoftInputModeAdjust(WindowSoftInputModeAdjust.Resize);
     }
 }

@@ -1,4 +1,5 @@
-﻿using MEOW_BUSINESS.Enums;
+﻿using System;
+using MEOW_BUSINESS.Enums;
 
 namespace MEOW_BUSINESS.Models;
 

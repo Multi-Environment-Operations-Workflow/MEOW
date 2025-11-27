@@ -1,3 +1,5 @@
+using System;
+
 namespace MEOW_BUSINESS.Services;
 
 public interface INotificationManagerService

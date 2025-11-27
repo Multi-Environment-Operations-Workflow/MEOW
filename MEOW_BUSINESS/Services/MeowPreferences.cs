@@ -1,3 +1,5 @@
+using Microsoft.Maui.Storage;
+
 namespace MEOW_BUSINESS.Services;
 
 public class MeowPreferences: IMeowPreferences

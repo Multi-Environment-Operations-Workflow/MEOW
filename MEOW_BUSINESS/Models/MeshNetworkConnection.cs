@@ -1,3 +1,5 @@
+using System;
+
 namespace MEOW_BUSINESS.Models
 {
     public class MeshNetworkConnection(MeshNetworkNode from, MeshNetworkNode to, DateTime startedConnection, DateTime lastConfirmed)

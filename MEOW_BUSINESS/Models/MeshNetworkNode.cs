@@ -1,3 +1,5 @@
+using System;
+
 namespace MEOW_BUSINESS.Models;
 
 public class MeshNetworkNode(int id, String name)

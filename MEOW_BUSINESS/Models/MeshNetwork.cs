@@ -1,3 +1,6 @@
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using MEOW_BUSINESS.Services;
 using SVGCreator;
 using Color = System.Drawing.Color;
