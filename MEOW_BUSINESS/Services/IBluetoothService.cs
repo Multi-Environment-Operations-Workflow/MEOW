@@ -1,9 +1,5 @@
 using MEOW_BUSINESS.Enums;
 using MEOW_BUSINESS.Models;
-using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Threading.Tasks;
 
 namespace MEOW_BUSINESS.Services;
 
@@ -14,16 +10,12 @@ public interface IBluetoothService
     public event Action? PeerConnected;
     
     public event Action<byte[]>? DeviceDataReceived;
-
-    ObservableCollection<MeowDevice> DiscoveredDevices { get; }
     
-    Task<bool> ScanAsync();
+    Task<List<MeowDevice>> ScanForDevices();
     
-    Task ScanAsyncAutomatically();
+    Task ScanAndConnectToAllFoundDevices();
     
-    Task RunInBackground(TimeSpan timeSpan, Func<Task> func);
-    
-    Task ConnectAsync(MeowDevice device);
+    Task ConnectToDevice(MeowDevice device);
 
     List<MeowDevice> GetConnectedDevices();
     
@@ -33,5 +25,7 @@ public interface IBluetoothService
 
     public string? get_device_name_by_id(byte userId);
     Task StartAdvertisingAsync(string name);
+    Task<(bool anySuccess, List<Exception> allErrors)> BroadcastMessage(byte[] data);
+    Task StartAdvertisingAsync();
     Task StopAdvertisingAsync();
 }

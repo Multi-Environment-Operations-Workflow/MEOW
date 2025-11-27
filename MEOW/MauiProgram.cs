@@ -13,6 +13,8 @@ public static class MauiProgram
             .UseMauiApp<App>()
             .ConfigureFonts(fonts => { fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular"); });
 
+        builder.Services.AddSingleton<ILoggingService, LoggingService>();
+        builder.Services.AddSingleton<IErrorService, MeowErrorService>();
 #if ANDROID
         builder.Services.AddSingleton<IBluetoothService, AndroidBluetoothService>();
         builder.Services.AddSingleton<INotificationManagerService, AndroidNotificationManagerService>();
@@ -27,7 +29,6 @@ public static class MauiProgram
         builder.Services.AddSingleton<IPinService, PinService>();
         builder.Services.AddSingleton<IMessageService, MessageService>();
         builder.Services.AddSingleton<IChatService, ChatService>();
-        builder.Services.AddSingleton<IErrorService, MeowErrorService>();
         builder.Services.AddSingleton<IMeowPreferences, MeowPreferences>();
 
         builder.Services.AddMauiBlazorWebView();

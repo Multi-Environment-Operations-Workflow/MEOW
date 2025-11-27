@@ -14,8 +14,11 @@ public class AppDelegate : MauiUIApplicationDelegate
         base.OnActivated(application);
         var chatService = IPlatformApplication.Current?.Services.GetService<IChatService>();
         var pinService = IPlatformApplication.Current?.Services.GetService<IPinService>();
+        
+        if (chatService == null || pinService == null)
+            throw new Exception("Services not found in AppDelegate OnActivated");
 
-        chatService?.SetupNotificationsAndChatService();
-        pinService?.SetupReceiveMessages();
+        chatService.SetupNotificationsAndChatService();
+        pinService.SetupReceiveMessages();
     }
 }
