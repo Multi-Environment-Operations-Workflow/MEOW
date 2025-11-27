@@ -249,7 +249,7 @@ class MeowGattCallback(Action<byte[]> onReceive) : BluetoothGattServerCallback
 
     public override void OnConnectionStateChange(BluetoothDevice? device, ProfileState status, ProfileState newState)
     {
-        _loggingService.AddLog(("Device id: " + device?.Name, null));
+        _loggingService.AddLog(("Device id: " + device?.Address + " Device name: " + device?.Name, device?.Alias));
         try
         {
             if (String.IsNullOrEmpty(device?.Name))
