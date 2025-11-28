@@ -7,7 +7,7 @@ using ObjCRuntime;
 
 namespace MEOW_BUSINESS.Services;
 
-public class IOSBluetoothService(IUserStateService userStateService, IErrorService errorService, ILoggingService loggingService) : AbstractBluetoothService(errorService, loggingService), IBluetoothService, ICBPeripheralManagerDelegate
+public class IOSBluetoothService(IErrorService errorService, ILoggingService loggingService) : AbstractBluetoothService(errorService, loggingService), IBluetoothService, ICBPeripheralManagerDelegate
 {
     private CBPeripheralManager? _peripheralManager;
     private CBMutableCharacteristic? _sendCharacteristic;

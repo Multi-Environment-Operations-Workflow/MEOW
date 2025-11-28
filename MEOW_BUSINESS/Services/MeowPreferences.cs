@@ -1,18 +1,18 @@
 namespace MEOW_BUSINESS.Services;
 
-public class MeowPreferences: IMeowPreferences
+public class MeowPreferences
 {
-    public string Get(string key, string defaultValue = "")
+    public static string Get(string key, string defaultValue = "")
     {
         return Preferences.Get(key, defaultValue);
     }
 
-    public void Set(string key, string value)
+    public static void Set(string key, string value)
     {
         Preferences.Set(key, value);
     }
 
-    public void Remove(string key)
+    public static void Remove(string key)
     {
         Preferences.Remove(key);
     }
