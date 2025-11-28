@@ -3,15 +3,14 @@ using CoreBluetooth;
 using Foundation;
 using MEOW_BUSINESS.Enums;
 using MEOW_BUSINESS.Models;
-using ObjCRuntime;
 
 namespace MEOW_BUSINESS.Services;
 
-public class IOSBluetoothService(IErrorService errorService, ILoggingService loggingService) : AbstractBluetoothService(errorService, loggingService), IBluetoothService, ICBPeripheralManagerDelegate
+public class IOSBluetoothService(IErrorService errorService, ILoggingService loggingService) : AbstractBluetoothService(errorService, loggingService), IBluetoothService
 {
     private CBPeripheralManager? _peripheralManager;
-    private CBMutableCharacteristic? _sendCharacteristic;
-    private CBMutableCharacteristic? _receiveCharacteristic;
+    public CBMutableCharacteristic? _sendCharacteristic;
+    public CBMutableCharacteristic? _receiveCharacteristic;
     
     public event Action<AdvertisingState, string?>? AdvertisingStateChanged;
 
@@ -22,7 +21,7 @@ public class IOSBluetoothService(IErrorService errorService, ILoggingService log
 
     public async Task StartAdvertisingAsync()
     {
-        _peripheralManager = new CBPeripheralManager(this, null);
+        _peripheralManager = new CBPeripheralManager(new IOSGyatt(loggingService, this, errorService), null);
 
         while (_peripheralManager.State is CBManagerState.Unknown or CBManagerState.Resetting)
             await Task.Delay(100);
@@ -34,6 +33,8 @@ public class IOSBluetoothService(IErrorService errorService, ILoggingService log
         }
 
         var chatService = new CBMutableService(_chatServiceUuid, true);
+        loggingService.AddLog(("Created chat service for Bluetooth advertising.", _chatServiceUuid));
+        loggingService.AddLog(("Standard UUID:", ChatUuids.ChatService));
 
         _sendCharacteristic = new CBMutableCharacteristic(
             _msgSendUuid,
@@ -53,25 +54,6 @@ public class IOSBluetoothService(IErrorService errorService, ILoggingService log
 
         _peripheralManager.AddService(chatService);
     }
-
-    // Called when service is successfully added
-    [Export("peripheralManager:didAddService:error:")]
-    public void DidAddService(CBPeripheralManager peripheral, CBService service, NSError error)
-    {
-        if (error != null)
-        {
-            AdvertisingStateChanged?.Invoke(AdvertisingState.Failed, $"Failed to add service: {error.LocalizedDescription}");
-            return;
-        }
-
-        var advertisementData = new NSMutableDictionary
-        {
-            { CBAdvertisement.DataServiceUUIDsKey, NSArray.FromObjects(service.UUID) }
-        };
-
-        peripheral.StartAdvertising(advertisementData);
-        AdvertisingStateChanged?.Invoke(AdvertisingState.Started, "Advertising started successfully with service.");
-    }
     
     public async Task StopAdvertisingAsync()
     {
@@ -86,29 +68,70 @@ public class IOSBluetoothService(IErrorService errorService, ILoggingService log
         }
         await Task.CompletedTask;
     }
+}
+
+class IOSGyatt(ILoggingService loggingService, IOSBluetoothService iosBluetoothService, IErrorService errorService) : CBPeripheralManagerDelegate
+{
+    
+    private readonly CBUUID _chatServiceUuid = CBUUID.FromString(ChatUuids.ChatService.ToString());
+    private readonly CBUUID _msgSendUuid = CBUUID.FromString(ChatUuids.MessageSendCharacteristic.ToString());
+    private readonly CBUUID _msgRecvUuid = CBUUID.FromString(ChatUuids.MessageReceiveCharacteristic.ToString());
+    
+    [Export("peripheralManager:didAddService:error:")]
+    public void DidAddService(CBPeripheralManager peripheral, CBService service, NSError error)
+    {
+        try
+        {
+            if (error != null)
+            {
+                loggingService.AddLog(("Failed to add Bluetooth service.", error));
+                return;
+            }
+
+            var advertisementData = new NSMutableDictionary
+            {
+                { CBAdvertisement.DataServiceUUIDsKey, NSArray.FromObjects(service.UUID) }
+            };
+
+            peripheral.StartAdvertising(advertisementData);
+            loggingService.AddLog(("Started advertising Bluetooth service.", service.UUID));
+        }
+        catch (Exception ex)
+        {
+            errorService.Add(ex);
+        }
+    }
     
     // Use mapping when receiving writes
     [Export("peripheralManager:didReceiveWriteRequests:")]
     public void DidReceiveWriteRequests(CBPeripheralManager peripheral, CBATTRequest[] requests)
     {
-        loggingService.AddLog(("Received write requests via Bluetooth.", null));
-        foreach (var request in requests)
+        try
         {
-            if (request.Characteristic.UUID.Equals(_receiveCharacteristic?.UUID) == true && request.Value != null)
+            loggingService.AddLog(("Received write requests via Bluetooth.", null));
+            foreach (var request in requests)
             {
-                var buffer = new byte[request.Value.Length];
-                System.Runtime.InteropServices.Marshal.Copy(request.Value.Bytes, buffer, 0, (int)request.Value.Length);
-                
-                InvokeDataReceived(buffer);
+                if (request.Characteristic.UUID.Equals(_msgSendUuid) && request.Value != null)
+                {
+                    var buffer = new byte[request.Value.Length];
+                    System.Runtime.InteropServices.Marshal.Copy(request.Value.Bytes, buffer, 0,
+                        (int)request.Value.Length);
 
-                peripheral.RespondToRequest(request, CBATTError.Success);
+                    iosBluetoothService.InvokeDataReceived(buffer);
+
+                    peripheral.RespondToRequest(request, CBATTError.Success);
+                }
             }
+        }
+        catch (Exception ex)
+        {
+            errorService.Add(ex);
         }
     }
 
     
     
-    [Export("peripheralManagerDidUpdateState:")]
+    /**[Export("peripheralManagerDidUpdateState:")]
     public void PeripheralManagerDidUpdateState(CBPeripheralManager peripheral)
     {
         switch (peripheral.State)
@@ -133,18 +156,6 @@ public class IOSBluetoothService(IErrorService errorService, ILoggingService log
                 AdvertisingStateChanged?.Invoke(AdvertisingState.Failed, $"Bluetooth state changed: {peripheral.State}");
                 break;
         }
-    }
-
-    public void Dispose()
-    {
-        _peripheralManager?.Dispose();
-        _sendCharacteristic?.Dispose();
-        _receiveCharacteristic?.Dispose();
-        _chatServiceUuid.Dispose();
-        _msgSendUuid.Dispose();
-        _msgRecvUuid.Dispose();
-    }
-
-    public NativeHandle Handle { get; }
+    }*/
 }
 #endif

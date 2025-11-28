@@ -153,7 +153,10 @@
 
     private async Task StartAdvertisingAsync()
     {
-        try { await Bluetooth.StartAdvertisingAsync(); }
+        try
+        {
+            await Bluetooth.StartAdvertisingAsync();
+        }
         catch (Exception ex)
         {
             ErrorService.Add(ex);
