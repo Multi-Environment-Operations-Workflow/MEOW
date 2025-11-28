@@ -22,6 +22,7 @@ public class IOSBluetoothService : AbstractBluetoothService, IBluetoothService, 
     private readonly CBUUID _msgRecvUuid = CBUUID.FromString(ChatUuids.MessageReceiveCharacteristic.ToString());
 
     public IOSBluetoothService(IErrorService errorService, ILoggingService loggingService) : base(errorService,
+        loggingService)
     {
         _peripheralManager = new(this, null);
         _errorService = errorService;
