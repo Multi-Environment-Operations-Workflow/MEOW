@@ -7,111 +7,138 @@ using ObjCRuntime;
 
 namespace MEOW_BUSINESS.Services;
 
-public class IOSBluetoothService(IUserStateService userStateService, IErrorService errorService, ILoggingService loggingService) : AbstractBluetoothService(errorService, loggingService), IBluetoothService, ICBPeripheralManagerDelegate
+public class IOSBluetoothService : AbstractBluetoothService, IBluetoothService, ICBPeripheralManagerDelegate
 {
-    private CBPeripheralManager? _peripheralManager;
-    private CBMutableCharacteristic? _sendCharacteristic;
-    private CBMutableCharacteristic? _receiveCharacteristic;
-    
+    private readonly CBPeripheralManager _peripheralManager;
+    public CBMutableCharacteristic? _sendCharacteristic;
+    public CBMutableCharacteristic? _receiveCharacteristic;
+
+    private IErrorService _errorService;
+    private ILoggingService _loggingService;
     public event Action<AdvertisingState, string?>? AdvertisingStateChanged;
 
     private readonly CBUUID _chatServiceUuid = CBUUID.FromString(ChatUuids.ChatService.ToString());
     private readonly CBUUID _msgSendUuid = CBUUID.FromString(ChatUuids.MessageSendCharacteristic.ToString());
     private readonly CBUUID _msgRecvUuid = CBUUID.FromString(ChatUuids.MessageReceiveCharacteristic.ToString());
 
+    public IOSBluetoothService(IErrorService errorService, ILoggingService loggingService) : base(errorService,
+        loggingService)
+    {
+        _peripheralManager = new(this, null);
+        _errorService = errorService;
+        _loggingService = loggingService;
+
+        _peripheralManager.WriteRequestsReceived += WriteRequestReceived;
+        _peripheralManager.StateUpdated += PeripheralManagerDidUpdateState;
+    }
 
     public async Task StartAdvertisingAsync()
     {
-        _peripheralManager = new CBPeripheralManager(this, null);
-
-        while (_peripheralManager.State is CBManagerState.Unknown or CBManagerState.Resetting)
-            await Task.Delay(100);
-
-        if (_peripheralManager.State != CBManagerState.PoweredOn)
+        try
         {
-            AdvertisingStateChanged?.Invoke(AdvertisingState.Failed, "Bluetooth not powered on.");
-            return;
+            while (_peripheralManager.State is CBManagerState.Unknown or CBManagerState.Resetting)
+                await Task.Delay(100);
+
+            if (_peripheralManager.State != CBManagerState.PoweredOn)
+            {
+                AdvertisingStateChanged?.Invoke(AdvertisingState.Failed, "Bluetooth not powered on.");
+                return;
+            }
+
+            var chatService = new CBMutableService(_chatServiceUuid, true);
+
+            _sendCharacteristic = new CBMutableCharacteristic(
+                _msgSendUuid,
+                CBCharacteristicProperties.Notify | CBCharacteristicProperties.Indicate |
+                CBCharacteristicProperties.Read,
+                null,
+                CBAttributePermissions.Readable
+            );
+
+            _receiveCharacteristic = new CBMutableCharacteristic(
+                _msgRecvUuid,
+                CBCharacteristicProperties.Write | CBCharacteristicProperties.WriteWithoutResponse |
+                CBCharacteristicProperties.Notify,
+                null,
+                CBAttributePermissions.Writeable
+            );
+
+            chatService.Characteristics = new CBCharacteristic[] { _sendCharacteristic, _receiveCharacteristic };
+
+            _peripheralManager.AddService(chatService);
+            var advertisementData = new NSMutableDictionary
+            {
+                { CBAdvertisement.DataServiceUUIDsKey, NSArray.FromObjects(chatService.UUID) }
+            };
+
+            _peripheralManager.StartAdvertising(advertisementData);
         }
-
-        var chatService = new CBMutableService(_chatServiceUuid, true);
-
-        _sendCharacteristic = new CBMutableCharacteristic(
-            _msgSendUuid,
-            CBCharacteristicProperties.Notify | CBCharacteristicProperties.Indicate | CBCharacteristicProperties.Read,
-            null,
-            CBAttributePermissions.Readable
-        );
-
-        _receiveCharacteristic = new CBMutableCharacteristic(
-            _msgRecvUuid,
-            CBCharacteristicProperties.Write | CBCharacteristicProperties.WriteWithoutResponse | CBCharacteristicProperties.Notify,
-            null,
-            CBAttributePermissions.Writeable
-        );
-
-        chatService.Characteristics = new CBCharacteristic[] { _sendCharacteristic, _receiveCharacteristic };
-
-        _peripheralManager.AddService(chatService);
+        catch (Exception ex)
+        {
+            _errorService.Add(ex);
+            AdvertisingStateChanged?.Invoke(AdvertisingState.Failed, ex.Message);
+        }
     }
 
-    // Called when service is successfully added
-    [Export("peripheralManager:didAddService:error:")]
-    public void DidAddService(CBPeripheralManager peripheral, CBService service, NSError error)
-    {
-        if (error != null)
-        {
-            AdvertisingStateChanged?.Invoke(AdvertisingState.Failed, $"Failed to add service: {error.LocalizedDescription}");
-            return;
-        }
-
-        var advertisementData = new NSMutableDictionary
-        {
-            { CBAdvertisement.DataServiceUUIDsKey, NSArray.FromObjects(service.UUID) }
-        };
-
-        peripheral.StartAdvertising(advertisementData);
-        AdvertisingStateChanged?.Invoke(AdvertisingState.Started, "Advertising started successfully with service.");
-    }
-    
     public async Task StopAdvertisingAsync()
     {
         try
         {
-            _peripheralManager?.StopAdvertising();
+            _peripheralManager.StopAdvertising();
             AdvertisingStateChanged?.Invoke(AdvertisingState.Stopped, "Advertising stopped.");
         }
         catch (Exception ex)
         {
             AdvertisingStateChanged?.Invoke(AdvertisingState.Failed, ex.Message);
         }
+
         await Task.CompletedTask;
     }
-    
-    // Use mapping when receiving writes
-    [Export("peripheralManager:didReceiveWriteRequests:")]
-    public void DidReceiveWriteRequests(CBPeripheralManager peripheral, CBATTRequest[] requests)
-    {
-        loggingService.AddLog(("Received write requests via Bluetooth.", null));
-        foreach (var request in requests)
-        {
-            if (request.Characteristic.UUID.Equals(_receiveCharacteristic?.UUID) == true && request.Value != null)
-            {
-                var buffer = new byte[request.Value.Length];
-                System.Runtime.InteropServices.Marshal.Copy(request.Value.Bytes, buffer, 0, (int)request.Value.Length);
-                
-                InvokeDataReceived(buffer);
 
+    private void WriteRequestReceived(object? sender, CBATTRequestsEventArgs e)
+    {
+        try
+        {
+            var request = e.Requests.FirstOrDefault(r => r.Characteristic.UUID.Equals(_msgRecvUuid));
+            if (request == null || request.Value == null)
+            {
+                _errorService.Add(new Exception("No valid write request found."));
+                return;
+            }
+            
+            var buffer = new byte[request.Value.Length];
+            System.Runtime.InteropServices.Marshal.Copy(
+                request.Value.Bytes,
+                buffer,
+                0,
+                (int)request.Value.Length
+            );
+
+            _loggingService.AddLog(("Received Bluetooth message:",
+                System.Text.Encoding.UTF8.GetString(buffer)));
+            
+            InvokeDataReceived(buffer);
+
+            if (sender is CBPeripheralManager peripheral)
+            {
                 peripheral.RespondToRequest(request, CBATTError.Success);
             }
         }
+        catch (Exception ex)
+        {
+            _errorService.Add(ex);
+        }
     }
 
-    
-    
-    [Export("peripheralManagerDidUpdateState:")]
-    public void PeripheralManagerDidUpdateState(CBPeripheralManager peripheral)
+    private void PeripheralManagerDidUpdateState(object? peripheral, EventArgs e)
     {
-        switch (peripheral.State)
+        if (peripheral is not CBPeripheralManager peripheralManager)
+        {
+            _loggingService.AddLog(("PeripheralManagerDidUpdateState called with invalid peripheral.", peripheral));
+            return;
+        }
+
+        switch (peripheralManager.State)
         {
             case CBManagerState.PoweredOn:
                 AdvertisingStateChanged?.Invoke(AdvertisingState.Started, "Bluetooth powered on.");
@@ -130,21 +157,18 @@ public class IOSBluetoothService(IUserStateService userStateService, IErrorServi
                 break;
 
             default:
-                AdvertisingStateChanged?.Invoke(AdvertisingState.Failed, $"Bluetooth state changed: {peripheral.State}");
+                AdvertisingStateChanged?.Invoke(AdvertisingState.Failed,
+                    $"Bluetooth state changed: {peripheralManager.State}");
                 break;
         }
     }
 
+    public NativeHandle Handle { get; }
+
     public void Dispose()
     {
-        _peripheralManager?.Dispose();
-        _sendCharacteristic?.Dispose();
-        _receiveCharacteristic?.Dispose();
-        _chatServiceUuid.Dispose();
-        _msgSendUuid.Dispose();
-        _msgRecvUuid.Dispose();
+        _peripheralManager.Dispose();
     }
-
-    public NativeHandle Handle { get; }
 }
+
 #endif

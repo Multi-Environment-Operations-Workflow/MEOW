@@ -47,7 +47,7 @@ public abstract class AbstractBluetoothService
     }
     
     
-    protected void InvokeDataReceived(byte[] data)
+    public void InvokeDataReceived(byte[] data)
     {
         DeviceDataReceived?.Invoke(data);
     }
@@ -57,7 +57,7 @@ public abstract class AbstractBluetoothService
         if (!_bluetoothLe.IsOn)
             throw new Exception("Bluetooth is off");
         
-        if (_lastScanTime <= DateTime.Now.AddSeconds(-15))
+        if (_lastScanTime <= DateTime.Now.AddSeconds(-15) || _discoveredDevices.Count == 0)
         {
             _discoveredDevices.Clear();
             _lastScanTime = DateTime.Now;
@@ -69,10 +69,7 @@ public abstract class AbstractBluetoothService
         
         Adapter.DeviceDiscovered += (_, a) =>
         {
-            if (a.Device.Name != null)
-            {
-                _discoveredDevices.Add(new MeowDevice(a.Device.Name, a.Device.Id, a.Device));
-            }
+            _discoveredDevices.Add(new MeowDevice(a.Device.Name, a.Device.Id, a.Device));
         };
         await Adapter.StartScanningForDevicesAsync([ChatUuids.ChatService]);
         return _discoveredDevices;

@@ -1,7 +1,6 @@
 @page "/login"
 @using MEOW_BUSINESS.Services
 @inject NavigationManager Navigation
-@inject IUserStateService UserStateService
 
 <style>
     .login-container {
@@ -119,7 +118,7 @@
     
     protected override void OnInitialized()
     {
-        var existingName = UserStateService.GetName();
+        var existingName = NodeStateService.GetName();
         if (!string.IsNullOrWhiteSpace(existingName))
         {
             _name = existingName;
@@ -132,7 +131,7 @@
         if (string.IsNullOrWhiteSpace(_name))
             return;
 
-        UserStateService.SetName(_name.Trim());
+        NodeStateService.SetName(_name.Trim());
         Navigation.NavigateTo("/");
     }
 }

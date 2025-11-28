@@ -5,7 +5,6 @@
 @inject IChatService ChatService
 @inject NavigationManager Navigation
 @inject IErrorService ErrorService
-@inject IUserStateService UserStateService
 
 <div class="chat-container">
     <!-- Header -->
@@ -37,7 +36,7 @@
                     <div class="message-text">⚠️ @m.Message</div>
                 </div>
             }
-            else if (m.Sender == "You" || m.Sender == UserStateService.GetName())
+            else if (m.Sender == "You" || m.Sender == NodeStateService.GetName())
             {
                 <div class="message-bubble message-sent">
                     <div class="message-text">@m.Message</div>

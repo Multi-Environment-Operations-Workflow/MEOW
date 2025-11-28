@@ -1,10 +1,8 @@
 ﻿@page "/"
-@using System.Collections.ObjectModel
 @using MEOW_BUSINESS.Enums
 @using MEOW_BUSINESS.Models
 @using MEOW_BUSINESS.Services
 @inject IBluetoothService Bluetooth
-@inject IUserStateService UserStateService
 @inject NavigationManager Navigation
 @inject INotificationManagerService NotificationManagerService
 @inject IErrorService ErrorService
@@ -96,13 +94,13 @@
 
     protected override void OnInitialized()
     {
-        if (string.IsNullOrEmpty(UserStateService.GetName()))
+        if (string.IsNullOrEmpty(NodeStateService.GetName()))
         {
             Navigation.NavigateTo("/login");
             return;
         }
 
-        _name = UserStateService.GetName();
+        _name = NodeStateService.GetName();
 
         Bluetooth.AdvertisingStateChanged += OnAdvertisingStateChanged;
         Bluetooth.PeerConnected += OnPeerConnected;
@@ -155,7 +153,10 @@
 
     private async Task StartAdvertisingAsync()
     {
-        try { await Bluetooth.StartAdvertisingAsync(); }
+        try
+        {
+            await Bluetooth.StartAdvertisingAsync();
+        }
         catch (Exception ex)
         {
             ErrorService.Add(ex);
@@ -187,7 +188,7 @@
 
     private void Logout()
     {
-        UserStateService.ResetState();
+        NodeStateService.ResetState();
         Navigation.NavigateTo("/login");
     }
 }

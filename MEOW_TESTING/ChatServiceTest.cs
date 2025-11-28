@@ -16,10 +16,10 @@ public class ChatServiceTest
         var messageService = new MessageService(bluetoothService, errorService);
         
         // Mock the MeowPreferences to provide a username
-        var meowPreferences = Substitute.For<IMeowPreferences>();
+        var meowPreferences = Substitute.For<MeowPreferences>();
         meowPreferences.Get("username", "").Returns("TestUser");
         
-        var userStateService = new UserStateService(meowPreferences);
+        var userStateService = new NodeStateService(meowPreferences);
         var notificationManagerService = Substitute.For<INotificationManagerService>();
         var chatService = new ChatService(messageService, userStateService, notificationManagerService, errorService);
         

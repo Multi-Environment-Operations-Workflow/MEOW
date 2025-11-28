@@ -4,16 +4,14 @@ namespace MEOW_BUSINESS.Services;
 
 public class MessageService(IBluetoothService bluetooth, IErrorService errorService) : IMessageService
 {
-    static int MessageCount { get; set; }
     
     private readonly List<MeowMessage> _messages = new();
     
     public static int GetMessageCount()
     {
-        return MessageCount++;
+        return NodeStateService.MessageCount++;
     }
     
-    // Sends a message using the bluetooth service
     public async Task<(bool, List<Exception>)> SendMessage(MeowMessage message)
     {
         if (message is null)

@@ -6,7 +6,6 @@ namespace MEOW_BUSINESS.Services;
 
 public class ChatService(
     IMessageService messageService,
-    IUserStateService userStateService,
     INotificationManagerService notificationManagerService,
     IErrorService errorService)
     : IChatService
@@ -14,7 +13,7 @@ public class ChatService(
     private ObservableCollection<MeowMessageText> MeowMessageTexts { get; set; } = new();
     public Task<(bool, List<Exception>)> SendMessage(string message)
     {
-        var meowMessage = new MeowMessageText(userStateService.GetId(), MessageService.GetMessageCount(), message, userStateService.GetName());
+        var meowMessage = new MeowMessageText(NodeStateService.Id, MessageService.GetMessageCount(), message, NodeStateService.GetName());
         MeowMessageTexts.Add(meowMessage);
         return messageService.SendMessage(meowMessage);
     }

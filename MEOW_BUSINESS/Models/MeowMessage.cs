@@ -73,7 +73,7 @@ public class MeowMessageGps(byte userId, int messageNumber, string sender, float
     }
 }
 
-public class MeowMessageTask(byte userId, int messageNumber, string sender, string title, string textContext, string fileData) : MeowMessage(userId, messageNumber, sender)
+public class MeowMessageTask(byte userId, int messageNumber, string sender, string title, string? textContext, string? fileData) : MeowMessage(userId, messageNumber, sender)
 {
     public override MessageType Type => MessageType.TASK;
 
