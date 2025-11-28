@@ -143,13 +143,6 @@ public abstract class AbstractBluetoothService
     {
         var anySuccess = false;
         var targets = ConnectedDevices.ToList();
-        
-        var adapterThings = Adapter.ConnectedDevices.ToList();
-
-        foreach (var thing in adapterThings)
-        {
-            _loggingService.AddLog(("Adapter connected device:", thing.Name));
-        }
 
         foreach (var device in targets)
         {
