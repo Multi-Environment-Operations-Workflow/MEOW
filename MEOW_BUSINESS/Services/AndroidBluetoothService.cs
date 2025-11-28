@@ -120,59 +120,6 @@ public class AndroidBluetoothService : AbstractBluetoothService, IBluetoothServi
         await Task.CompletedTask;
     }
 
-    public Task StopAdvertisingAsync()
-    {
-        try
-        {
-            //  Stop aktiv scanning, hvis en kører. Virker delvist
-            if (_isScanning)
-            {
-                try
-                {
-                    if (Adapter.IsScanning)
-                        Adapter.StopScanningForDevicesAsync();
-                }
-                catch (Exception ex)
-                {
-                    _errorService.Add(ex);
-                }
-                finally
-                {
-                    _isScanning = false;
-                }
-            }
-
-            if (_bleAdvertiser != null && _advertisingCallback != null)
-            {
-                try
-                {
-                    _bleAdvertiser.StopAdvertising(_advertisingCallback);
-                }
-                catch (Exception ex)
-                {
-                    _errorService.Add(ex);
-                }
-            }
-
-            //_gattServer?.Stop();
-            _gattServer = null;
-
-            _advertisingCallback = null;
-            _isAdvertising = false;
-
-            AdvertisingStateChanged?.Invoke(AdvertisingState.Stopped, "Advertising stopped");
-        }
-        catch (Exception ex)
-        {
-            AdvertisingStateChanged?.Invoke(AdvertisingState.Failed, $"Failed to stop advertising: {ex.Message}"); // kan fx ske vis den ikke advetizer til at starte med.
-            _isAdvertising = false;
-            _advertisingCallback = null;
-            _isScanning = false;
-        }
-
-        return Task.CompletedTask;
-    }
-
     /// <summary>
     /// Checks and requests Bluetooth permissions on Android.
     /// </summary>

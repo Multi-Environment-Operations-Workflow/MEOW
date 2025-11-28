@@ -14,6 +14,16 @@ public class ChatService(
     private ObservableCollection<MeowMessageText> MeowMessageTexts { get; set; } = new();
     public Task<(bool, List<Exception>)> SendMessage(string message)
     {
+        var errors = new List<Exception>();
+
+        var connected = messageService.GetConnectedDevices();
+
+        if (connected.Count < 1)
+        {
+            errors.Add(new Exception("No Devices Connected"));
+            return Task.FromResult<(bool, List<Exception>)>((false, errors));
+        }
+        
         var meowMessage = new MeowMessageText(userStateService.GetId(), MessageService.GetMessageCount(), message, userStateService.GetName());
         MeowMessageTexts.Add(meowMessage);
         return messageService.SendMessage(meowMessage);

@@ -57,10 +57,11 @@
         <MatTextField @bind-Value="_outgoing" 
                       Label="Type a message..." 
                       Class="message-input"
-                      Immediate="true" />
+                      Immediate="true"
+                      Disabled="@(!_isSending && !IsConnected)" />
         <div class="button-group">
-            <button class="send-btn" @onclick="SendAsync" disabled="@string.IsNullOrWhiteSpace(_outgoing)">
-                Send
+            <button class="send-btn" @onclick="SendAsync" disabled="@(!IsConnected || string.IsNullOrWhiteSpace(_outgoing) || _isSending)">
+                @(_isSending ? "Sending..." : "Send")
             </button>
         </div>
     </div>
@@ -71,6 +72,8 @@
     private List<MeowMessageText> _messages = new();
     private int _chatParticipantCount = 0;
     private List<string> _connectedDeviceNames = new();
+    private bool _isSending = false;
+    private bool IsConnected => _chatParticipantCount > 1;
 
     protected override Task OnInitializedAsync()
     {
@@ -104,12 +107,18 @@
 
     private async Task SendAsync()
     {
+        if (!IsConnected || string.IsNullOrWhiteSpace(_outgoing) || _isSending)
+            return;
+
+        var messageToSend = _outgoing;
+        
         try
         {
-            if (string.IsNullOrWhiteSpace(_outgoing))
-                return;
+            _isSending = true;
+            _outgoing = string.Empty;
+            await InvokeAsync(StateHasChanged);
 
-            var result = await ChatService.SendMessage(_outgoing);
+            var result = await ChatService.SendMessage(messageToSend);
 
             if (!result.Item1)
             {
@@ -118,14 +127,17 @@
                     : result.Item2;
 
                 ErrorService.Add(exceptions);
+                _outgoing = messageToSend;
             }
-
-            _outgoing = string.Empty;
-            await InvokeAsync(StateHasChanged);
         }
         catch (Exception e)
         {
             ErrorService.Add(e);
+            _outgoing = messageToSend;
+        }
+        finally
+        {
+            _isSending = false;
             await InvokeAsync(StateHasChanged);
         }
     }

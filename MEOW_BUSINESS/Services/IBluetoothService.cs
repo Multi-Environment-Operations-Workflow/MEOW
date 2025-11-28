@@ -26,5 +26,4 @@ public interface IBluetoothService
     
     Task<(bool anySuccess, List<Exception> allErrors)> BroadcastMessage(byte[] data);
     Task StartAdvertisingAsync();
-    Task StopAdvertisingAsync();
 }
