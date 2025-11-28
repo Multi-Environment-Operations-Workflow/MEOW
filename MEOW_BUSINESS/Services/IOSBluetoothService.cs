@@ -70,7 +70,7 @@ public class IOSBluetoothService(IErrorService errorService, ILoggingService log
     }
 }
 
-class IOSGyatt(ILoggingService loggingService, IOSBluetoothService iosBluetoothService, IErrorService errorService) : CBPeripheralManagerDelegate
+class IOSGyatt(ILoggingService loggingService, IOSBluetoothService iosBluetoothService, IErrorService errorService) : NSObject, ICBPeripheralManagerDelegate
 {
     
     private readonly CBUUID _chatServiceUuid = CBUUID.FromString(ChatUuids.ChatService.ToString());
